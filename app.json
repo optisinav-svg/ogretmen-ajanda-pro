@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Öğretmen Takip",
+    "slug": "ogretmen-takip",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ogretmentakip.app"
+    },
+    "android": {
+      "package": "com.ogretmentakip.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "31baafe1-369c-4b64-b066-26b2de6ef837"
+      }
+    }
+  }
+}
