@@ -1,184 +1,25 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform
-} from 'react-native';
-import {
-  collection, addDoc, getDocs, deleteDoc, doc, query, where, getDoc
-} from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
-import kazanmlar from '../assets/kazanimlar.json';
-
-const normalize = (text = '') => text.toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-function sinifKodlariniBul(sinifAd = '') {
-  const s = normalize(sinifAd);
-  if (s.includes('tyt') || s.includes('ayt')) return ['21', '22'];
-  const eslesme = s.match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);
-  return eslesme ? [eslesme[2]] : [];
-}
-
-function StudentSelector({sinif,uid,onSelect}){const [list,setList]=useState([]);useEffect(()=>{if(sinif)getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid))).then(x=>setList(x.docs.map(d=>({id:d.id,...d.data()})))).catch(()=>{})},[]);return <ScrollView style={{padding:12}}>{list.length?list.map(o=><TouchableOpacity key={o.id} style={{backgroundColor:'#fff',padding:15,borderRadius:10,marginBottom:8}} onPress={()=>onSelect(o)}><Text style={{fontSize:16,fontWeight:'bold',color:'#1B5E20'}}>{o.adSoyad}</Text><Text style={{color:'#777',marginTop:2}}>Kitaplarını görmek için dokunun ›</Text></TouchableOpacity>):<Text style={{padding:20,textAlign:'center',color:'#999'}}>Bu sınıfta öğrenci yok.</Text>}</ScrollView>}
-
-export default function KitapEkrani({ route }) {
-  const [ogrenciSecili, setOgrenciSecili] = useState(route.params?.ogrenci || null);
-  const sinifRoute = route.params?.sinif || null;
-  const ogrenci = ogrenciSecili;
-  const [kitaplar, setKitaplar] = useState([]);
-  const [yukleniyor, setYukleniyor] = useState(true);
-  const [kitapModal, setKitapModal] = useState(false);
-  const [konuModal, setKonuModal] = useState(false);
-  const [seciliKitap, setSeciliKitap] = useState(null);
-  const [konular, setKonular] = useState([]);
-  const [kitapAdi, setKitapAdi] = useState('');
-  const [sayfaSayisi, setSayfaSayisi] = useState('');
-  const [konuAdi, setKonuAdi] = useState('');
-  const [baslangicSayfa, setBaslangicSayfa] = useState('');
-  const [bitisSayfa, setBitisSayfa] = useState('');
-  const [arama, setArama] = useState('');
-  const [profilBrans, setProfilBrans] = useState('');
-  const [sinifBilgi, setSinifBilgi] = useState(null);
-  const [seciliKazanim, setSeciliKazanim] = useState(null);
-  const [manuelKonu, setManuelKonu] = useState(true);
-  const uid = auth.currentUser?.uid;
-
-  useEffect(() => { profilYukle(); if (ogrenci) { kitaplariYukle(); sinifBilgiYukle(); } }, [ogrenci?.id]);
-  
-
-  const profilYukle = async () => {
-    if (!uid) return;
-    try {
-      const snap = await getDoc(doc(db, 'kullanicilar', uid));
-      if (snap.exists()) setProfilBrans(snap.data().brans || '');
-    } catch (_) {}
-  };
-
-  const sinifBilgiYukle = async () => {
-    if (!ogrenci?.sinifId) return;
-    try {
-      const snap = await getDoc(doc(db, 'siniflar', ogrenci.sinifId));
-      if (snap.exists()) setSinifBilgi({ id: snap.id, ...snap.data() });
-    } catch (_) {}
-  };
-
-  const kitaplariYukle = async () => {
-    if (!ogrenci?.id || !uid) return;
-    setYukleniyor(true);
-    try {
-      const q = query(collection(db, 'kitaplar'), where('ogrenciId', '==', ogrenci.id), where('uid', '==', uid));
-      const snap = await getDocs(q);
-      setKitaplar(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { Alert.alert('Hata', 'Kitaplar yüklenemedi.'); }
-    setYukleniyor(false);
-  };
-
-  const kitapEkle = async () => {
-    if (!kitapAdi.trim()) { Alert.alert('Hata', 'Kitap adı girin.'); return; }
-    try {
-      await addDoc(collection(db, 'kitaplar'), {
-        ad: kitapAdi.trim(), sayfaSayisi: parseInt(sayfaSayisi, 10) || 0,
-        ogrenciId: ogrenci.id, ogrenciAd: ogrenci.adSoyad,
-        sinifId: ogrenci.sinifId, sinifAd: ogrenci.sinifAd,
-        okulId: ogrenci.okulId, okulAd: ogrenci.okulAd,
-        brans: sinifBilgi?.ders || profilBrans, kademe: sinifBilgi?.kademe || '', uid, olusturulma: new Date().toISOString()
-      });
-      setKitapAdi(''); setSayfaSayisi(''); setKitapModal(false); kitaplariYukle();
-    } catch (e) { Alert.alert('Hata', 'Kitap eklenemedi.'); }
-  };
-
-  const konulariYukle = async (kitap) => {
-    setSeciliKitap(kitap);
-    try {
-      const q = query(collection(db, 'konular'), where('kitapId', '==', kitap.id), where('uid', '==', uid));
-      const snap = await getDocs(q);
-      setKonular(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { Alert.alert('Hata', 'Konular yüklenemedi.'); }
-  };
-
-  const uygunKazanimlar = useMemo(() => {
-    const ders = normalize(sinifBilgi?.ders || profilBrans);
-    const kademe = sinifBilgi?.kademe || '';
-    const kodlar = kademe === 'TYT' || kademe === 'AYT' ? ['21', '22'] : (kademe ? [String(kademe)] : sinifKodlariniBul(ogrenci?.sinifAd || ''));
-    const ar = normalize(arama.trim());
-    if (!ders || !kodlar.length || !ar) return [];
-    return kazanmlar
-      .filter(k => normalize(k.ders) === ders && kodlar.includes(String(k.sinif)))
-      .filter(k => normalize(`${k.kod} ${k.ad}`).includes(ar))
-      .slice(0, 80);
-  }, [profilBrans, sinifBilgi?.ders, sinifBilgi?.kademe, ogrenci?.sinifAd, arama]);
-
-  const konuEkle = async () => {
-    const ad = manuelKonu ? konuAdi.trim() : seciliKazanim?.ad?.trim();
-    if (!ad) { Alert.alert('Hata', 'Bir konu seçin veya kendiniz konu yazın.'); return; }
-    try {
-      await addDoc(collection(db, 'konular'), {
-        ad,
-        baslangicSayfa: parseInt(baslangicSayfa, 10) || 0,
-        bitisSayfa: parseInt(bitisSayfa, 10) || 0,
-        kitapId: seciliKitap.id, kitapAd: seciliKitap.ad,
-        ogrenciId: ogrenci.id, sinifId: ogrenci.sinifId, sinifAd: ogrenci.sinifAd,
-        okulId: ogrenci.okulId, okulAd: ogrenci.okulAd,
-        kazanımKodu: manuelKonu ? '' : (seciliKazanim?.kod || ''),
-        kaynak: manuelKonu ? 'manuel' : 'csv', brans: sinifBilgi?.ders || profilBrans, kademe: sinifBilgi?.kademe || '',
-        uid, olusturulma: new Date().toISOString()
-      });
-      setKonuAdi(''); setBaslangicSayfa(''); setBitisSayfa(''); setArama('');
-      setSeciliKazanim(null); setManuelKonu(true); setKonuModal(false); konulariYukle(seciliKitap);
-    } catch (e) { Alert.alert('Hata', 'Konu eklenemedi.'); }
-  };
-
-  const kitapSil = (id) => Alert.alert('Sil', 'Bu kitabı silmek istiyor musunuz?', [
-    { text: 'İptal', style: 'cancel' },
-    { text: 'Sil', style: 'destructive', onPress: async () => {
-      await deleteDoc(doc(db, 'kitaplar', id));
-      if (seciliKitap?.id === id) { setSeciliKitap(null); setKonular([]); }
-      kitaplariYukle();
-    }}
-  ]);
-
-  const konuSil = (id) => Alert.alert('Sil', 'Bu konuyu silmek istiyor musunuz?', [
-    { text: 'İptal', style: 'cancel' },
-    { text: 'Sil', style: 'destructive', onPress: async () => { await deleteDoc(doc(db, 'konular', id)); konulariYukle(seciliKitap); }}
-  ]);
-
-  if (yukleniyor) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#2E7D32" />;
-
-  if (!ogrenci) return <View style={styles.kapsayici}><View style={styles.baslik}><Text style={styles.ogrenciAd}>{sinifRoute?.ad||'Öğrenci seçimi'}</Text><Text style={styles.sinifAd}>Kitap & Konular için öğrenci seçin.</Text></View><StudentSelector sinif={sinifRoute} uid={uid} onSelect={o=>setOgrenciSecili(o)} /></View>;
-  return (
-    <KeyboardAvoidingView style={styles.kapsayici} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.baslik}>
-        <Text style={styles.ogrenciAd}>{ogrenci?.adSoyad}</Text>
-        <Text style={styles.sinifAd}>{ogrenci?.sinifAd} - {ogrenci?.okulAd}</Text>
-      </View>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 30 }}>
-        <View style={styles.bolum}>
-          <View style={styles.bolumBaslik}><Text style={styles.bolumMetni}>📚 Kitaplar</Text><TouchableOpacity style={styles.ekleButon} onPress={() => setKitapModal(true)}><Text style={styles.ekleMetni}>+ Kitap</Text></TouchableOpacity></View>
-          {kitaplar.length === 0 && <Text style={styles.bos}>Henüz kitap eklenmemiş.</Text>}
-          {kitaplar.map(kitap => <TouchableOpacity key={kitap.id} style={[styles.kart, seciliKitap?.id === kitap.id && styles.kartSecili]} onPress={() => konulariYukle(kitap)} onLongPress={() => kitapSil(kitap.id)}>
-            <Text style={styles.kartMetni}>📖 {kitap.ad}</Text>{kitap.sayfaSayisi > 0 && <Text style={styles.kartAlt}>{kitap.sayfaSayisi} sayfa</Text>}
-          </TouchableOpacity>)}
-        </View>
-        {seciliKitap && <View style={styles.bolum}>
-          <View style={styles.bolumBaslik}><Text style={styles.bolumMetni}>📑 {seciliKitap.ad} - Konular</Text><TouchableOpacity style={styles.ekleButon} onPress={() => setKonuModal(true)}><Text style={styles.ekleMetni}>+ Konu</Text></TouchableOpacity></View>
-          {konular.length === 0 && <Text style={styles.bos}>Henüz konu eklenmemiş.</Text>}
-          {konular.map((konu, i) => <TouchableOpacity key={konu.id} style={styles.konuKart} onLongPress={() => konuSil(konu.id)}>
-            <View style={styles.konuSolum}><Text style={styles.konuSira}>{i + 1}</Text></View><View style={styles.konuBilgi}><Text style={styles.konuAd}>{konu.kazanımKodu ? `${konu.kazanımKodu} — ` : ''}{konu.ad}</Text>{(konu.baslangicSayfa > 0 || konu.bitisSayfa > 0) && <Text style={styles.konuSayfa}>Sayfa: {konu.baslangicSayfa} - {konu.bitisSayfa}</Text>}</View>
-          </TouchableOpacity>)}
-        </View>}
-      </ScrollView>
-
-      <Modal visible={kitapModal} transparent animationType="slide"><View style={styles.modalArka}><View style={styles.modalIcerik}><Text style={styles.modalBaslik}>Kitap Ekle</Text><TextInput style={styles.girdi} placeholder="Kitap adı" value={kitapAdi} onChangeText={setKitapAdi} autoFocus /><TextInput style={styles.girdi} placeholder="Sayfa sayısı (isteğe bağlı)" value={sayfaSayisi} onChangeText={setSayfaSayisi} keyboardType="numeric" /><TouchableOpacity style={styles.kaydetButon} onPress={kitapEkle}><Text style={styles.kaydetMetni}>Kaydet</Text></TouchableOpacity><TouchableOpacity style={styles.iptalButon} onPress={() => setKitapModal(false)}><Text style={styles.iptalMetni}>İptal</Text></TouchableOpacity></View></View></Modal>
-
-      <Modal visible={konuModal} transparent animationType="slide"><View style={styles.modalArka}><View style={[styles.modalIcerik, { maxHeight: '90%' }]}><ScrollView keyboardShouldPersistTaps="handled">
-        <Text style={styles.modalBaslik}>Konu Ekle</Text>
-        <View style={styles.secimSatir}><TouchableOpacity style={[styles.secim, manuelKonu && styles.secimAktif]} onPress={() => {setManuelKonu(true);setSeciliKazanim(null);}}><Text style={[styles.secimText, manuelKonu && styles.secimTextAktif]}>Kendim yazacağım</Text></TouchableOpacity><TouchableOpacity style={[styles.secim, !manuelKonu && styles.secimAktif]} onPress={() => setManuelKonu(false)}><Text style={[styles.secimText, !manuelKonu && styles.secimTextAktif]}>CSV'den seç</Text></TouchableOpacity></View>
-        {!manuelKonu && <><Text style={styles.kucukBilgi}>{sinifBilgi?.ders || profilBrans || 'Ders'} • {sinifBilgi?.kademe || sinifKodlariniBul(ogrenci?.sinifAd || '').join(' + ') || 'Kademe'}</Text><TextInput style={styles.girdi} placeholder="Konu veya kazanım ara..." value={arama} onChangeText={setArama} />{arama.trim() && uygunKazanimlar.map(k => <TouchableOpacity key={`${k.sinif}-${k.kod}-${k.ad}`} style={[styles.kazanimKart, seciliKazanim?.kod === k.kod && styles.kazanimSecili]} onPress={() => setSeciliKazanim(k)}><Text style={styles.kazanimKod}>{k.kod}</Text><Text style={styles.kazanimAd}>{k.ad}</Text></TouchableOpacity>)}{arama.trim() && uygunKazanimlar.length === 0 && <Text style={styles.bos}>Uygun kayıt bulunamadı.</Text>}</>}
-        {manuelKonu && <TextInput style={styles.girdi} placeholder="Konu adı" value={konuAdi} onChangeText={setKonuAdi} autoFocus />}
-        <TextInput style={styles.girdi} placeholder="Başlangıç sayfası" value={baslangicSayfa} onChangeText={setBaslangicSayfa} keyboardType="numeric" /><TextInput style={styles.girdi} placeholder="Bitiş sayfası" value={bitisSayfa} onChangeText={setBitisSayfa} keyboardType="numeric" />
-        <TouchableOpacity style={styles.kaydetButon} onPress={konuEkle}><Text style={styles.kaydetMetni}>Kaydet</Text></TouchableOpacity><TouchableOpacity style={styles.iptalButon} onPress={() => setKonuModal(false)}><Text style={styles.iptalMetni}>İptal</Text></TouchableOpacity>
-      </ScrollView></View></View></Modal>
-    </KeyboardAvoidingView>
-  );
-}
-
-const styles = StyleSheet.create({ kapsayici:{flex:1,backgroundColor:'#F1F8E9'},baslik:{backgroundColor:'#2E7D32',padding:16},ogrenciAd:{color:'#fff',fontSize:18,fontWeight:'bold'},sinifAd:{color:'#A5D6A7',fontSize:13,marginTop:2},bolum:{margin:16,backgroundColor:'#fff',borderRadius:14,padding:16,elevation:2},bolumBaslik:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12},bolumMetni:{fontSize:14,fontWeight:'bold',color:'#1B5E20',flex:1},ekleButon:{backgroundColor:'#2E7D32',borderRadius:8,paddingHorizontal:12,paddingVertical:6},ekleMetni:{color:'#fff',fontWeight:'bold',fontSize:13},kart:{borderWidth:1,borderColor:'#E8F5E9',borderRadius:10,padding:12,marginBottom:8,backgroundColor:'#F9FBE7'},kartSecili:{borderColor:'#2E7D32',backgroundColor:'#E8F5E9'},kartMetni:{fontSize:14,color:'#1B5E20',fontWeight:'600'},kartAlt:{fontSize:12,color:'#888',marginTop:2},konuKart:{flexDirection:'row',alignItems:'center',borderWidth:1,borderColor:'#E8F5E9',borderRadius:10,padding:12,marginBottom:8},konuSolum:{width:28,height:28,borderRadius:14,backgroundColor:'#E8F5E9',alignItems:'center',justifyContent:'center',marginRight:12},konuSira:{color:'#2E7D32',fontWeight:'bold',fontSize:12},konuBilgi:{flex:1},konuAd:{fontSize:14,color:'#1B5E20',fontWeight:'600'},konuSayfa:{fontSize:12,color:'#888',marginTop:2},bos:{color:'#aaa',textAlign:'center',padding:16},modalArka:{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'center',padding:20},modalIcerik:{backgroundColor:'#fff',borderRadius:16,padding:20},modalBaslik:{fontSize:18,fontWeight:'bold',color:'#1B5E20',marginBottom:14},girdi:{borderWidth:1,borderColor:'#C8E6C9',borderRadius:10,padding:12,fontSize:16,marginBottom:10,backgroundColor:'#fff'},kaydetButon:{backgroundColor:'#2E7D32',borderRadius:10,padding:14,alignItems:'center',marginBottom:8},kaydetMetni:{color:'#fff',fontWeight:'bold',fontSize:15},iptalButon:{padding:12,alignItems:'center'},iptalMetni:{color:'#888',fontSize:14},secimSatir:{flexDirection:'row',gap:8,marginBottom:10},secim:{flex:1,borderWidth:1,borderColor:'#C8E6C9',borderRadius:9,padding:10,alignItems:'center'},secimAktif:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},secimText:{fontSize:12,color:'#333'},secimTextAktif:{color:'#fff',fontWeight:'bold'},kucukBilgi:{fontSize:12,color:'#558B2F',marginBottom:8},kazanimKart:{borderWidth:1,borderColor:'#E8F5E9',borderRadius:9,padding:10,marginBottom:7,backgroundColor:'#F9FBE7'},kazanimSecili:{borderColor:'#2E7D32',backgroundColor:'#E8F5E9'},kazanimKod:{fontSize:11,color:'#2E7D32',fontWeight:'bold'},kazanimAd:{fontSize:13,color:'#333',marginTop:2} });
+import React,{useState,useEffect,useMemo}from'react';
+import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,ActivityIndicator,KeyboardAvoidingView,Platform}from'react-native';
+import {collection,addDoc,getDocs,deleteDoc,doc,query,where,getDoc,updateDoc}from'firebase/firestore';
+import {auth,db}from'../firebaseConfig';
+import kazanmlar from'../assets/kazanimlar.json';
+const normalize=t=>(t||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const KADEMELER=['9','10','11','12','TYT','AYT'];
+const kodlar=k=>k==='TYT'||k==='AYT'?['21','22']:[String(k)];
+function StudentSelector({sinif,uid,onSelect}){const[list,setList]=useState([]);useEffect(()=>{if(!sinif)return;getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid))).then(x=>setList(x.docs.map(d=>({id:d.id,...d.data()})))).catch(()=>{})},[sinif?.id,uid]);return <ScrollView style={{padding:12}}>{list.length?list.map(o=><TouchableOpacity key={o.id} style={st.student} onPress={()=>onSelect(o)}><Text style={st.studentName}>{o.adSoyad}</Text><Text style={st.muted}>Kitaplarını görmek için dokunun ›</Text></TouchableOpacity>):<Text style={st.empty}>Bu sınıfta öğrenci yok.</Text>}</ScrollView>}
+export default function KitapEkrani({route}){
+ const sinifRoute=route.params?.sinif||null;const[ogrenci,setOgrenci]=useState(route.params?.ogrenci||null);const[sinifBilgi,setSinifBilgi]=useState(sinifRoute||null);const[profilBrans,setProfilBrans]=useState('');const[sinifModal,setSinifModal]=useState(!!sinifRoute&&!sinifRoute.kademe&&!sinifRoute.ders);const[seciliKademe,setSeciliKademe]=useState(sinifRoute?.kademe||'');const[seciliDers,setSeciliDers]=useState(sinifRoute?.ders||'');const[dersArama,setDersArama]=useState('');const[kitaplar,setKitaplar]=useState([]);const[yukleniyor,setYukleniyor]=useState(false);const[kitapModal,setKitapModal]=useState(false);const[konuModal,setKonuModal]=useState(false);const[seciliKitap,setSeciliKitap]=useState(null);const[konular,setKonular]=useState([]);const[kitapAdi,setKitapAdi]=useState('');const[sayfaSayisi,setSayfaSayisi]=useState('');const[konuAdi,setKonuAdi]=useState('');const[baslangicSayfa,setBaslangicSayfa]=useState('');const[bitisSayfa,setBitisSayfa]=useState('');const[arama,setArama]=useState('');const[seciliKazanim,setSeciliKazanim]=useState(null);const[manuelKonu,setManuelKonu]=useState(true);const uid=auth.currentUser?.uid;
+ const dersler=useMemo(()=>[...new Set(kazanmlar.map(x=>x.ders).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr')),[kazanmlar]);const gorunenDersler=useMemo(()=>dersler.filter(d=>normalize(d).includes(normalize(dersArama))).slice(0,20),[dersler,dersArama]);
+ useEffect(()=>{(async()=>{if(!uid)return;try{const p=await getDoc(doc(db,'kullanicilar',uid));if(p.exists())setProfilBrans(p.data().brans||'')}catch(e){}})()},[uid]);
+ useEffect(()=>{if(!sinifBilgi?.id)return;setSeciliKademe(sinifBilgi.kademe||'');setSeciliDers(sinifBilgi.ders||'')},[sinifBilgi?.id]);
+ useEffect(()=>{if(ogrenci){setYukleniyor(true);Promise.all([getDocs(query(collection(db,'kitaplar'),where('ogrenciId','==',ogrenci.id),where('uid','==',uid))),getDoc(doc(db,'siniflar',ogrenci.sinifId))]).then(([k,s])=>{setKitaplar(k.docs.map(d=>({id:d.id,...d.data()})));if(s.exists())setSinifBilgi({id:s.id,...s.data()})}).catch(()=>{}).finally(()=>setYukleniyor(false))}},[ogrenci?.id]);
+ const sinifSecimiKaydet=async()=>{if(!sinifBilgi?.id||!seciliKademe||!seciliDers)return Alert.alert('Eksik bilgi','Sınıf seviyesi ve ders zorunludur.');try{await updateDoc(doc(db,'siniflar',sinifBilgi.id),{kademe:seciliKademe,ders:seciliDers});setSinifBilgi({...sinifBilgi,kademe:seciliKademe,ders:seciliDers});setSinifModal(false)}catch(e){Alert.alert('Hata','Sınıf bilgisi kaydedilemedi.')}};
+ const kitaplariYukle=async()=>{if(!ogrenci)return;const q=await getDocs(query(collection(db,'kitaplar'),where('ogrenciId','==',ogrenci.id),where('uid','==',uid)));setKitaplar(q.docs.map(d=>({id:d.id,...d.data()})))};
+ const kitapEkle=async()=>{if(!kitapAdi.trim())return Alert.alert('Hata','Kitap adı girin.');try{await addDoc(collection(db,'kitaplar'),{ad:kitapAdi.trim(),sayfaSayisi:parseInt(sayfaSayisi,10)||0,ogrenciId:ogrenci.id,ogrenciAd:ogrenci.adSoyad,sinifId:ogrenci.sinifId,sinifAd:ogrenci.sinifAd,okulId:ogrenci.okulId,okulAd:ogrenci.okulAd,brans:sinifBilgi?.ders||profilBrans,kademe:sinifBilgi?.kademe||'',uid,olusturulma:new Date().toISOString()});setKitapAdi('');setSayfaSayisi('');setKitapModal(false);kitaplariYukle()}catch(e){Alert.alert('Hata','Kitap eklenemedi.')}};
+ const konulariYukle=async k=>{setSeciliKitap(k);try{const q=await getDocs(query(collection(db,'konular'),where('kitapId','==',k.id),where('uid','==',uid)));setKonular(q.docs.map(d=>({id:d.id,...d.data()})))}catch(e){Alert.alert('Hata','Konular yüklenemedi.')}};
+ const uygunKazanimlar=useMemo(()=>{const d=normalize(sinifBilgi?.ders||profilBrans);const k=kodlar(sinifBilgi?.kademe||'');const a=normalize(arama.trim());if(!d||!a||!k.length)return[];return kazanmlar.filter(x=>normalize(x.ders)===d&&k.includes(String(x.sinif))).filter(x=>normalize(`${x.kod} ${x.ad}`).includes(a)).slice(0,80)},[sinifBilgi?.ders,sinifBilgi?.kademe,profilBrans,arama]);
+ const konuEkle=async()=>{const ad=manuelKonu?konuAdi.trim():seciliKazanim?.ad?.trim();if(!ad)return Alert.alert('Hata','Konu seçin veya yazın.');try{await addDoc(collection(db,'konular'),{ad,baslangicSayfa:parseInt(baslangicSayfa,10)||0,bitisSayfa:parseInt(bitisSayfa,10)||0,kitapId:seciliKitap.id,kitapAd:seciliKitap.ad,ogrenciId:ogrenci.id,sinifId:ogrenci.sinifId,sinifAd:ogrenci.sinifAd,okulId:ogrenci.okulId,okulAd:ogrenci.okulAd,kazanımKodu:manuelKonu?'':(seciliKazanim?.kod||''),kaynak:manuelKonu?'manuel':'csv',brans:sinifBilgi?.ders||profilBrans,kademe:sinifBilgi?.kademe||'',uid,olusturulma:new Date().toISOString()});setKonuAdi('');setBaslangicSayfa('');setBitisSayfa('');setArama('');setSeciliKazanim(null);setManuelKonu(true);setKonuModal(false);konulariYukle(seciliKitap)}catch(e){Alert.alert('Hata','Konu eklenemedi.')}};
+ if(yukleniyor)return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
+ if(!ogrenci)return <View style={st.wrap}><View style={st.header}><Text style={st.headerTitle}>{sinifRoute?.ad||'Öğrenci seçimi'}</Text><Text style={st.headerSub}>{sinifBilgi?.kademe?`${sinifBilgi.kademe}. Sınıf`:''}{sinifBilgi?.ders?` • ${sinifBilgi.ders}`:''}</Text></View>{sinifBilgi&&!sinifBilgi.kademe||sinifBilgi&&!sinifBilgi.ders?<TouchableOpacity style={st.info} onPress={()=>setSinifModal(true)}><Text style={st.infoTitle}>Sınıf seviyesi ve ders seç</Text><Text style={st.infoText}>Kitap & Konu Takibi için önce sınıf bilgisini tamamlayın.</Text></TouchableOpacity>:null}<StudentSelector sinif={sinifRoute||sinifBilgi} uid={uid} onSelect={setOgrenci}/><Modal visible={sinifModal} transparent animationType="slide"><View style={st.modalBg}><View style={[st.modal,{maxHeight:'90%'}]}><ScrollView keyboardShouldPersistTaps="handled"><Text style={st.modalTitle}>Sınıf Bilgisi</Text><Text style={st.muted}>Bu sınıf için seviye ve ders seçin.</Text><Text style={st.label}>Sınıf düzeyi</Text><View style={st.chips}>{KADEMELER.map(k=><TouchableOpacity key={k} style={[st.chip,seciliKademe===k&&st.active]} onPress={()=>setSeciliKademe(k)}><Text style={[st.chipText,seciliKademe===k&&st.activeText]}>{k==='TYT'||k==='AYT'?k:`${k}. Sınıf`}</Text></TouchableOpacity>)}</View><Text style={st.label}>Ders</Text><TextInput style={st.input} placeholder="Ders ara..." value={dersArama} onChangeText={setDersArama}/>{seciliDers?<View style={st.selected}><Text>Seçilen: <Text style={{fontWeight:'bold'}}>{seciliDers}</Text></Text><TouchableOpacity onPress={()=>setSeciliDers('')}><Text style={{color:'#C62828'}}>Değiştir</Text></TouchableOpacity></View>:gorunenDersler.map(d=><TouchableOpacity key={d} style={st.ders} onPress={()=>{setSeciliDers(d);setDersArama(d)}}><Text>{d}</Text></TouchableOpacity>)}<TouchableOpacity style={st.save} onPress={sinifSecimiKaydet}><Text style={st.saveText}>Kaydet ve Devam Et</Text></TouchableOpacity></ScrollView></View></View></Modal></View>;
+ return <KeyboardAvoidingView style={st.wrap} behavior={Platform.OS==='ios'?'padding':'height'}><View style={st.header}><Text style={st.headerTitle}>{ogrenci.adSoyad}</Text><Text style={st.headerSub}>{sinifBilgi?.kademe?`${sinifBilgi.kademe}. Sınıf`:ogrenci.sinifAd}{sinifBilgi?.ders?` • ${sinifBilgi.ders}`:''}{ogrenci.okulAd?` • ${ogrenci.okulAd}`:''}</Text></View><ScrollView contentContainerStyle={{paddingBottom:100}}><View style={st.section}><View style={st.sectionHead}><Text style={st.sectionTitle}>📚 Kitaplar</Text><TouchableOpacity style={st.smallBtn} onPress={()=>setKitapModal(true)}><Text style={st.smallBtnText}>+ Kitap</Text></TouchableOpacity></View>{kitaplar.length===0&&<Text style={st.empty}>Henüz kitap eklenmemiş.</Text>}{kitaplar.map(k=><TouchableOpacity key={k.id} style={[st.book,seciliKitap?.id===k.id&&st.bookActive]} onPress={()=>konulariYukle(k)} onLongPress={()=>deleteDoc(doc(db,'kitaplar',k.id)).then(kitaplariYukle)}><Text style={st.bookName}>📖 {k.ad}</Text>{k.sayfaSayisi>0&&<Text style={st.muted}>{k.sayfaSayisi} sayfa</Text>}</TouchableOpacity>)}</View>{seciliKitap&&<View style={st.section}><View style={st.sectionHead}><Text style={st.sectionTitle}>📑 {seciliKitap.ad} - Konular</Text><TouchableOpacity style={st.smallBtn} onPress={()=>setKonuModal(true)}><Text style={st.smallBtnText}>+ Konu</Text></TouchableOpacity></View>{konular.length===0&&<Text style={st.empty}>Henüz konu eklenmemiş.</Text>}{konular.map((k,i)=><View key={k.id} style={st.topic}><Text style={st.topicNo}>{i+1}</Text><View style={{flex:1}}><Text style={st.topicName}>{k.kazanımKodu?`${k.kazanımKodu} — `:''}{k.ad}</Text>{k.baslangicSayfa||k.bitisSayfa?<Text style={st.muted}>Sayfa: {k.baslangicSayfa} - {k.bitisSayfa}</Text>:null}</View></View>)}</View>}</ScrollView><Modal visible={kitapModal} transparent animationType="slide"><View style={st.modalBg}><View style={st.modal}><Text style={st.modalTitle}>Kitap Ekle</Text><TextInput style={st.input} placeholder="Kitap adı" value={kitapAdi} onChangeText={setKitapAdi}/><TextInput style={st.input} placeholder="Sayfa sayısı" value={sayfaSayisi} onChangeText={setSayfaSayisi} keyboardType="numeric"/><TouchableOpacity style={st.save} onPress={kitapEkle}><Text style={st.saveText}>Kaydet</Text></TouchableOpacity><TouchableOpacity style={st.cancel} onPress={()=>setKitapModal(false)}><Text>İptal</Text></TouchableOpacity></View></View></Modal><Modal visible={konuModal} transparent animationType="slide"><View style={st.modalBg}><View style={[st.modal,{maxHeight:'90%'}]}><ScrollView keyboardShouldPersistTaps="handled"><Text style={st.modalTitle}>Konu Ekle</Text><View style={st.secimSatir}><TouchableOpacity style={[st.secim,manuelKonu&&st.active]} onPress={()=>{setManuelKonu(true);setSeciliKazanim(null)}}><Text style={[st.secimText,manuelKonu&&st.activeText]}>Kendim yazacağım</Text></TouchableOpacity><TouchableOpacity style={[st.secim,!manuelKonu&&st.active]} onPress={()=>setManuelKonu(false)}><Text style={[st.secimText,!manuelKonu&&st.activeText]}>CSV'den seç</Text></TouchableOpacity></View>{manuelKonu?<TextInput style={st.input} placeholder="Konu adı" value={konuAdi} onChangeText={setKonuAdi}/>:<><Text style={st.muted}>{sinifBilgi?.kademe} • {sinifBilgi?.ders} — sınıfa filtreli</Text><TextInput style={st.input} placeholder="Konu / kazanım ara..." value={arama} onChangeText={setArama}/>{arama.trim()&&uygunKazanimlar.map(k=><TouchableOpacity key={`${k.sinif}-${k.kod}-${k.ad}`} style={[st.ders,seciliKazanim?.kod===k.kod&&st.selected]} onPress={()=>setSeciliKazanim(k)}><Text style={st.kod}>{k.kod}</Text><Text>{k.ad}</Text></TouchableOpacity>)}</>}<TextInput style={st.input} placeholder="Başlangıç sayfası" value={baslangicSayfa} onChangeText={setBaslangicSayfa} keyboardType="numeric"/><TextInput style={st.input} placeholder="Bitiş sayfası" value={bitisSayfa} onChangeText={setBitisSayfa} keyboardType="numeric"/><TouchableOpacity style={st.save} onPress={konuEkle}><Text style={st.saveText}>Kaydet</Text></TouchableOpacity><TouchableOpacity style={st.cancel} onPress={()=>setKonuModal(false)}><Text>İptal</Text></TouchableOpacity></ScrollView></View></View></Modal></KeyboardAvoidingView>}
+const st=StyleSheet.create({wrap:{flex:1,backgroundColor:'#F1F8E9'},header:{backgroundColor:'#2E7D32',padding:16},headerTitle:{color:'#fff',fontSize:18,fontWeight:'bold'},headerSub:{color:'#C8E6C9',fontSize:12,marginTop:3},info:{margin:12,padding:14,borderRadius:12,backgroundColor:'#fff',borderWidth:1,borderColor:'#C8E6C9'},infoTitle:{fontWeight:'bold',color:'#1B5E20'},infoText:{color:'#777',marginTop:4},student:{backgroundColor:'#fff',padding:15,borderRadius:10,marginBottom:8},studentName:{fontSize:16,fontWeight:'bold',color:'#1B5E20'},muted:{fontSize:11,color:'#777',marginTop:3},empty:{padding:20,textAlign:'center',color:'#999'},section:{margin:16,backgroundColor:'#fff',borderRadius:14,padding:16},sectionHead:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:12},sectionTitle:{fontSize:14,fontWeight:'bold',color:'#1B5E20',flex:1},smallBtn:{backgroundColor:'#2E7D32',paddingHorizontal:12,paddingVertical:7,borderRadius:8},smallBtnText:{color:'#fff',fontWeight:'bold'},book:{borderWidth:1,borderColor:'#E8F5E9',borderRadius:10,padding:12,marginBottom:8},bookActive:{backgroundColor:'#E8F5E9',borderColor:'#2E7D32'},bookName:{fontWeight:'600',color:'#1B5E20'},topic:{flexDirection:'row',padding:11,borderWidth:1,borderColor:'#E8F5E9',borderRadius:9,marginBottom:7},topicNo:{width:26,height:26,borderRadius:13,backgroundColor:'#E8F5E9',textAlign:'center',paddingTop:5,color:'#2E7D32',fontWeight:'bold',marginRight:10},topicName:{fontWeight:'600',color:'#1B5E20'},modalBg:{flex:1,backgroundColor:'rgba(0,0,0,.5)',justifyContent:'center',padding:20},modal:{backgroundColor:'#fff',borderRadius:16,padding:20},modalTitle:{fontSize:18,fontWeight:'bold',color:'#1B5E20',marginBottom:12},label:{fontSize:13,fontWeight:'bold',color:'#2E7D32',marginTop:10,marginBottom:7},chips:{flexDirection:'row',flexWrap:'wrap',gap:6},chip:{borderWidth:1,borderColor:'#C8E6C9',borderRadius:8,paddingHorizontal:10,paddingVertical:8},active:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},chipText:{fontSize:12},activeText:{color:'#fff',fontWeight:'bold'},input:{borderWidth:1,borderColor:'#C8E6C9',borderRadius:10,padding:12,fontSize:15,marginBottom:9},ders:{padding:11,borderBottomWidth:1,borderBottomColor:'#eee'},selected:{backgroundColor:'#E8F5E9',padding:10,borderRadius:8},save:{backgroundColor:'#2E7D32',padding:14,borderRadius:10,alignItems:'center',marginTop:6},saveText:{color:'#fff',fontWeight:'bold'},cancel:{padding:12,alignItems:'center'},secimSatir:{flexDirection:'row',gap:8,marginBottom:10},secim:{flex:1,borderWidth:1,borderColor:'#C8E6C9',borderRadius:9,padding:10,alignItems:'center'},secimText:{fontSize:12},kod:{fontSize:11,color:'#2E7D32',fontWeight:'bold'}});
