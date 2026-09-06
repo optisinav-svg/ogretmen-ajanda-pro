@@ -1,149 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Modal, ActivityIndicator
-} from 'react-native';
-import {
-  collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc
-} from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
-
-export default function OgrenciEkrani({ route, navigation }) {
-  const { sinif } = route.params || {};
-  const [ogrenciler, setOgrenciler] = useState([]);
-  const [yukleniyor, setYukleniyor] = useState(true);
-  const [modalAcik, setModalAcik] = useState(false);
-  const [ad, setAd] = useState('');
-  const [soyad, setSoyad] = useState('');
-  const [telefon, setTelefon] = useState('');
-  const uid = auth.currentUser.uid;
-
-  useEffect(() => { ogrencileriYukle(); }, []);
-
-  const ogrencileriYukle = async () => {
-    setYukleniyor(true);
-    try {
-      const q = query(
-        collection(db, 'ogrenciler'),
-        where('sinifId', '==', sinif.id),
-        where('uid', '==', uid)
-      );
-      const snap = await getDocs(q);
-      setOgrenciler(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) { Alert.alert('Hata', 'Öğrenciler yüklenemedi.'); }
-    setYukleniyor(false);
-  };
-
-  const ogrenciEkle = async () => {
-    if (!ad.trim() || !soyad.trim()) { Alert.alert('Hata', 'Ad ve soyad zorunludur.'); return; }
-    try {
-      await addDoc(collection(db, 'ogrenciler'), {
-        ad: ad.trim(), soyad: soyad.trim(),
-        adSoyad: `${ad.trim()} ${soyad.trim()}`,
-        telefon: telefon.trim(),
-        sinifId: sinif.id, sinifAd: sinif.ad,
-        okulId: sinif.okulId, okulAd: sinif.okulAd,
-        uid, olusturulma: new Date().toISOString()
-      });
-      setAd(''); setSoyad(''); setTelefon('');
-      setModalAcik(false);
-      ogrencileriYukle();
-    } catch (e) { Alert.alert('Hata', 'Öğrenci eklenemedi.'); }
-  };
-
-  const ogrenciSil = (id) => {
-    Alert.alert('Sil', 'Bu öğrenciyi silmek istiyor musunuz?', [
-      { text: 'İptal', style: 'cancel' },
-      { text: 'Sil', style: 'destructive', onPress: async () => {
-        const koleksiyonlar=['odevler','yoklamalar','kitaplar','konular'];
-        for(const k of koleksiyonlar){
-          try{const snap=await getDocs(query(collection(db,k),where('ogrenciId','==',id),where('uid','==',uid)));for(const x of snap.docs)await deleteDoc(x.ref);}catch(e){}
-          try{const snap=await getDocs(query(collection(db,k),where('hedefOgrenciIds','array-contains',id),where('uid','==',uid)));for(const x of snap.docs){const d=x.data();if(k==='odevler'){const ids=(d.hedefOgrenciIds||[]).filter(x=>x!==id);const durumlar={...(d.ogrenciDurumlari||{})};const gecmis={...(d.durumGecmisi||{})};delete durumlar[id];delete gecmis[id];if(ids.length===0) await deleteDoc(x.ref); else await updateDoc(x.ref,{hedefOgrenciIds:ids,hedefOgrenciAdlari:(d.hedefOgrenciAdlari||[]).filter((_,i)=>(d.hedefOgrenciIds||[])[i]!==id),ogrenciDurumlari:durumlar,durumGecmisi:gecmis});}}}catch(e){}
-        }
-        await deleteDoc(doc(db, 'ogrenciler', id));
-        ogrencileriYukle();
-      }},
-    ]);
-  };
-
-  if (yukleniyor) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#2E7D32" />;
-
-  return (
-    <View style={styles.kapsayici}>
-      <View style={styles.baslik}>
-        <Text style={styles.sinifAd}>{sinif?.ad} - Öğrenciler</Text>
-        <Text style={styles.sinifOkul}>{sinif?.okulAd}</Text>
-      </View>
-
-      <ScrollView style={styles.liste}>
-        {ogrenciler.length === 0 && (
-          <Text style={styles.bos}>Henüz öğrenci eklenmemiş.</Text>
-        )}
-        {ogrenciler.map((ogr, i) => (
-          <TouchableOpacity
-            key={ogr.id}
-            style={styles.kart}
-            onPress={() => navigation.navigate('Kitap', { ogrenci: ogr })}
-            onLongPress={() => ogrenciSil(ogr.id)}
-          >
-            <View style={styles.numara}>
-              <Text style={styles.numaraMetni}>{i + 1}</Text>
-            </View>
-            <View style={styles.bilgi}>
-              <Text style={styles.isim}>{ogr.adSoyad}</Text>
-              {ogr.telefon ? <Text style={styles.telefon}>📞 {ogr.telefon}</Text> : null}
-            </View>
-            <Text style={styles.ok}>›</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <TouchableOpacity style={styles.ekleButon} onPress={() => setModalAcik(true)}>
-        <Text style={styles.ekleMetni}>+ Öğrenci Ekle</Text>
-      </TouchableOpacity>
-
-      <Modal visible={modalAcik} transparent animationType="slide">
-        <View style={styles.modalArka}>
-          <View style={styles.modalIcerik}>
-            <Text style={styles.modalBaslik}>Öğrenci Ekle</Text>
-            <TextInput style={styles.girdi} placeholder="Ad" value={ad} onChangeText={setAd} autoCapitalize="words" />
-            <TextInput style={styles.girdi} placeholder="Soyad" value={soyad} onChangeText={setSoyad} autoCapitalize="words" />
-            <TextInput style={styles.girdi} placeholder="Telefon (isteğe bağlı)" value={telefon} onChangeText={setTelefon} keyboardType="phone-pad" />
-            <TouchableOpacity style={styles.kaydetButon} onPress={ogrenciEkle}>
-              <Text style={styles.kaydetMetni}>Kaydet</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iptalButon} onPress={() => setModalAcik(false)}>
-              <Text style={styles.iptalMetni}>İptal</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
+import React,{useState,useEffect}from'react';
+import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,ActivityIndicator,KeyboardAvoidingView,Platform}from'react-native';
+import {collection,addDoc,getDocs,deleteDoc,doc,query,where,updateDoc}from'firebase/firestore';
+import {auth,db}from'../firebaseConfig';
+export default function OgrenciEkrani({route,navigation}){
+ const {sinif}=route.params||{};
+ const [ogrenciler,setOgrenciler]=useState([]),[siniflar,setSiniflar]=useState([]),[yukleniyor,setYukleniyor]=useState(true);
+ const [modalAcik,setModalAcik]=useState(false),[tasimaModal,setTasimaModal]=useState(false),[duzenlenen,setDuzenlenen]=useState(null),[tasimaci,setTasimaci]=useState(null);
+ const [ad,setAd]=useState(''),[soyad,setSoyad]=useState(''),[telefon,setTelefon]=useState('');
+ const uid=auth.currentUser?.uid;
+ useEffect(()=>{ogrencileriYukle();siniflariYukle()},[sinif?.id]);
+ const ogrencileriYukle=async()=>{setYukleniyor(true);try{const q=query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid));const snap=await getDocs(q);setOgrenciler(snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.olusturulma||'').localeCompare(b.olusturulma||'')))}catch(e){Alert.alert('Hata','Öğrenciler yüklenemedi.')}setYukleniyor(false)};
+ const siniflariYukle=async()=>{try{const q=query(collection(db,'siniflar'),where('uid','==',uid));const s=await getDocs(q);setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.id!==sinif.id))}catch(e){}};
+ const formAc=(o=null)=>{setDuzenlenen(o);setAd(o?.ad||'');setSoyad(o?.soyad||'');setTelefon(o?.telefon||'');setModalAcik(true)};
+ const formKapat=()=>{setModalAcik(false);setDuzenlenen(null);setAd('');setSoyad('');setTelefon('')};
+ const ogrenciKaydet=async()=>{if(!ad.trim()||!soyad.trim())return Alert.alert('Hata','Ad ve soyad zorunludur.');try{const data={ad:ad.trim(),soyad:soyad.trim(),adSoyad:`${ad.trim()} ${soyad.trim()}`,telefon:telefon.trim()};if(duzenlenen)await updateDoc(doc(db,'ogrenciler',duzenlenen.id),data);else await addDoc(collection(db,'ogrenciler'),{...data,sinifId:sinif.id,sinifAd:sinif.ad,okulId:sinif.okulId,okulAd:sinif.okulAd,uid,olusturulma:new Date().toISOString()});formKapat();ogrencileriYukle()}catch(e){Alert.alert('Hata','Öğrenci kaydedilemedi.')}};
+ const ogrenciSil=id=>Alert.alert('Sil','Bu öğrenciyi silmek istiyor musunuz?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{const ks=['odevler','yoklamalar','kitaplar','konular'];for(const k of ks){try{const snap=await getDocs(query(collection(db,k),where('ogrenciId','==',id),where('uid','==',uid)));for(const x of snap.docs)await deleteDoc(x.ref)}catch(e){}try{const snap=await getDocs(query(collection(db,k),where('hedefOgrenciIds','array-contains',id),where('uid','==',uid)));for(const x of snap.docs){const d=x.data();if(k==='odevler'){const ids=(d.hedefOgrenciIds||[]).filter(x=>x!==id);const durumlar={...(d.ogrenciDurumlari||{})};const gecmis={...(d.durumGecmisi||{})};delete durumlar[id];delete gecmis[id];if(ids.length===0)await deleteDoc(x.ref);else await updateDoc(x.ref,{hedefOgrenciIds:ids,hedefOgrenciAdlari:(d.hedefOgrenciAdlari||[]).filter((_,i)=>(d.hedefOgrenciIds||[])[i]!==id),ogrenciDurumlari:durumlar,durumGecmisi:gecmis})}}}catch(e){}}await deleteDoc(doc(db,'ogrenciler',id));ogrencileriYukle()}}]);
+ const ogrenciTasi=async(o,yeniSinif)=>{if(!o||!yeniSinif)return;try{await updateDoc(doc(db,'ogrenciler',o.id),{sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||''});const [bk,kn]=await Promise.all([getDocs(query(collection(db,'kitaplar'),where('ogrenciId','==',o.id),where('uid','==',uid))),getDocs(query(collection(db,'konular'),where('ogrenciId','==',o.id),where('uid','==',uid)))]);for(const x of bk.docs)await updateDoc(x.ref,{sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||x.data().kademe||'',brans:yeniSinif.ders||x.data().brans||''});for(const x of kn.docs)await updateDoc(x.ref,{sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||x.data().kademe||'',brans:yeniSinif.ders||x.data().brans||''});setTasimaci(null);setTasimaModal(false);ogrencileriYukle();Alert.alert('Tamam','Öğrenci yeni sınıfa taşındı.')}catch(e){Alert.alert('Hata','Öğrenci taşınamadı.')}};
+ if(yukleniyor)return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
+ return <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS==='ios'?'padding':'height'}><View style={s.header}><Text style={s.title}>{sinif?.ad} - Öğrenciler</Text><Text style={s.school}>{sinif?.okulAd||'Okul belirtilmemiş'}{sinif?.kademe?` • ${sinif.kademe}. Sınıf`:''}{sinif?.ders?` • ${sinif.ders}`:''}</Text></View><ScrollView contentContainerStyle={{padding:12,paddingBottom:110}}>{!ogrenciler.length&&<Text style={s.empty}>Henüz öğrenci eklenmemiş.</Text>}{ogrenciler.map((o,i)=><View key={o.id} style={s.card}><TouchableOpacity style={s.main} onPress={()=>navigation.navigate('Kitap',{ogrenci:o})}><View style={s.num}><Text style={s.numT}>{i+1}</Text></View><View style={{flex:1}}><Text style={s.name}>{o.adSoyad}</Text>{o.telefon?<Text style={s.phone}>📞 {o.telefon}</Text>:null}</View><Text style={s.arrow}>›</Text></TouchableOpacity><View style={s.actions}><TouchableOpacity style={s.editBtn} onPress={()=>formAc(o)}><Text style={s.editT}>✏️ Düzenle</Text></TouchableOpacity><TouchableOpacity style={s.moveBtn} onPress={()=>{setTasimaci(o);setTasimaModal(true)}}><Text style={s.moveT}>↔️ Sınıf Değiştir</Text></TouchableOpacity><TouchableOpacity style={s.delBtn} onPress={()=>ogrenciSil(o.id)}><Text style={s.delT}>🗑️ Sil</Text></TouchableOpacity></View></View>)}</ScrollView><TouchableOpacity style={s.add} onPress={()=>formAc()}><Text style={s.addT}>+ Öğrenci Ekle</Text></TouchableOpacity>
+ <Modal visible={modalAcik} transparent animationType="slide"><View style={s.bg}><View style={s.form}><Text style={s.formTitle}>{duzenlenen?'Öğrenciyi Düzenle':'Öğrenci Ekle'}</Text><TextInput style={s.input} placeholder="Ad" value={ad} onChangeText={setAd} autoCapitalize="words"/><TextInput style={s.input} placeholder="Soyad" value={soyad} onChangeText={setSoyad} autoCapitalize="words"/><TextInput style={s.input} placeholder="Telefon (isteğe bağlı)" value={telefon} onChangeText={setTelefon} keyboardType="phone-pad"/><TouchableOpacity style={s.save} onPress={ogrenciKaydet}><Text style={s.saveT}>{duzenlenen?'Güncelle':'Kaydet'}</Text></TouchableOpacity><TouchableOpacity style={s.cancel} onPress={formKapat}><Text>İptal</Text></TouchableOpacity></View></View></Modal>
+ <Modal visible={tasimaModal} transparent animationType="slide"><View style={s.bg}><View style={s.form}><Text style={s.formTitle}>Öğrenciyi Sınıfa Taşı</Text><Text style={s.modalSub}>{tasimaci?.adSoyad} için yeni sınıf seçin.</Text><ScrollView style={{maxHeight:360}}>{siniflar.map(x=><TouchableOpacity key={x.id} style={s.classRow} onPress={()=>ogrenciTasi(tasimaci,x)}><Text style={s.className}>{x.ad}</Text><Text style={s.modalSub}>{x.okulAd||'Okul belirtilmemiş'}{x.kademe?` • ${x.kademe}. Sınıf`:''}{x.ders?` • ${x.ders}`:''}</Text></TouchableOpacity>)}{!siniflar.length&&<Text style={s.empty}>Taşınabilecek başka sınıf yok.</Text>}</ScrollView><TouchableOpacity style={s.cancel} onPress={()=>setTasimaModal(false)}><Text>İptal</Text></TouchableOpacity></View></View></Modal></KeyboardAvoidingView>;
 }
-
-const styles = StyleSheet.create({
-  kapsayici: { flex: 1, backgroundColor: '#F1F8E9' },
-  baslik: { backgroundColor: '#2E7D32', padding: 16 },
-  sinifAd: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
-  sinifOkul: { color: '#A5D6A7', fontSize: 13, marginTop: 2 },
-  liste: { flex: 1, padding: 12 },
-  bos: { color: '#aaa', textAlign: 'center', padding: 32, fontSize: 15 },
-  kart: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8, elevation: 2 },
-  numara: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#E8F5E9', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  numaraMetni: { color: '#2E7D32', fontWeight: 'bold', fontSize: 13 },
-  bilgi: { flex: 1 },
-  isim: { fontSize: 15, fontWeight: '600', color: '#1B5E20' },
-  telefon: { fontSize: 12, color: '#888', marginTop: 2 },
-  ok: { fontSize: 24, color: '#ccc' },
-  ekleButon: { margin: 12, backgroundColor: '#2E7D32', borderRadius: 12, padding: 16, alignItems: 'center' },
-  ekleMetni: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  modalArka: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  modalIcerik: { backgroundColor: '#fff', borderRadius: 16, padding: 24 },
-  modalBaslik: { fontSize: 18, fontWeight: 'bold', color: '#1B5E20', marginBottom: 16 },
-  girdi: { borderWidth: 1, borderColor: '#C8E6C9', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 10 },
-  kaydetButon: { backgroundColor: '#2E7D32', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 8 },
-  kaydetMetni: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  iptalButon: { padding: 12, alignItems: 'center' },
-  iptalMetni: { color: '#888', fontSize: 14 },
-});
+const s=StyleSheet.create({wrap:{flex:1,backgroundColor:'#F1F8E9'},header:{backgroundColor:'#2E7D32',padding:16},title:{color:'#fff',fontSize:18,fontWeight:'bold'},school:{color:'#C8E6C9',fontSize:12,marginTop:3},card:{backgroundColor:'#fff',borderRadius:12,padding:12,marginBottom:9,elevation:2},main:{flexDirection:'row',alignItems:'center'},num:{width:32,height:32,borderRadius:16,backgroundColor:'#E8F5E9',alignItems:'center',justifyContent:'center',marginRight:10},numT:{color:'#2E7D32',fontWeight:'bold'},name:{fontSize:15,fontWeight:'600',color:'#1B5E20'},phone:{fontSize:11,color:'#888',marginTop:2},arrow:{fontSize:25,color:'#bbb'},actions:{flexDirection:'row',gap:6,marginTop:10},editBtn:{flex:1,backgroundColor:'#E3F2FD',padding:9,borderRadius:8,alignItems:'center'},editT:{color:'#1565C0',fontSize:11,fontWeight:'600'},moveBtn:{flex:1,backgroundColor:'#FFF8E1',padding:9,borderRadius:8,alignItems:'center'},moveT:{color:'#F57F17',fontSize:11,fontWeight:'600'},delBtn:{flex:.7,backgroundColor:'#FFEBEE',padding:9,borderRadius:8,alignItems:'center'},delT:{color:'#C62828',fontSize:11,fontWeight:'600'},empty:{textAlign:'center',color:'#999',padding:28},add:{position:'absolute',left:12,right:12,bottom:18,backgroundColor:'#2E7D32',borderRadius:12,padding:16,alignItems:'center'},addT:{color:'#fff',fontWeight:'bold'},bg:{flex:1,backgroundColor:'rgba(0,0,0,.5)',justifyContent:'center',padding:20},form:{backgroundColor:'#fff',borderRadius:18,padding:20,maxHeight:'88%'},formTitle:{fontSize:19,fontWeight:'bold',color:'#1B5E20',marginBottom:14},input:{borderWidth:1,borderColor:'#C8E6C9',borderRadius:10,padding:12,fontSize:16,marginBottom:10},save:{backgroundColor:'#2E7D32',padding:14,borderRadius:10,alignItems:'center',marginTop:5},saveT:{color:'#fff',fontWeight:'bold'},cancel:{padding:13,alignItems:'center'},modalSub:{fontSize:12,color:'#777',marginBottom:8},classRow:{backgroundColor:'#F9FBE7',borderRadius:10,padding:13,marginBottom:7,borderWidth:1,borderColor:'#E8F5E9'},className:{fontSize:15,fontWeight:'bold',color:'#1B5E20'}});
