@@ -12,6 +12,7 @@ import YoklamaEkrani from './screens/YoklamaEkrani';
 import DersNotuEkrani from './screens/DersNotuEkrani';
 import OdevEkrani from './screens/OdevEkrani';
 import RaporEkrani from './screens/RaporEkrani';
+import SifreDegistirEkrani from './screens/SifreDegistirEkrani';
 const Stack=createNativeStackNavigator();
 const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',headerTitleStyle:{fontWeight:'bold'}};
 export default function App(){return <NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
@@ -26,4 +27,5 @@ export default function App(){return <NavigationContainer><Stack.Navigator initi
 <Stack.Screen name="DersNotu" component={DersNotuEkrani} options={{title:'Ders Notu'}}/>
 <Stack.Screen name="Odev" component={OdevEkrani} options={{title:'Ödev Takibi'}}/>
 <Stack.Screen name="Rapor" component={RaporEkrani} options={{title:'Raporlar'}}/>
+<Stack.Screen name="SifreDegistir" component={SifreDegistirEkrani} options={{title:'Şifre Değiştir'}}/>
 </Stack.Navigator></NavigationContainer>}
