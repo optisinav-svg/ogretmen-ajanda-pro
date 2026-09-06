@@ -1,0 +1,24 @@
+name: Generate app icon
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate PNG icon
+        run: magick assets/ajanda_icon.svg -background none -resize 1024x1024 assets/icon.png
+      - name: Commit generated icon
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/icon.png
+          if git diff --cached --quiet; then
+            echo "Icon unchanged"
+            exit 0
+          fi
+          git commit -m "Uygulama ikonunu PNG olarak oluştur"
+          git push
