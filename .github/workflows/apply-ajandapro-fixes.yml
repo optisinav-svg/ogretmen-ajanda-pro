@@ -1,0 +1,143 @@
+name: Apply AjandaPro fixes
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-ajandapro-fixes.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          root=Path('.')
+          def edit(path, fn):
+            p=root/path; s=p.read_text(encoding='utf-8'); ns=fn(s)
+            if ns!=s: p.write_text(ns,encoding='utf-8'); print('CHANGED',path)
+            else: print('NOCHANGE',path)
+          (root/'utils/donem.js').write_text("""import AsyncStorage from '@react-native-async-storage/async-storage';
+          export const DONEM_KEY='@ogretmenAjandaPro_secilenDonem';
+          export const donemYiliBugun=()=>{const d=new Date(),y=d.getFullYear();return d>=new Date(y,5,1)?y:y-1};
+          export const kayitDonemYili=r=>{if(r?.donemYili!==undefined&&r?.donemYili!==null)return Number(r.donemYili);const v=r?.olusturulma||r?.tarih||r?.baslangicTarih||r?.teslimTarihi;const d=v?new Date(v):new Date();if(Number.isNaN(d.getTime()))return donemYiliBugun();const y=d.getFullYear();return d>=new Date(y,5,1)?y:y-1};
+          export const donemUygun=(r,y)=>kayitDonemYili(r)===Number(y);
+          export const seciliDonemYili=async()=>{try{const x=await AsyncStorage.getItem(DONEM_KEY);return x?Number(JSON.parse(x).yil):donemYiliBugun()}catch(e){return donemYiliBugun()}};
+          """,encoding='utf-8')
+          def ana(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemUygun}from'../utils/donem';")
+            old="useEffect(()=>{(async()=>{try{const r=await getDoc(doc(db,'kullanicilar',auth.currentUser.uid));if(r.exists())setKullaniciBilgi(r.data())}catch(e){}try{const s=await getDocs(query(collection(db,'siniflar'),where('uid','==',auth.currentUser.uid)));setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})))}catch(e){}try{const kayit=await AsyncStorage.getItem(DONEM_KEY);setSecilenDonem(kayit?JSON.parse(kayit):mevcut)}catch(e){setSecilenDonem(mevcut)}})()},[]);"
+            new="useEffect(()=>{(async()=>{try{const r=await getDoc(doc(db,'kullanicilar',auth.currentUser.uid));if(r.exists())setKullaniciBilgi(r.data())}catch(e){}try{const kayit=await AsyncStorage.getItem(DONEM_KEY);const d=kayit?JSON.parse(kayit):mevcut;setSecilenDonem(d);const s=await getDocs(query(collection(db,'siniflar'),where('uid','==',auth.currentUser.uid)));setSiniflar(s.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,d.yil)))}catch(e){setSecilenDonem(mevcut)}})()},[]);"
+            s=s.replace(old,new)
+            old2="const donemSec=async d=>{setSecilenDonem(d);setDonemModal(false);try{await AsyncStorage.setItem(DONEM_KEY,JSON.stringify(d))}catch(e){}};"
+            new2="const donemSec=async d=>{setSecilenDonem(d);setDonemModal(false);try{await AsyncStorage.setItem(DONEM_KEY,JSON.stringify(d));const s=await getDocs(query(collection(db,'siniflar'),where('uid','==',auth.currentUser.uid)));setSiniflar(s.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,d.yil)))}catch(e){}};"
+            s=s.replace(old2,new2)
+            s=s.replace("const sinifSec=s=>{setSinifModal(false);navigation.navigate(hedef,{sinif:s})};", "const sinifSec=s=>{setSinifModal(false);navigation.navigate(hedef,{sinif:s,donemYili:donem.yil})};")
+            s=s.replace("else navigation.navigate(e)", "else navigation.navigate(e,{donemYili:donem.yil})")
+            return s
+          edit('screens/AnaSayfa.js',ana)
+          def okul(s):
+            s=s.replace("import { auth, db } from '../firebaseConfig';", "import { auth, db } from '../firebaseConfig';\nimport { donemYiliBugun, donemUygun } from '../utils/donem';")
+            s=s.replace("export default function OkulSinifEkrani({ navigation })", "export default function OkulSinifEkrani({ navigation, route })")
+            s=s.replace("const uid = auth.currentUser?.uid;", "const uid = auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||donemYiliBugun());")
+            s=s.replace("setOkullar(s.docs.map(d=>({id:d.id,...d.data()})));", "setOkullar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));" )
+            s=s.replace("setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})));", "setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));" )
+            s=s.replace("{ad:yeniOkul.trim(),uid,olusturulma", "{ad:yeniOkul.trim(),uid,donemYili,olusturulma")
+            s=s.replace("{...data,olusturulma", "{...data,donemYili,olusturulma")
+            return s
+          edit('screens/OkulSinifEkrani.js',okul)
+          def ogr(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid;const donemYili=Number(route.params?.donemYili||donemYiliBugun());")
+            s=s.replace("setOgrenciler(snap.docs.map(d=>({id:d.id,...d.data()})).sort", "setOgrenciler(snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.id!==sinif.id))", "setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).filter(x=>x.id!==sinif.id))")
+            s=s.replace("okulAd:sinif.okulAd,uid,olusturulma", "okulAd:sinif.okulAd,uid,donemYili,olusturulma")
+            return s
+          edit('screens/OgrenciEkrani.js',ogr)
+          def dn(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||donemYiliBugun());")
+            s=s.replace("setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})))", "setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)))")
+            s=s.replace("setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).sort", "setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("kaynak:csvModu?'kazanım':'manuel',uid,olusturulma", "kaynak:csvModu?'kazanım':'manuel',uid,donemYili,olusturulma")
+            return s
+          edit('screens/DersNotuEkrani.js',dn)
+          def yok(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const uid=auth.currentUser?.uid;const oturumId", "const uid=auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||donemYiliBugun());const oturumId")
+            s=s.replace("const sl=a.docs.map(d=>({id:d.id,...d.data()}));setSiniflar(sl);setDersler(b.docs.map(d=>({id:d.id,...d.data()})));", "const sl=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));setSiniflar(sl);setDersler(b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));" )
+            s=s.replace("const list=os.docs.map(x=>({id:x.id,...x.data()}));", "const list=os.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili));")
+            s=s.replace("ys.docs.forEach(x=>{const y={id:x.id,...x.data()};", "ys.docs.filter(x=>donemUygun(x.data(),donemYili)).forEach(x=>{const y={id:x.id,...x.data()};")
+            s=s.replace("gun:seciliDers.gun||gunAdiTarih(tarih),uid,olusturulma", "gun:seciliDers.gun||gunAdiTarih(tarih),uid,donemYili,olusturulma")
+            return s
+          edit('screens/YoklamaEkrani.js',yok)
+          def tak(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("export default function TakvimEkrani({navigation})", "export default function TakvimEkrani({navigation,route})")
+            s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||donemYiliBugun());")
+            s=s.replace("setDersler(a.docs.map(x=>({id:x.id,...x.data()})));setSiniflar", "setDersler(a.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setSiniflar")
+            s=s.replace("setSiniflar(b.docs.map(x=>({id:x.id,...x.data()})));setNotlar", "setSiniflar(b.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setNotlar")
+            s=s.replace("setNotlar(c.docs.map(x=>({id:x.id,...x.data()})));setOdevler", "setNotlar(c.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setOdevler")
+            s=s.replace("setOdevler(d.docs.map(x=>({id:x.id,...x.data()})))", "setOdevler(d.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)))")
+            old="const aktif=d=>{if(!d.baslangicTarih||!d.bitisTarih)return true;const now=isoDate(new Date());return now>=d.baslangicTarih&&now<=d.bitisTarih};"
+            new="const aktif=d=>d.periyot==='tek'?true:(!d.baslangicTarih||!d.bitisTarih||isoDate(new Date())>=d.baslangicTarih&&isoDate(new Date())<=d.bitisTarih);const gorunurTek=(d,g)=>d.periyot==='tek'?(d.baslangicTarih===haftaTarihi(g)):true;"
+            s=s.replace(old,new)
+            s=s.replace("dersler.filter(d=>d.gun===g&&aktif(d))", "dersler.filter(d=>d.gun===g&&aktif(d)&&gorunurTek(d,g))")
+            s=s.replace("dersler.some(d=>d.gun===g&&aktif(d))", "dersler.some(d=>d.gun===g&&aktif(d)&&gorunurTek(d,g))")
+            s=s.replace("periyot};if(duzenlenen)", "periyot,donemYili};if(duzenlenen)")
+            s=s.replace("{...data,uid,olusturulma", "{...data,uid,donemYili,olusturulma")
+            return s
+          edit('screens/TakvimEkrani.js',tak)
+          def od(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const ders=route?.params?.ders||null,", "const donemYili=Number(route?.params?.donemYili||donemYiliBugun());\n const ders=route?.params?.ders||null,")
+            s=s.replace("setSiniflar(sl);", "setSiniflar(sl.filter(x=>donemUygun(x,donemYili)));" )
+            s=s.replace("const all=o.docs.map(d=>({id:d.id,...d.data()}));", "const all=o.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));")
+            s=s.replace("setOdev(a.docs.map(d=>({id:d.id,...d.data()})).sort", "setOdev(a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("setOgr(b.docs.map(d=>({id:d.id,...d.data()})).sort", "setOgr(b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("setKonular(c.docs.map(d=>({id:d.id,...d.data()})).sort", "setKonular(c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("uid,olusturulma:now,...konuAlan", "uid,donemYili,olusturulma:now,...konuAlan")
+            s=s.replace("studentRow:{flexDirection:'row',paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#eee'}", "studentRow:{flexDirection:'row',paddingVertical:9,borderBottomWidth:1,borderBottomColor:'#eee',alignItems:'center'},statusName:{width:'50%'},statusValue:{width:'50%',textAlign:'center'}")
+            s=s.replace("<Text style={{flex:1}}>{x?.adSoyad||'Öğrenci'}</Text><Text style={{color:renk[d],fontWeight:'bold'}}>", "<Text style={s.statusName}>{x?.adSoyad||'Öğrenci'}</Text><Text style={[s.statusValue,{color:renk[d],fontWeight:'bold'}]}")
+            return s
+          edit('screens/OdevEkrani.js',od)
+          def kitap(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid;const donemYili=Number(route.params?.donemYili||donemYiliBugun());")
+            s=s.replace("k.docs.map(d=>({id:d.id,...d.data()})).sort", "k.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("h.docs.map(d=>({id:d.id,...d.data()}));setOdevler", "h.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));setOdevler")
+            s=s.replace("t.docs.map(d=>({id:d.id,...d.data()})).sort", "t.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("q.docs.map(d=>({id:d.id,...d.data()})).sort", "q.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+            s=s.replace("kademe:sinifBilgi?.kademe||'',uid,olusturulma", "kademe:sinifBilgi?.kademe||'',uid,donemYili,olusturulma")
+            return s
+          edit('screens/KitapEkrani.js',kitap)
+          def rp(s):
+            s=s.replace("import {auth,db}from'../firebaseConfig';", "import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';")
+            s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||donemYiliBugun());")
+            s=s.replace("setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})))", "setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)))")
+            for i in range(6):
+              s=s.replace(f"r[{i}].docs.map(x=>({{id:x.id,...x.data()}}))", f"r[{i}].docs.map(x=>({{id:x.id,...x.data()}})).filter(x=>donemUygun(x,donemYili))")
+            start=s.index(" const studentTopics="); end=s.index(" const konuOdevDurumu=",start)
+            new=""" const studentTopics=id=>{const ozel=konular.filter(k=>k.ogrenciId===id).map(k=>({...k,kayitTuru:'kitap',dersteYok:false,yoklamaDurumu:null}));const sinif=notlar.map(n=>{let y=yoklamalar.find(v=>v.ogrenciId===id&&n.oturumId&&v.oturumId===n.oturumId);if(!y)y=yoklamalar.find(v=>v.ogrenciId===id&&n.dersId&&v.dersId===n.dersId&&String(v.tarih||'').slice(0,10)===String(n.tarih||'').slice(0,10));return{id:'not-'+n.id,ad:n.not||'İşlenen konu',kitapAd:n.kitapAd||'',tarih:n.tarih,tarihGosterim:n.tarihGosterim,olusturulma:n.olusturulma,kayitTuru:'ders',dersteYok:y?.durum==='gelmedi',yoklamaDurumu:y?.durum||null}});return{kitap:ozel,ders:sinif.sort((a,b)=>zaman(b.olusturulma||b.tarih)-zaman(a.olusturulma||a.tarih))};};
+"""
+            s=s[:start]+new+s[end:]
+            s=s.replace("{studentTopics(detay?.id).map(k=><View key={k.id}", "{studentTopics(detay?.id).kitap.map(k=><View key={k.id}")
+            marker="</View>)}<Text style={s.sectionTitle}>📋 Ödev Geçmişi — kronolojik</Text>"
+            replacement="</View>)}<Text style={s.sectionTitle}>📘 Derste İşlenen Konular</Text>{studentTopics(detay?.id).ders.map(k=><View key={k.id} style={s.rowBlock}><Text style={s.cardText}>{k.ad}</Text>{k.tarih?<Text style={s.small}>{k.tarihGosterim||k.tarih}</Text>:null}{k.yoklamaDurumu==='gelmedi'?<Text style={s.absent}>❌ Derste yok</Text>:k.yoklamaDurumu==='gecikti'?<Text style={s.late}>⏰ Derste geç geldi</Text>:k.yoklamaDurumu==='geldi'?<Text style={s.present}>✅ Derste var</Text>:null}</View>)}<Text style={s.sectionTitle}>📋 Ödev Geçmişi — kronolojik</Text>"
+            s=s.replace(marker,replacement)
+            s=s.replace("absent:{color:'#C62828'", "present:{color:'#2E7D32',fontSize:11,fontWeight:'bold',marginTop:5},late:{color:'#F57F17',fontSize:11,fontWeight:'bold',marginTop:5},absent:{color:'#C62828'")
+            return s
+          edit('screens/RaporEkrani.js',rp)
+          subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
+          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+          subprocess.run(['rm','-f','.github/workflows/apply-ajandapro-fixes.yml'],check=True)
+          subprocess.run(['git','add','screens','utils'],check=True)
+          subprocess.run(['git','add','-A','.github/workflows/apply-ajandapro-fixes.yml'],check=True)
+          if subprocess.run(['git','diff','--cached','--quiet']).returncode!=0:
+            subprocess.run(['git','commit','-m','Fix period isolation and student lesson tracking'],check=True)
+            subprocess.run(['git','push'],check=True)
+          PY
