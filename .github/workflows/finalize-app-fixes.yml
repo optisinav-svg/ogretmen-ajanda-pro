@@ -1,0 +1,116 @@
+name: Finalize app fixes
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch source
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, subprocess
+
+          def edit(path, fn):
+              p=Path(path); s=p.read_text(encoding='utf-8'); n=fn(s)
+              if n!=s: p.write_text(n,encoding='utf-8'); print('UPDATED',path)
+              else: print('OK',path)
+
+          def once(s, old, new, path):
+              if old not in s: print('MISSING',path,old[:80]); return s
+              return s.replace(old,new,1)
+
+          # Okul/Sınıf: isolate schools/classes by education year and pass the year onward.
+          def okul(s):
+              s=once(s,"import kazanmlar from '../assets/kazanimlar.json';","import kazanmlar from '../assets/kazanimlar.json';\nimport {donemYiliBugun,donemUygun} from '../utils/donem';",'OkulSinifEkrani.js')
+              s=s.replace("export default function OkulSinifEkrani({ navigation }) {","export default function OkulSinifEkrani({ navigation,route }) {")
+              s=s.replace("const uid = auth.currentUser?.uid;","const uid = auth.currentUser?.uid; const donemYili=Number(route?.params?.donemYili||donemYiliBugun());",1)
+              s=s.replace("setOkullar(s.docs.map(d=>({id:d.id,...d.data()})));","setOkullar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));")
+              s=s.replace("useEffect(() => { okullariYukle(); }, []);","useEffect(() => { okullariYukle(); }, [donemYili]);")
+              s=s.replace("{ad:yeniOkul.trim(),uid,olusturulma:new Date().toISOString()}","{ad:yeniOkul.trim(),uid,donemYili,olusturulma:new Date().toISOString()}")
+              s=s.replace("setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})));","setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));")
+              s=s.replace("useEffect(() => { okullariYukle(); }, [donemYili]);","useEffect(() => { okullariYukle(); }, [donemYili]);")
+              s=s.replace("{...data,olusturulma:new Date().toISOString()}","{...data,donemYili,olusturulma:new Date().toISOString()}")
+              s=s.replace("navigation.navigate('Ogrenci',{sinif:s})","navigation.navigate('Ogrenci',{sinif:s,donemYili})")
+              return s
+          edit('screens/OkulSinifEkrani.js',okul)
+
+          # Ders Notları: period-aware reads/writes and class selector.
+          def dersnotu(s):
+              s=once(s,"import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';","import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';",'DersNotuEkrani.js')
+              s=s.replace("const ders=route?.params?.ders||null,tarih=route?.params?.oturumTarihi||bugun(),oturumId=route?.params?.oturumId||(ders?oturumIdOlustur(ders.id,tarih):null);","const ders=route?.params?.ders||null,tarih=route?.params?.oturumTarihi||bugun(),oturumId=route?.params?.oturumId||(ders?oturumIdOlustur(ders.id,tarih):null),donemYili=Number(route?.params?.donemYili||ders?.donemYili||donemYiliBugun());")
+              s=s.replace("setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})))","setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)))")
+              s=s.replace("},[uid]);","},[uid,donemYili]);",1)
+              s=s.replace("setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).sort","setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+              s=s.replace("kazanımKodu:csvModu?(seciliKazanim?.kod||''):'',kaynak:csvModu?'kazanım':'manuel',uid,olusturulma:","kazanımKodu:csvModu?(seciliKazanim?.kod||''):'',kaynak:csvModu?'kazanım':'manuel',uid,donemYili,olusturulma:")
+              return s
+          edit('screens/DersNotuEkrani.js',dersnotu)
+
+          # Yoklama: period-aware classes, lessons, students and attendance.
+          def yoklama(s):
+              s=once(s,"import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';","import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';",'YoklamaEkrani.js')
+              s=s.replace("const uid=auth.currentUser?.uid;const oturumId=", "const uid=auth.currentUser?.uid;const donemYili=Number(route?.params?.donemYili||routeDers?.donemYili||donemYiliBugun());const oturumId=")
+              s=s.replace("const sl=a.docs.map(d=>({id:d.id,...d.data()}));setSiniflar(sl);setDersler(b.docs.map(d=>({id:d.id,...d.data()})));","const sl=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));setSiniflar(sl);setDersler(b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));")
+              s=s.replace("where('uid','==',uid))),getDocs(query(collection(db,'yoklamalar'),where('sinifId','==',s.id),where('uid','==',uid)))","where('uid','==',uid))),getDocs(query(collection(db,'yoklamalar'),where('sinifId','==',s.id),where('uid','==',uid)))")
+              s=s.replace("const list=os.docs.map(x=>({id:x.id,...x.data()}));setOgr(list);", "const list=os.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili));setOgr(list);")
+              s=s.replace("ys.docs.forEach(x=>{const y={id:x.id,...x.data()};", "ys.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)).forEach(y=>{")
+              s=s.replace("gun:seciliDers.gun||gunAdiTarih(tarih),uid,olusturulma:","gun:seciliDers.gun||gunAdiTarih(tarih),uid,donemYili,olusturulma:")
+              return s
+          edit('screens/YoklamaEkrani.js',yoklama)
+
+          # Calendar: selected period, one-time lessons visible on their exact date, and period passed to child screens.
+          def takvim(s):
+              s=once(s,"import {pad,isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';","import {pad,isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';",'TakvimEkrani.js')
+              s=s.replace("export default function TakvimEkrani({navigation}){","export default function TakvimEkrani({navigation,route}){")
+              s=s.replace("const[dersler,setDersler]=useState([]),", "const donemYili=Number(route?.params?.donemYili||donemYiliBugun());\n const[dersler,setDersler]=useState([]),",1)
+              s=s.replace("setDersler(a.docs.map(x=>({id:x.id,...x.data()})));setSiniflar(b.docs.map(x=>({id:x.id,...x.data()})));setNotlar(c.docs.map(x=>({id:x.id,...x.data()})));setOdevler(d.docs.map(x=>({id:x.id,...x.data()})))", "setDersler(a.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setSiniflar(b.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setNotlar(c.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));setOdevler(d.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)))")
+              s=s.replace("useEffect(()=>{yukle().catch(()=>{})},[]);","useEffect(()=>{yukle().catch(()=>{})},[donemYili]);")
+              s=s.replace("const aktif=d=>{if(!d.baslangicTarih||!d.bitisTarih)return true;const now=isoDate(new Date());return now>=d.baslangicTarih&&now<=d.bitisTarih};", "const aktif=(d,g)=>{if(d.periyot==='tek')return !!d.baslangicTarih&&d.baslangicTarih===haftaTarihi(g);if(!d.baslangicTarih||!d.bitisTarih)return true;const now=isoDate(new Date());return now>=d.baslangicTarih&&now<=d.bitisTarih};")
+              s=s.replace("const data={sinifId:seciliSinif.id", "const data={donemYili,sinifId:seciliSinif.id")
+              s=s.replace("dersler.filter(d=>d.gun===g&&aktif(d))", "dersler.filter(d=>d.gun===g&&aktif(d,g))")
+              s=s.replace("dersler.some(d=>d.gun===g&&aktif(d))", "dersler.some(d=>d.gun===g&&aktif(d,g))")
+              s=s.replace("navigation.navigate(r,{ders:islem,oturumTarihi:x,oturumId:islem.oturumId||oturumIdOlustur(islem.id,x)})", "navigation.navigate(r,{ders:islem,oturumTarihi:x,oturumId:islem.oturumId||oturumIdOlustur(islem.id,x),donemYili})")
+              return s
+          edit('screens/TakvimEkrani.js',takvim)
+
+          # Report: selected-period isolation while preserving separate book topics vs lesson topics and attendance labels.
+          def rapor(s):
+              s=once(s,"import {auth,db}from'../firebaseConfig';","import {auth,db}from'../firebaseConfig';\nimport {donemYiliBugun,donemUygun}from'../utils/donem';",'RaporEkrani.js')
+              s=s.replace("const uid=auth.currentUser?.uid;", "const uid=auth.currentUser?.uid; const donemYili=Number(route?.params?.donemYili||route?.params?.sinif?.donemYili||donemYiliBugun());",1)
+              s=s.replace("setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})))", "setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)))")
+              s=s.replace("setNotlar(r[0].docs.map(x=>({id:x.id,...x.data()})).sort", "setNotlar(r[0].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+              s=s.replace("setYoklamalar(r[1].docs.map(x=>({id:x.id,...x.data()})));", "setYoklamalar(r[1].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));")
+              s=s.replace("setOdevler(r[2].docs.map(x=>({id:x.id,...x.data()})));", "setOdevler(r[2].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)));")
+              s=s.replace("setOgrenciler(r[3].docs.map(x=>({id:x.id,...x.data()})).sort", "setOgrenciler(r[3].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+              s=s.replace("setKonular(r[4].docs.map(x=>({id:x.id,...x.data()})).sort", "setKonular(r[4].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+              s=s.replace("setKitaplar(r[5].docs.map(x=>({id:x.id,...x.data()})).sort", "setKitaplar(r[5].docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,donemYili)).sort")
+              s=s.replace("useEffect(()=>{if(seciliSinif)sinifSec(seciliSinif)},[]);","useEffect(()=>{if(seciliSinif)sinifSec(seciliSinif)},[donemYili]);")
+              return s
+          edit('screens/RaporEkrani.js',rapor)
+
+          # Homework equal-width columns: keep header and rows aligned 50/50.
+          def odev(s):
+              s=s.replace("statusName:{flex:1}","statusName:{width:'50%'}")
+              s=s.replace("statusValue:{", "statusValue:{width:'50%',textAlign:'center',")
+              return s
+          edit('screens/OdevEkrani.js',odev)
+
+          # Ensure the selected period is available to the calendar from the home screen (already present in most versions).
+          subprocess.run(['git','status','--short'],check=False)
+
+          changed=subprocess.check_output(['git','status','--porcelain'],text=True).strip()
+          if changed:
+              subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
+              subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+              subprocess.run(['git','add','screens'],check=True)
+              subprocess.run(['git','commit','-m','Finalize period isolation calendar report and layout fixes'],check=True)
+              subprocess.run(['git','push'],check=True)
+          else:
+              print('NO CHANGES')
+      - name: Validate changed JavaScript
+        run: |
+          node -e "const fs=require('fs'); for (const f of ['screens/OkulSinifEkrani.js','screens/DersNotuEkrani.js','screens/YoklamaEkrani.js','screens/TakvimEkrani.js','screens/RaporEkrani.js','screens/OdevEkrani.js']) { const s=fs.readFileSync(f,'utf8'); if(!s) throw new Error(f); console.log(f,'OK',s.length); }"
