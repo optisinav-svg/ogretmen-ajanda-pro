@@ -4,6 +4,7 @@ import {collection,getDocs,query,where,addDoc,updateDoc}from'firebase/firestore'
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun}from'../utils/donem';
+import {donemYiliBugun,donemUygun}from'../utils/donem';
 const renk={geldi:'#2E7D32',gecikti:'#F57F17',gelmedi:'#C62828'},ikon={geldi:'✅',gecikti:'⏰',gelmedi:'❌'};
 const GUNLER=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const gunAdiTarih=t=>GUNLER[new Date(t+'T12:00:00').getDay()];

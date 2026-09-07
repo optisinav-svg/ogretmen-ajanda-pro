@@ -4,6 +4,7 @@ import { collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc } 
 import { auth, db } from '../firebaseConfig';
 import kazanmlar from '../assets/kazanimlar.json';
 import {donemYiliBugun,donemUygun} from '../utils/donem';
+import {donemYiliBugun,donemUygun} from '../utils/donem';
 
 const KADEMELER = ['1','2','3','4','5','6','7','8','9','10','11','12','TYT','AYT'];
 
@@ -14,7 +15,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
   const [seciliKademe, setSeciliKademe] = useState(''); const [dersArama, setDersArama] = useState(''); const [seciliDers, setSeciliDers] = useState('');
   const [seciliOkul, setSeciliOkul] = useState(null); const [siniflar, setSiniflar] = useState([]);
   const [duzenlenenOkul, setDuzenlenenOkul] = useState(null); const [duzenlenenSinif, setDuzenlenenSinif] = useState(null);
-  const uid = auth.currentUser?.uid; const donemYili=Number(route?.params?.donemYili||donemYiliBugun());
+  const uid = auth.currentUser?.uid; const donemYili=Number(route?.params?.donemYili||donemYiliBugun()); const donemYili=Number(route?.params?.donemYili||donemYiliBugun());
   const dersler = useMemo(() => [...new Set(kazanmlar.map(x => x.ders).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr')), []);
   const gorunenDersler = useMemo(() => dersler.filter(d => d.toLocaleLowerCase('tr-TR').includes(dersArama.toLocaleLowerCase('tr-TR'))).slice(0,20), [dersler, dersArama]);
 
