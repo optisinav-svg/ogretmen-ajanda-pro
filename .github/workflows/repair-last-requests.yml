@@ -21,21 +21,13 @@ jobs:
           from pathlib import Path
           import re
 
-          # Rapor: student detail must contain only lesson-processed topics.
+          # Rapor: only lesson-processed topics in student detail.
           p=Path('screens/RaporEkrani.js'); s=p.read_text(encoding='utf-8')
-          original=s
-          # Handle current main variant with kitapKonular/ dersKonular.
-          s,n1=re.subn(r"\s*const kitapKonular=konular\.filter\(k=>k\.ogrenciId===id\)\.sort\([^;]+\);",'',s,count=1)
-          s,n2=re.subn(r"return\{kitap:kitapKonular,ders:dersKonular\.sort\(([^;]+)\)\};",r"return{ders:dersKonular.sort(\1)};",s,count=1)
-          # Handle alternate variant with ozelKonular.
-          if n1==0:
-              s,n1=re.subn(r"\s*const ozelKonular=.*?;",'',s,count=1)
-              s,n2=re.subn(r"return \[\.\.\.ozelKonular,\.\.\.sinifKonular\]",'return sinifKonular',s,count=1)
-          # Remove any remaining book/student-topic block from the detail modal.
-          s,n3=re.subn(r"\s*<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📚 Kitaplar ve Öğrenci Konuları</Text>.*?(?=<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📘|<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📋)",'',s,count=1,flags=re.S)
-          if n3==0:
-              s,n3=re.subn(r"\s*<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📚.*?</Text>.*?(?=<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📘)",'',s,count=1,flags=re.S)
-          assert s!=original and n3==1, (n1,n2,n3)
+          before=s
+          s=re.sub(r"const kitapKonular=konular\.filter\(k=>k\.ogrenciId===id\)\.sort\([^;]+\);",'',s,count=1)
+          s=s.replace('return{kitap:kitapKonular,ders:dersKonular.sort((a,b)=>zaman(b.olusturulma||b.tarih)-zaman(a.olusturulma||a.tarih))};','return{ders:dersKonular.sort((a,b)=>zaman(b.olusturulma||b.tarih)-zaman(a.olusturulma||a.tarih))};',1)
+          s,n3=re.subn(r"<Text style=\{s\.sectionTitle\}>📚 Kitaplar ve Öğrenci Konuları</Text>.*?(?=<Text style=\{s\.sectionTitle\}>📘 Derste İşlenen Konular</Text>)",'',s,count=1,flags=re.S)
+          assert s!=before and n3==1, (s==before,n3)
           p.write_text(s,encoding='utf-8')
 
           # Kitap/Konu: repair common UTF-8-as-Latin1 mojibake at display/edit boundaries only.
@@ -52,7 +44,7 @@ jobs:
           s=s.replace('{seciliKitap.ad}','{duzeltTurkce(seciliKitap.ad)}')
           p.write_text(s,encoding='utf-8')
 
-          # Ders Ekle: vertical swipe/scroll controls, minute step remains exactly 5.
+          # Ders Ekle: real vertical scrolling; minutes remain exactly 00,05,...55.
           p=Path('screens/TakvimEkrani.js'); s=p.read_text(encoding='utf-8')
           old=re.search(r"function Roller\(\{label,value,onChange\}\)\{.*?\}\n",s,re.S)
           assert old, 'Roller function not found'
