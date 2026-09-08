@@ -21,19 +21,29 @@ jobs:
           from pathlib import Path
           import re
 
-          # Rapor: only lesson-processed topics; remove student book topics.
+          # Rapor: student detail must contain only lesson-processed topics.
           p=Path('screens/RaporEkrani.js'); s=p.read_text(encoding='utf-8')
-          s2,n1=re.subn(r"\s*const ozelKonular=konular\.filter\(k=>k\.ogrenciId===id\)\.map\(k=>\(\{\.\.\.k,dersteYok:false,yoklamaDurumu:null\}\)\);",'',s)
-          s2,n2=re.subn(r"return \[\.\.\.ozelKonular,\.\.\.sinifKonular\]",'return sinifKonular',s2)
-          assert n1==1 and n2==1, (n1,n2)
-          p.write_text(s2,encoding='utf-8')
+          original=s
+          # Handle current main variant with kitapKonular/ dersKonular.
+          s,n1=re.subn(r"\s*const kitapKonular=konular\.filter\(k=>k\.ogrenciId===id\)\.sort\([^;]+\);",'',s,count=1)
+          s,n2=re.subn(r"return\{kitap:kitapKonular,ders:dersKonular\.sort\(([^;]+)\)\};",r"return{ders:dersKonular.sort(\1)};",s,count=1)
+          # Handle alternate variant with ozelKonular.
+          if n1==0:
+              s,n1=re.subn(r"\s*const ozelKonular=.*?;",'',s,count=1)
+              s,n2=re.subn(r"return \[\.\.\.ozelKonular,\.\.\.sinifKonular\]",'return sinifKonular',s,count=1)
+          # Remove any remaining book/student-topic block from the detail modal.
+          s,n3=re.subn(r"\s*<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📚 Kitaplar ve Öğrenci Konuları</Text>.*?(?=<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📘|<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📋)",'',s,count=1,flags=re.S)
+          if n3==0:
+              s,n3=re.subn(r"\s*<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📚.*?</Text>.*?(?=<Text style=\{styles?\.?(?:sectionTitle|detailSection)\}>📘)",'',s,count=1,flags=re.S)
+          assert s!=original and n3==1, (n1,n2,n3)
+          p.write_text(s,encoding='utf-8')
 
           # Kitap/Konu: repair common UTF-8-as-Latin1 mojibake at display/edit boundaries only.
           p=Path('screens/KitapEkrani.js'); s=p.read_text(encoding='utf-8')
           helper="const duzeltTurkce=x=>{const s=String(x??'');if(!/[ÃÂÄÅ]/.test(s))return s;try{return decodeURIComponent(Array.from(s).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join(''))}catch(e){return s}};"
           needle="const norm=x=>(x||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');"
           assert needle in s
-          s=s.replace(needle,needle+helper,1)
+          if 'const duzeltTurkce=' not in s: s=s.replace(needle,needle+helper,1)
           s=s.replace("setKitapAdi(k?.ad||'')","setKitapAdi(duzeltTurkce(k?.ad||''))",1)
           s=s.replace("setKonuAdi(k?.ad||'')","setKonuAdi(duzeltTurkce(k?.ad||''))",1)
           s=s.replace("const ad=manuelKonu?konuAdi.trim():seciliKazanim?.ad?.trim();","const ad=manuelKonu?duzeltTurkce(konuAdi.trim()):duzeltTurkce(seciliKazanim?.ad?.trim());",1)
@@ -42,7 +52,7 @@ jobs:
           s=s.replace('{seciliKitap.ad}','{duzeltTurkce(seciliKitap.ad)}')
           p.write_text(s,encoding='utf-8')
 
-          # Ders Ekle: true vertical scroll controls, with 5-minute minute steps.
+          # Ders Ekle: vertical swipe/scroll controls, minute step remains exactly 5.
           p=Path('screens/TakvimEkrani.js'); s=p.read_text(encoding='utf-8')
           old=re.search(r"function Roller\(\{label,value,onChange\}\)\{.*?\}\n",s,re.S)
           assert old, 'Roller function not found'
