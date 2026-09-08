@@ -4,7 +4,6 @@ import {collection,addDoc,getDocs,query,where}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun}from'../utils/donem';
-import {donemYiliBugun,donemUygun}from'../utils/donem';
 import kazanmlar from'../assets/kazanimlar.json';
 const normalize=t=>(t||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const sinifKodlari=s=>{const k=String(s?.kademe||'');if(k==='TYT'||k==='AYT')return ['21','22'];if(k)return [k];const m=String(s?.ad||'').match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);return m?[m[2]]:[]};
