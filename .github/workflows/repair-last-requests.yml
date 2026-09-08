@@ -1,0 +1,64 @@
+name: repair-last-requests
+on:
+  push:
+    branches: [repair-last-requests]
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair-last-requests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply requested fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Rapor: only lesson-processed topics; remove student book topics.
+          p=Path('screens/RaporEkrani.js'); s=p.read_text(encoding='utf-8')
+          s2,n1=re.subn(r"\s*const ozelKonular=konular\.filter\(k=>k\.ogrenciId===id\)\.map\(k=>\(\{\.\.\.k,dersteYok:false,yoklamaDurumu:null\}\)\);",'',s)
+          s2,n2=re.subn(r"return \[\.\.\.ozelKonular,\.\.\.sinifKonular\]",'return sinifKonular',s2)
+          assert n1==1 and n2==1, (n1,n2)
+          p.write_text(s2,encoding='utf-8')
+
+          # Kitap/Konu: repair common UTF-8-as-Latin1 mojibake at display/edit boundaries only.
+          p=Path('screens/KitapEkrani.js'); s=p.read_text(encoding='utf-8')
+          helper="const duzeltTurkce=x=>{const s=String(x??'');if(!/[ÃÂÄÅ]/.test(s))return s;try{return decodeURIComponent(Array.from(s).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join(''))}catch(e){return s}};"
+          needle="const norm=x=>(x||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');"
+          assert needle in s
+          s=s.replace(needle,needle+helper,1)
+          s=s.replace("setKitapAdi(k?.ad||'')","setKitapAdi(duzeltTurkce(k?.ad||''))",1)
+          s=s.replace("setKonuAdi(k?.ad||'')","setKonuAdi(duzeltTurkce(k?.ad||''))",1)
+          s=s.replace("const ad=manuelKonu?konuAdi.trim():seciliKazanim?.ad?.trim();","const ad=manuelKonu?duzeltTurkce(konuAdi.trim()):duzeltTurkce(seciliKazanim?.ad?.trim());",1)
+          s=s.replace('{k.ad}','{duzeltTurkce(k.ad)}')
+          s=s.replace('{kitap.ad}','{duzeltTurkce(kitap.ad)}')
+          s=s.replace('{seciliKitap.ad}','{duzeltTurkce(seciliKitap.ad)}')
+          p.write_text(s,encoding='utf-8')
+
+          # Ders Ekle: true vertical scroll controls, with 5-minute minute steps.
+          p=Path('screens/TakvimEkrani.js'); s=p.read_text(encoding='utf-8')
+          old=re.search(r"function Roller\(\{label,value,onChange\}\)\{.*?\}\n",s,re.S)
+          assert old, 'Roller function not found'
+          new="""function Roller({label,value,onChange}){const[h,m]=String(value||'09:00').split(':').map(Number);const mins=Array.from({length:12},(_,i)=>i*5);const item={height:42,alignItems:'center',justifyContent:'center'};const txt={fontSize:22,color:'#777'};const active={color:'#fff',fontWeight:'bold'};return <View style={s.rollerBox}><Text style={s.label}>{label}</Text><View style={s.digital}><View style={s.roller}><Text style={s.digitalTop}>{pad(h)}</Text><ScrollView style={s.rollerScroll} showsVerticalScrollIndicator={false} snapToInterval={42} decelerationRate=\"fast\">{Array.from({length:24},(_,x)=><TouchableOpacity key={x} style={item} onPress={()=>onChange(`${pad(x)}:${pad(m)}`)}><Text style={[txt,h===x&&active]}>{pad(x)}</Text></TouchableOpacity>)}</ScrollView></View><Text style={s.colon}>:</Text><View style={s.roller}><Text style={s.digitalTop}>{pad(m)}</Text><ScrollView style={s.rollerScroll} showsVerticalScrollIndicator={false} snapToInterval={42} decelerationRate=\"fast\">{mins.map(x=><TouchableOpacity key={x} style={item} onPress={()=>onChange(`${pad(h)}:${pad(x)}`)}><Text style={[txt,m===x&&active]}>{pad(x)}</Text></TouchableOpacity>)}</ScrollView></View></View></View>}\n"""
+          s=s[:old.start()]+new+s[old.end():]
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate Android export
+        run: |
+          npm ci
+          npx expo export --platform android
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/repair-last-requests.yml
+          git add screens/RaporEkrani.js screens/KitapEkrani.js screens/TakvimEkrani.js .github/workflows/repair-last-requests.yml
+          git commit -m "Fix remaining requested app behaviors"
+          git push origin repair-last-requests
