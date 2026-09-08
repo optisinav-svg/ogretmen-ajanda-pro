@@ -12,7 +12,7 @@ export default function AnaSayfa({navigation}){const[kullaniciBilgi,setKullanici
  const mevcutYil=donemYili(),mevcut=donemBilgi(mevcutYil),onceki=donemBilgi(mevcutYil-1),sonraki=donemBilgi(mevcutYil+1);
  const siniflariDonemeGoreYukle=async(yil)=>{try{const s=await getDocs(query(collection(db,'siniflar'),where('uid','==',auth.currentUser.uid)));setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,yil)))}catch(e){setSiniflar([])}};
  useEffect(()=>{(async()=>{try{const r=await getDoc(doc(db,'kullanicilar',auth.currentUser.uid));if(r.exists())setKullaniciBilgi(r.data())}catch(e){}try{const kayit=await AsyncStorage.getItem(DONEM_KEY);const d=kayit?JSON.parse(kayit):mevcut;setSecilenDonem(d);await siniflariDonemeGoreYukle(d.yil)}catch(e){setSecilenDonem(mevcut);await siniflariDonemeGoreYukle(mevcut.yil)}})()},[]);
- const donemSec=async d=>{setSecilenDonem(d);setDonemModal(false);try{await AsyncStorage.setItem(DONEM_KEY,JSON.stringify(d));await siniflariDonemeGoreYukle(d.yil)}catch(e){}};
+ const donemSec=async d=>{setSecilenDonem(d);setDonemModal(false);try{await AsyncStorage.setItem(DONEM_KEY,JSON.stringify(d));await siniflariDonemeGoreYukle(d.yil);navigation.reset({index:0,routes:[{name:'AnaSayfa',params:{donemYili:d.yil}}]})}catch(e){}};
  const cikis=()=>Alert.alert('Çıkış','Çıkış yapmak istediğinize emin misiniz?',[{text:'İptal',style:'cancel'},{text:'Çıkış Yap',style:'destructive',onPress:async()=>{try{await signOut(auth);navigation.replace('Giris')}catch(e){Alert.alert('Hata','Çıkış yapılamadı.')}}}]);
  const donem=secilenDonem||mevcut;
  const sinifSec=s=>{setSinifModal(false);navigation.navigate(hedef,{sinif:s,donemYili:donem.yil})};
