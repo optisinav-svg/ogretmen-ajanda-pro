@@ -1,0 +1,32 @@
+name: Fix KitapEkrani JSX
+on:
+  push:
+    branches: [main]
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove stray closing tag
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('screens/KitapEkrani.js')
+          s=p.read_text(encoding='utf-8')
+          old='</ScrollView></View></KeyboardAvoidingView></View></Modal>\n</KeyboardAvoidingView>\n}'
+          new='</ScrollView></View></KeyboardAvoidingView></View></Modal>\n}'
+          if old not in s:
+              raise SystemExit('Expected malformed JSX pattern not found')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Commit fix and remove workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add screens/KitapEkrani.js
+          git commit -m 'Fix KitapEkrani JSX syntax'
+          git rm .github/workflows/fix-kitap-jsx.yml
+          git commit -m 'Remove temporary KitapEkrani repair workflow'
+          git push
