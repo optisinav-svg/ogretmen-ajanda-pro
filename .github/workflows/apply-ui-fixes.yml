@@ -1,0 +1,56 @@
+name: Apply requested UI fixes
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply requested UI fixes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Patch screens
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # Homework delete
+          p=Path('screens/OdevEkrani.js'); s=p.read_text(encoding='utf-8')
+          s=s.replace("collection,addDoc,getDocs,updateDoc,doc,query,where", "collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where")
+          marker=" const duzenle=o=>{"
+          insert=" const odevSil=async o=>{Alert.alert('Ödevi Sil','Bu ödevi silmek istediğinize emin misiniz?', [{text:'Vazgeç',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,'odevler',o.id));yukle(secili)}catch(e){Alert.alert('Hata','Ödev silinemedi.')}}}]);};\n"
+          if 'const odevSil=' not in s: s=s.replace(marker,insert+marker,1)
+          target="<View style={s.stats}>{(o.hedefOgrenciIds||[]).map(id=>{const x=ogr.find(z=>z.id===id),d=o.ogrenciDurumlari?.[id]||'bekliyor';return <TouchableOpacity key={id} style={s.studentRow} onPress={()=>setDurum({o,id,name:x?.adSoyad||'Öğrenci'})}><View style={s.statusCell}><Text style={s.statusName}>{x?.adSoyad||'Öğrenci'}</Text></View><View style={s.statusCell}><Text style={[s.statusValue,{color:renk[d],fontWeight:'bold'}]}>{ikon[d]} {d==='yapildi'?'Yaptı':d==='yapilmadi'?'Yapmadı':d==='gec'?'Geç getirdi':'Bekliyor'}</Text></View></TouchableOpacity>})}</View>"
+          repl=target+"<TouchableOpacity style={s.deleteBtn} onPress={()=>odevSil(o)}><Text style={s.deleteBtnT}>🗑️ Ödevi Sil</Text></TouchableOpacity>"
+          if target not in s: raise SystemExit('Ödev kartı hedefi bulunamadı')
+          s=s.replace(target,repl,1)
+          s=s.replace("  studentRow:{", "  deleteBtn:{marginTop:8,paddingVertical:8,alignItems:'center',borderTopWidth:1,borderTopColor:'#eee'},deleteBtnT:{color:'#C62828',fontWeight:'bold'},\n  studentRow:{",1)
+          p.write_text(s,encoding='utf-8')
+
+          # Reports: school -> classes hierarchy on entry.
+          p=Path('screens/RaporEkrani.js'); s=p.read_text(encoding='utf-8')
+          old=" const toplamSayfa=items=>items.reduce((n,x)=>n+(x.sayfaAdedi||1),0)||1;"
+          new=" const toplamSayfa=items=>items.reduce((n,x)=>n+(x.sayfaAdedi||1),0)||1;const okulGruplari=()=>{const m={};siniflar.forEach(x=>{const k=x.okulId||x.okulAd||'okulsuz';if(!m[k])m[k]={okulId:x.okulId,okulAd:x.okulAd||'Okul belirtilmemiş',siniflar:[]};m[k].siniflar.push(x)});return Object.values(m).sort((a,b)=>String(a.okulAd).localeCompare(String(b.okulAd),'tr'));};"
+          if old not in s: raise SystemExit('Rapor toplamSayfa hedefi bulunamadı')
+          s=s.replace(old,new,1)
+          old_prefix='<Text style={s.baslik}>Sınıf Seçin:</Text><ScrollView horizontal style={s.sinifListesi} showsHorizontalScrollIndicator={false}>{siniflar.map(x=><TouchableOpacity key={x.id} style={[s.sinifButon,seciliSinif?.id===x.id&&s.sinifAktif]} onPress={()=>sinifSec(x)}><Text style={[s.sinifMetni,seciliSinif?.id===x.id&&s.sinifMetniAktif]}>{x.ad}</Text><Text style={seciliSinif?.id===x.id?s.chipOkulAktif:s.chipOkul}>{x.okulAd||\'Okul belirtilmemiş\'}</Text><Text style={seciliSinif?.id===x.id?s.chipAltAktif:s.chipAlt}>{x.kademe?`${x.kademe}. Sınıf`:\'\'}{x.ders?` • ${x.ders}`:\'\'}</Text></TouchableOpacity>)}</ScrollView>'
+          new_prefix='<Text style={s.baslik}>Okul Seçin:</Text>{okulGruplari().map(g=><View key={g.okulId||g.okulAd} style={s.schoolGroup}><Text style={s.schoolTitle}>🏫 {g.okulAd}</Text><View style={s.classWrap}>{g.siniflar.map(x=><TouchableOpacity key={x.id} style={[s.sinifButon,seciliSinif?.id===x.id&&s.sinifAktif]} onPress={()=>sinifSec(x)}><Text style={[s.sinifMetni,seciliSinif?.id===x.id&&s.sinifMetniAktif]}>{x.ad}</Text><Text style={seciliSinif?.id===x.id?s.chipAltAktif:s.chipAlt}>{x.kademe?`${x.kademe}. Sınıf`:\'\'}{x.ders?` • ${x.ders}`:\'\'}</Text></TouchableOpacity>)}</View></View>)}'
+          if old_prefix not in s: raise SystemExit('Rapor sınıf listesi hedefi bulunamadı')
+          s=s.replace(old_prefix,new_prefix,1)
+          s=s.replace("  sinifListesi:{", "  schoolGroup:{marginBottom:14},schoolTitle:{fontSize:17,fontWeight:'bold',paddingVertical:8,paddingHorizontal:10,backgroundColor:'#E8F5E9',borderRadius:10,color:'#1B5E20'},classWrap:{flexDirection:'row',flexWrap:'wrap',gap:8,paddingTop:8},\n  sinifListesi:{",1)
+          p.write_text(s,encoding='utf-8')
+
+          # Remove this one-shot workflow after applying the changes.
+          wf=Path('.github/workflows/apply-ui-fixes.yml')
+          if wf.exists(): wf.unlink()
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add screens/OdevEkrani.js screens/RaporEkrani.js .github/workflows/apply-ui-fixes.yml
+          git commit -m 'Apply requested UI fixes'
+          git push
