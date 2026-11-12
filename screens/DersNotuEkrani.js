@@ -4,8 +4,7 @@ import {collection,addDoc,getDocs,query,where}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun}from'../utils/donem';
-import kazanmlar from'../assets/kazanimlar.json';
-const normalize=t=>(t||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+import {araKazanimlar} from '../utils/kazanimArama';
 const sinifKodlari=s=>{const k=String(s?.kademe||'');if(k==='TYT'||k==='AYT')return ['21','22'];if(k)return [k];const m=String(s?.ad||'').match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);return m?[m[2]]:[]};
 export default function DersNotuEkrani({route}){
  const ders=route?.params?.ders||null,tarih=route?.params?.oturumTarihi||bugun(),oturumId=route?.params?.oturumId||(ders?oturumIdOlustur(ders.id,tarih):null),donemYili=Number(route?.params?.donemYili||ders?.donemYili||donemYiliBugun());
@@ -15,7 +14,7 @@ export default function DersNotuEkrani({route}){
  const yukle=async s=>{setSecili(s);setSinifBilgi(s);try{const x=await getDocs(query(collection(db,'dersNotlari'),where('sinifId','==',s.id),where('uid','==',uid)));setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort((a,b)=>new Date(b.olusturulma||b.tarih)-new Date(a.olusturulma||a.tarih)))}catch(e){Alert.alert('Hata','Ders notları yüklenemedi.')}};
  useEffect(()=>{if(secili)yukle(secili)},[]);
  const sonKonu=notlar[0]||null;
- const uygunKazanimlar=useMemo(()=>{const dersAdi=normalize(sinifBilgi?.ders||ders?.ders||'');const kodlar=sinifKodlari(sinifBilgi||secili||{});const a=normalize(arama.trim());if(!dersAdi||!kodlar.length||!a)return[];return kazanmlar.filter(k=>normalize(k.ders)===dersAdi&&kodlar.includes(String(k.sinif))).filter(k=>normalize(`${k.kod} ${k.ad}`).includes(a)).slice(0,80)},[sinifBilgi,secili,ders,arama]);
+ const uygunKazanimlar=useMemo(()=>araKazanimlar({ders:sinifBilgi?.ders||ders?.ders||'',sinifKodlari:sinifKodlari(sinifBilgi||secili||{}),arama,limit:80}),[sinifBilgi,secili,ders,arama]);
  const konuEkle=async()=>{const secilen=csvModu?seciliKazanim?.ad?.trim():yeni.trim();if(!secilen||!secili)return Alert.alert('Eksik bilgi','Bir konu yazın veya Kazanımlardan seçin.');try{await addDoc(collection(db,'dersNotlari'),{not:secilen,sinifId:secili.id,sinifAd:secili.ad,okulId:secili.okulId||ders?.okulId||'',okulAd:secili.okulAd||ders?.okulAd||'',kademe:secili.kademe||'',ders:secili.ders||'',tarih,oturumId:oturumId||null,dersId:ders?.id||null,gun:ders?.gun||'',baslangicSaat:ders?.baslangicSaat||'',bitisSaat:ders?.bitisSaat||'',kazanımKodu:csvModu?(seciliKazanim?.kod||''):'',kaynak:csvModu?'kazanım':'manuel',uid,donemYili,olusturulma:new Date().toISOString(),tarihGosterim:displayDate(tarih)});setYeni('');setArama('');setSeciliKazanim(null);setCsvModu(false);setModal(false);yukle(secili)}catch(e){Alert.alert('Hata','Konu kaydedilemedi.')}};
  return <SafeAreaView style={s.wrap}>
  {!ders&&<><Text style={s.label}>Sınıf Seçin</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>{siniflar.map(x=><TouchableOpacity key={x.id} style={[s.chip,secili?.id===x.id&&s.active]} onPress={()=>yukle(x)}><Text style={secili?.id===x.id?s.activeT:s.chipT}>{x.ad}</Text><Text style={secili?.id===x.id?s.activeSub:s.school}>{x.okulAd||'Okul belirtilmemiş'}</Text><Text style={secili?.id===x.id?s.activeSub:s.school}>{x.kademe?`${x.kademe}. Sınıf`:''}{x.ders?` • ${x.ders}`:''}</Text></TouchableOpacity>)}</ScrollView></>}
