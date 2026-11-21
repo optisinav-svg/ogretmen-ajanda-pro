@@ -203,7 +203,8 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
             return (
               <View key={b.id} style={s.card}>
                 <Text style={s.name}>{o?.adSoyad || 'Öğrenci kaydı'} · {o?.sinifAd || ''}</Text>
-                <Text style={s.sub}>Hesap UID: {b.ogrenciUid}</Text>
+                <Text style={s.sub}>Hesap: {b.ogrenciHesapAdi || 'Öğrenci hesabı'}</Text>
+                <Text style={s.sub}>E-posta: {b.ogrenciEposta || 'E-posta bilgisi yok'}</Text>
                 <Text style={s.sub}>Açık izinler: {izinAdlari.length ? izinAdlari.join(', ') : 'Hiçbiri'}</Text>
                 <View style={s.actions}>
                   <TouchableOpacity style={s.approve} disabled={islem} onPress={() => izinModalAc('baglanti', b)}>
