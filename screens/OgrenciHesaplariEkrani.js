@@ -6,7 +6,7 @@ import {
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
-import { donemYiliBugun, donemUygun } from '../utils/donem';
+import { donemYiliBugun, donemUygun, donemDuzenlemeyeAcik } from '../utils/donem';
 
 const IZINLER = [
   ['dersProgrami', 'Ders programı'],
@@ -70,6 +70,10 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
 
   const ogrenciBul = id => ogrenciler.find(x => x.id === id);
   const kodOlustur = async ogrenci => {
+    if (!donemDuzenlemeyeAcik(donemYili)) {
+      Alert.alert('Dönem salt okunur', 'Bu dönemin öğrenci hesap bağlantıları yalnızca dönem açıkken oluşturulabilir. Eski dönem kayıtları görüntülenmeye devam eder.');
+      return;
+    }
     if (!String(ogrenci.eposta || '').trim()) {
       Alert.alert('E-posta eksik', 'Öğrenci kaydını düzenleyip öğrencinin kullanacağı e-posta adresini ekleyin. Eşleştirme için doğrulanmış e-posta ve kayıtlı ad-soyadın ikisi de eşleşmelidir.');
       return;
