@@ -46,7 +46,7 @@ function normalizeIdentityEmail(value) {
 
 function normalizeIdentityName(value) {
   return typeof value === 'string'
-    ? value.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\\p{L}\\p{N}]/gu, '')
+    ? value.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\p{L}\p{N}]/gu, '')
     : '';
 }
 
