@@ -319,30 +319,39 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     throw new HttpsError('invalid-argument', 'Ödev ve öğretmen bağlantısı seçilmelidir.');
   }
   const linkRef = db.collection('ogretmenOgrenciBaglantilari').doc(baglantiId);
-  const linkSnap = await linkRef.get();
-  if (!linkSnap.exists || linkSnap.get('ogrenciUid') !== studentUid
-    || linkSnap.get('durum') !== 'active' || linkSnap.get('izinler.odevler') !== true) {
-    throw new HttpsError('permission-denied', 'Bu öğretmenin ödev paylaşım izni bulunmuyor.');
-  }
-  const link = linkSnap.data();
-  const homeworkSnap = await db.collection('odevler').doc(odevId).get();
-  if (!homeworkSnap.exists || homeworkSnap.get('uid') !== link.ogretmenUid
-    || homeworkSnap.get('sinifId') !== link.sinifId) {
-    throw new HttpsError('not-found', 'Paylaşılan ödev bulunamadı.');
-  }
-  const targeted = homeworkSnap.get('hedefOgrenciIds') || [];
-  if (!targeted.includes(link.ogrenciKayitId)) {
-    throw new HttpsError('permission-denied', 'Bu ödev bu öğrenciye verilmemiş.');
-  }
-  const notificationId = sha256([studentUid, link.ogretmenUid, odevId].join(':'));
-  await db.collection('ogrenciOdevBildirimleri').doc(notificationId).set({
-    ogrenciUid: studentUid,
-    ogretmenUid: link.ogretmenUid,
-    ogrenciKayitId: link.ogrenciKayitId,
-    baglantiId: baglantiId,
-    odevId,
-    durum: 'tamamlandi_bildirildi',
-    bildirimTarihi: FieldValue.serverTimestamp(),
+  const notificationId = sha256([studentUid, baglantiId, odevId].join(':'));
+  const notificationRef = db.collection('ogrenciOdevBildirimleri').doc(notificationId);
+
+  await db.runTransaction(async (tx) => {
+    const linkSnap = await tx.get(linkRef);
+    if (!linkSnap.exists || linkSnap.get('ogrenciUid') !== studentUid
+      || linkSnap.get('durum') !== 'active' || linkSnap.get('izinler.odevler') !== true) {
+      throw new HttpsError('permission-denied', 'Bu öğretmenin ödev paylaşım izni bulunmuyor.');
+    }
+    const link = linkSnap.data();
+    const homeworkRef = db.collection('odevler').doc(odevId);
+    const studentRef = db.collection('ogrenciler').doc(link.ogrenciKayitId);
+    const [homeworkSnap, studentSnap] = await Promise.all([tx.get(homeworkRef), tx.get(studentRef)]);
+    if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid) {
+      throw new HttpsError('permission-denied', 'Öğrenci kaydı artık etkin değil.');
+    }
+    if (!homeworkSnap.exists || homeworkSnap.get('uid') !== link.ogretmenUid
+      || homeworkSnap.get('sinifId') !== link.sinifId) {
+      throw new HttpsError('not-found', 'Paylaşılan ödev bulunamadı.');
+    }
+    const targeted = homeworkSnap.get('hedefOgrenciIds') || [];
+    if (!targeted.includes(link.ogrenciKayitId)) {
+      throw new HttpsError('permission-denied', 'Bu ödev bu öğrenciye verilmemiş.');
+    }
+    tx.set(notificationRef, {
+      ogrenciUid: studentUid,
+      ogretmenUid: link.ogretmenUid,
+      ogrenciKayitId: link.ogrenciKayitId,
+      baglantiId,
+      odevId,
+      durum: 'tamamlandi_bildirildi',
+      bildirimTarihi: FieldValue.serverTimestamp(),
+    });
   });
   return { durum: 'bildirildi' };
 });
