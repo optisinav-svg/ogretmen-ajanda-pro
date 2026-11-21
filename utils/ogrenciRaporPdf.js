@@ -78,7 +78,7 @@ export function ogrenciRaporHtml({
   const etkinlikHtml = bireyselEtkinlikler
     .slice()
     .sort((a,b) => String(a.tarih || a.baslangicTarih || '').localeCompare(String(b.tarih || b.baslangicTarih || '')) || String(a.baslangicSaat || '').localeCompare(String(b.baslangicSaat || '')))
-    .map(e => '<div><strong>' + esc(e.tur || 'Bireysel etkinlik') + '</strong><div>' + tarih(e.tarih || e.baslangicTarih) + ' · ' + esc(e.baslangicSaat || '') + ' – ' + esc(e.bitisSaat || '') + '</div></div>').join('');
+    .map(e => '<div class="homework-row"><strong>' + esc(e.tur || 'Bireysel etkinlik') + '</strong><div>' + tarih(e.tarih) + ' · ' + esc(e.baslangicSaat || '') + ' – ' + esc(e.bitisSaat || '') + '</div><div class="record-meta">İşlenen konular: ' + (Array.isArray(e.konular) && e.konular.length ? e.konular.map(esc).join(' · ') : 'Konu kaydı yok') + '</div></div>').join('');
   const tarihMetni = tarih(olusturmaTarihi || new Date().toISOString());
 
   return `<!DOCTYPE html>
