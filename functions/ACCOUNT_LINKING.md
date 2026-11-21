@@ -26,7 +26,7 @@ Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapı
 
 ## Uygulama ekranları
 
-- Kayıt ekranında `Öğretmen / Öğrenci` hesap türü seçimi görünür. Öğretmen seçeneği aktiftir; öğrenci seçeneği kullanıcı talimatı gereği şimdilik kapalıdır.
+- Öğretmen ve öğrenci kayıtları ayrı ekranlardan yürütülür. Öğretmen kayıt ekranı yalnızca öğretmen hesabı oluşturur; öğrenci kayıt ekranı eşleştirme kodu gerektirir.
 - `OgrenciHesaplariEkrani` öğretmene öğrenci kaydı için kod üretme, gelen talepleri onaylama/reddetme, altı izni seçme/değiştirme ve bağlantıyı iptal etme ekranını sağlar.
 - `OgrenciKayitEkrani` öğrenci e-posta/şifre hesabını oluşturur ve öğretmenin 16 karakterli koduyla eşleştirme talebi gönderir. Kod geçersizse hesap oturumu korunur ve öğrenci daha sonra yeni kod deneyebilir.
 - `OgrenciAnaSayfaEkrani` öğrencinin etkin öğretmen bağlantılarını ve yalnızca izin verilmiş ders programı, ders notu, konu, yoklama, ödev, kitap ve bireysel etkinlik verilerini salt okunur gösterir. Öğrenci ödevi tamamladığını bildirebilir; öğretmenin değerlendirmesi değişmez.
