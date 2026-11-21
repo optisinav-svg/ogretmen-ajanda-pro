@@ -107,7 +107,36 @@ export default function OkulSinifEkrani({ navigation,route }) {
   }}]);
   }; 
   const siniflariYukle=async(o)=>{setSeciliOkul(o);try{const q=query(collection(db,'siniflar'),where('okulId','==',o.id),where('uid','==',uid));const s=await getDocs(q);setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.arsivlendi));}catch(e){Alert.alert('Hata','Sınıflar yüklenemedi.');}};
-  const sinifEkle=async()=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf kayıtları değiştirilemez.');if(!yeniSinif.trim()||!seciliKademe||!seciliDers) return Alert.alert('Eksik bilgi','Sınıf adı, kademe ve ders seçin.');try{const data={ad:yeniSinif.trim(),kademe:seciliKademe,ders:seciliDers,okulId:seciliOkul.id,okulAd:seciliOkul.ad,uid};if(duzenlenenSinif) await updateDoc(doc(db,'siniflar',duzenlenenSinif.id),data);else await addDoc(collection(db,'siniflar'),{...data,donemYili,olusturulma:new Date().toISOString()});kapatSinifModal();siniflariYukle(seciliOkul);}catch(e){Alert.alert('Hata','Sınıf kaydedilemedi.');}};
+  const sinifEkle=async()=>{
+    if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf kayıtları değiştirilemez.');
+    if(!yeniSinif.trim()||!seciliKademe||!seciliDers)return Alert.alert('Eksik bilgi','Sınıf adı, kademe ve ders seçin.');
+    try{
+      const data={ad:yeniSinif.trim(),kademe:seciliKademe,ders:seciliDers,okulId:seciliOkul.id,okulAd:seciliOkul.ad,uid};
+      if(duzenlenenSinif){
+        const sinifId=duzenlenenSinif.id;
+        const [ogrenciSnap,kitapSnap,konuSnap]=await Promise.all([
+          getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinifId),where('uid','==',uid))),
+          getDocs(query(collection(db,'kitaplar'),where('sinifId','==',sinifId),where('uid','==',uid))),
+          getDocs(query(collection(db,'konular'),where('sinifId','==',sinifId),where('uid','==',uid)))
+        ]);
+        const bagliKayitlar=[
+          ...ogrenciSnap.docs.filter(x=>donemUygun(x.data(),donemYili)),
+          ...kitapSnap.docs.filter(x=>donemUygun(x.data(),donemYili)),
+          ...konuSnap.docs.filter(x=>donemUygun(x.data(),donemYili))
+        ];
+        for(let i=0;i<bagliKayitlar.length;i+=450){
+          const batch=writeBatch(db);
+          bagliKayitlar.slice(i,i+450).forEach(x=>batch.update(x.ref,{sinifAd:data.ad}));
+          await batch.commit();
+        }
+        await updateDoc(doc(db,'siniflar',sinifId),data);
+      }else{
+        await addDoc(collection(db,'siniflar'),{...data,donemYili,olusturulma:new Date().toISOString()});
+      }
+      kapatSinifModal();
+      await siniflariYukle(seciliOkul);
+    }catch(e){Alert.alert('Hata','Sınıf kaydedilemedi. Bağlı öğrenci, kitap ve konu kayıtları tekrar denenerek eşitlenebilir. '+(e?.message||''));}
+  };
   const kapatSinifModal=()=>{setYeniSinif('');setSeciliKademe('');setSeciliDers('');setDersArama('');setDuzenlenenSinif(null);setSinifModalAcik(false)};
   const sinifDuzenle=(s)=>{setDuzenlenenSinif(s);setYeniSinif(s.ad||'');setSeciliKademe(s.kademe||'');setSeciliDers(s.ders||'');setDersArama(s.ders||'');setSinifModalAcik(true)};
   const sinifSil=(sinifKaydi)=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf arşivlenemez.');Alert.alert('Sınıfı Kaldır','Öğrenciler aynı okul içindeki Kayıtsız Öğrenciler sınıfına taşınacak. Ders programı kaldırılacak; geçmiş ders notları, yoklamalar, ödevler, kitaplar ve konu kayıtları silinmeyecek.',[{text:'İptal',style:'cancel'},{text:'Sınıfı kaldır',style:'destructive',onPress:async()=>{
