@@ -29,4 +29,5 @@ export default function App(){return <NavigationContainer><Stack.Navigator initi
 <Stack.Screen name="Odev" component={OdevEkrani} options={{title:'Ödev Takibi'}}/>
 <Stack.Screen name="Rapor" component={RaporEkrani} options={{title:'Raporlar'}}/>
 <Stack.Screen name="SifreDegistir" component={SifreDegistirEkrani} options={{title:'Şifre Değiştir'}}/>
+<Stack.Screen name="OgrenciHesaplari" component={OgrenciHesaplariEkrani} options={{title:'Öğrenci Hesapları'}}/>
 </Stack.Navigator></NavigationContainer>}
