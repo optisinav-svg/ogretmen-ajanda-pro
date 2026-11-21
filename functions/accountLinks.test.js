@@ -49,6 +49,13 @@ test('Boolean olmayan paylaşım izni reddedilir', () => {
 });
 
 
+test('Öğrenci eski dönem ödev işlemlerini 30 Haziran sonuna kadar yapabilir; 1 Temmuzda dönem salt okunur olur', () => {
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2026-06-01T00:00:00+03:00')), true);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2027-06-30T23:59:59+03:00')), true);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2027-07-01T00:00:00+03:00')), false);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2026-05-31T23:59:59+03:00')), false);
+});
+
 test('Öğrenci eşleştirmesi doğrulanmış e-posta ve kayıtlı ad-soyadın ikisini de gerektirir', () => {
   const record = { adSoyad: 'Çağrı Öztürk', eposta: 'ogrenci@example.com' };
   assert.equal(_test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', true), true);
