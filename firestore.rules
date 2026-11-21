@@ -73,7 +73,10 @@ service cloud.firestore {
       return !data.keys().hasAny(['dersId'])
         || data.dersId == null
         || data.dersId == ''
-        || ownsDocument('dersler', data.dersId);
+        || (
+          ownsDocument('dersler', data.dersId)
+          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
+        );
     }
 
     function libraryBookBelongsToTeacher(data) {
