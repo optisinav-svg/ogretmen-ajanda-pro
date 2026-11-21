@@ -101,7 +101,7 @@ service cloud.firestore {
         && request.auth.uid == userId
         && (
           !request.resource.data.keys().hasAny(['rol'])
-          || request.resource.data.rol in ['ogretmen', 'ogrenci']
+          || request.resource.data.rol == 'ogretmen'
         );
 
       // Profil rolü oluşturulduktan sonra değiştirilemez.
@@ -242,6 +242,54 @@ service cloud.firestore {
         && keepsOwner()
         && libraryBookBelongsToTeacher(request.resource.data);
       allow delete: if ownsRecord();
+    }
+
+
+    // Takvimdeki bireysel ders / etüt / soru çözümü kayıtları öğretmen sahibine aittir.
+    match /bireyselEtkinlikler/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord();
+      allow update: if ownsRecord() && keepsOwner();
+      allow delete: if ownsRecord();
+    }
+
+    match /bireyselDersOturumlari/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord();
+      allow update: if ownsRecord() && keepsOwner();
+      allow delete: if ownsRecord();
+    }
+
+    // Eşleştirme kodları yalnızca güvenilir Cloud Functions tarafından yönetilir.
+    match /ogrenciEslesmeKodlari/{codeId} {
+      allow read, write: if false;
+    }
+
+    // Öğretmen ve öğrenci yalnızca kendilerine ait bağlantı özetini okuyabilir.
+    // Bağlantı oluşturma, izin değiştirme ve iptal işlemleri callable function üzerinden yapılır.
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // Öğrencinin ödev tamamlandı bildirimi öğretmen değerlendirmesinden ayrı tutulur.
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create, update, delete: if false;
     }
 
     // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
