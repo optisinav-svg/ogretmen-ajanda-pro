@@ -73,6 +73,21 @@ Before enabling deletion:
 6. Run the scheduled cleanup in dry-run mode and review its per-collection
    counts before separately approving deletion.
 
+
+## Period selector alignment
+
+The home-screen selector now presents only the three adjacent period start years
+(current minus one, current, and current plus one), rather than discovering an
+unlimited number of periods from historical school/class documents. The
+upcoming period can be selected and stored explicitly, but existing
+`donemDuzenlemeyeAcik` checks in the period-specific screens prevent
+modification before that period's June 1 start date. Selecting a period
+continues to pass its year to the screens; records are not reassigned based on
+the calendar date.
+
+This is a source-code change only. The selector behavior still requires
+verification in the Android build after APK creation.
+
 ## Current safety status
 
 - The scheduled cleanup allowlist excludes shared libraries and user profiles.
