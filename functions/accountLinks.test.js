@@ -49,6 +49,21 @@ test('Boolean olmayan paylaşım izni reddedilir', () => {
 });
 
 
+test('Öğrenci eşleştirmesi doğrulanmış e-posta ve kayıtlı ad-soyadın ikisini de gerektirir', () => {
+  const record = { adSoyad: 'Çağrı Öztürk', eposta: 'ogrenci@example.com' };
+  assert.equal(_test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', true), true);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'baska@example.com', 'Çağrı Öztürk', true), /e-posta/i);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Başka Öğrenci', true), /ad-soyad/i);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', false), /doğrulanmalıdır/i);
+});
+
+test('Eski kayıtta e-posta yoksa otomatik öğrenci hesabı eşleştirmesi yapılmaz', () => {
+  assert.throws(
+    () => _test.assertStudentIdentityMatches({ adSoyad: 'Çağrı Öztürk' }, 'ogrenci@example.com', 'Çağrı Öztürk', true),
+    /e-posta/i,
+  );
+});
+
 test('Aynı öğretmen öğrenci kaydı ikinci bir öğrenci hesabına bağlanamaz', () => {
   assert.throws(
     () => _test.assertStudentRecordAvailable({ durum: 'active', ogrenciUid: 'student-a' }, 'student-b'),
