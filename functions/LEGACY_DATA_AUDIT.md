@@ -103,3 +103,8 @@ The non-destructive recovery procedure is documented in `functions/RECOVERY_RUNB
 ## Newly introduced student-account collection
 
 `ogrenciOdevBildirimleri` is introduced by the teacher–student account workflow. It stores a student's "completed" notification separately from the teacher's homework assessment. New documents carry the teacher's `uid` and the homework's explicit numeric `donemYili`, so they are covered by the three-year retention allowlist. The collection has no live records from this source change because account linking remains disabled and no Functions have been deployed.
+
+
+## Öğrenci hesap bağlantısı metadata ve saklama
+
+Yeni eşleştirme kodu, talep, bağlantı ve öğrenci-kayıt indeksi belgeleri artık öğretmen sahipliğini `uid` alanında ve ilgili öğrencinin dönemini `donemYili` alanında taşır. Bu nedenle `ogrenciEslesmeKodlari`, `ogrenciEslesmeTalepleri`, `ogretmenOgrenciBaglantilari` ve `ogrenciKayitEslesmeleri` üç yıllık saklama listesine eklendi. Eski belgelerde bu iki açık alan yoksa otomatik silme uygunluğu kazanmaz; güvenli biçimde atlanır. Bu kaynak değişiklikleri canlı verileri geriye dönük güncellemez.
