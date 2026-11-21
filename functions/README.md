@@ -14,7 +14,7 @@ academic-period start year has completed three academic years.
 
 ## Included period-owned collections
 
-`bireyselDersOturumlari`, `bireyselEtkinlikler`, `dersNotlari`,
+`bireyselDersOturumlari`, `bireyselEtkinlikler`, `ogrenciOdevBildirimleri`, `dersNotlari`,
 `yoklamalar`, `odevler`, `konular`, `kitaplar`, `dersler`,
 `ogrenciler`, `siniflar`, and `okullar`.
 
