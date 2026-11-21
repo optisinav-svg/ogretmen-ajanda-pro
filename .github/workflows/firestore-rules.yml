@@ -6,7 +6,7 @@ on:
       - security/firestore-rules
   pull_request:
     branches:
-      - security/firestore-rules
+      - feature/kitap-tanimlama
 
 jobs:
   firestore-rules:
