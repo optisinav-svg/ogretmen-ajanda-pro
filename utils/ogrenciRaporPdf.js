@@ -29,7 +29,7 @@ const durumAd = d => ({
 
 export function ogrenciRaporHtml({
   okulAdi, ogrenciAdi, sinifAdi, dersAdi, olusturmaTarihi,
-  konular = [], odevler = [], kitaplar = []
+  konular = [], odevler = [], kitaplar = [], bireyselEtkinlikler = []
 }) {
   const konuHtml = konular.map(k => {
     const d = k.yoklamaDurumu === 'geldi' ? 'Derste var' :
@@ -75,6 +75,10 @@ export function ogrenciRaporHtml({
     </div>`;
   }).join('');
 
+  const etkinlikHtml = bireyselEtkinlikler
+    .slice()
+    .sort((a,b) => String(a.tarih || a.baslangicTarih || '').localeCompare(String(b.tarih || b.baslangicTarih || '')) || String(a.baslangicSaat || '').localeCompare(String(b.baslangicSaat || '')))
+    .map(e => '<div><strong>' + esc(e.tur || 'Bireysel etkinlik') + '</strong><div>' + tarih(e.tarih || e.baslangicTarih) + ' · ' + esc(e.baslangicSaat || '') + ' – ' + esc(e.bitisSaat || '') + '</div></div>').join('');
   const tarihMetni = tarih(olusturmaTarihi || new Date().toISOString());
 
   return `<!DOCTYPE html>
@@ -228,6 +232,8 @@ html, body {
     <section class="homework-section">
       <h2 class="section-title">\u00D6dev Ge\u00E7mi\u015Fi</h2>
       ${odevHtml || '<div class="homework-row">Hen\u00FCz \u00F6dev kayd\u0131 bulunmuyor.</div>'}
+      <h2 class="section-title">Bireysel Ders ve Etüt Geçmişi</h2>
+      ${etkinlikHtml || '<div>Henüz bireysel etkinlik kaydı bulunmuyor.</div>'}
       <h2 class="section-title books-title">Kitap \u0130lerlemesi</h2>
       ${kitapHtml || '<div class="homework-row">\u00D6\u011Frenciye atanm\u0131\u015F kitap bulunmuyor.</div>'}
     </section>
