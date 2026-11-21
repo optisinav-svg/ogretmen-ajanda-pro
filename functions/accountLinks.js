@@ -101,6 +101,11 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
     throw new HttpsError('failed-precondition', 'Öğrencinin sınıf sahipliği doğrulanamadı.');
   }
 
+  const grade = String(classSnap.get('kademe') || '').trim().toUpperCase();
+  if (!['9', '10', '11', '12', 'TYT', 'AYT'].includes(grade)) {
+    throw new HttpsError('failed-precondition', 'Öğrenci hesabı yalnızca lise düzeyi doğrulanmış sınıflar için açılabilir. Ortaokul hesapları veli/vasi süreci netleşene kadar kapalıdır.');
+  }
+
   const code = createPairingCode();
   const codeHash = sha256(code);
   const now = Date.now();
@@ -214,6 +219,28 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
     return { baglantiId: linkId };
   });
   return { ...result, durum: 'active' };
+});
+
+
+exports.ogrenciEslesmeTalebiniReddet = onCall({ region: REGION }, async (request) => {
+  const teacherUid = requireAuth(request);
+  await requireRole(teacherUid, 'ogretmen');
+  const requestId = request.data?.talepId;
+  if (typeof requestId !== 'string' || !requestId) {
+    throw new HttpsError('invalid-argument', 'Eşleştirme talebi seçilmelidir.');
+  }
+  const ref = db.collection('ogrenciEslesmeTalepleri').doc(requestId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || snap.get('ogretmenUid') !== teacherUid) {
+      throw new HttpsError('not-found', 'Eşleştirme talebi bulunamadı.');
+    }
+    if (snap.get('durum') !== 'bekliyor') {
+      throw new HttpsError('failed-precondition', 'Bu talep daha önce işlenmiş.');
+    }
+    tx.update(ref, { durum: 'reddedildi', yanitTarihi: FieldValue.serverTimestamp() });
+  });
+  return { durum: 'reddedildi' };
 });
 
 exports.ogrenciBaglantisiniIptalEt = onCall({ region: REGION }, async (request) => {
