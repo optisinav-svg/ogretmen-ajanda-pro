@@ -166,6 +166,8 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       ogretmenUid: codeData.ogretmenUid,
       ogrenciKayitId: codeData.ogrenciKayitId,
       sinifId: codeData.sinifId,
+      ogrenciHesapAdi: request.auth.token.name || profileSnap.get('kullaniciAdi') || '',
+      ogrenciEposta: request.auth.token.email || profileSnap.get('eposta') || '',
       durum: 'bekliyor',
       olusturulma: FieldValue.serverTimestamp(),
     });
