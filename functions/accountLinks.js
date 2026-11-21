@@ -123,9 +123,11 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
   const codeHash = sha256(code);
   const now = Date.now();
   await db.collection('ogrenciEslesmeKodlari').doc(codeHash).create({
+    uid: teacherUid,
     ogretmenUid: teacherUid,
     ogrenciKayitId: studentRecordId,
     sinifId: student.sinifId,
+    donemYili: Number.isInteger(student.donemYili) ? student.donemYili : null,
     kullanildi: false,
     olusturulma: Timestamp.fromMillis(now),
     sonaErme: Timestamp.fromMillis(now + CODE_TTL_MS),
@@ -180,6 +182,7 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       tx.update(profileRef, { kullaniciAdi: suppliedName, eposta: email });
     }
     tx.create(requestRef, {
+      uid: codeData.ogretmenUid,
       ogrenciUid: studentUid,
       ogretmenUid: codeData.ogretmenUid,
       ogrenciKayitId: codeData.ogrenciKayitId,
@@ -239,6 +242,7 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       throw new HttpsError('already-exists', 'Bu öğrenciyle etkin bağlantı zaten bulunuyor.');
     }
     tx.set(linkRef, {
+      uid: teacherUid,
       ogretmenUid: teacherUid,
       ogretmenHesapAdi: teacherProfileSnap.get('kullaniciAdi') || '',
       ogrenciAd: studentSnap.get('adSoyad') || studentSnap.get('ad') || '',
@@ -258,6 +262,8 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       iptalTarihi: null,
     });
     tx.set(recordIndexRef, {
+      uid: teacherUid,
+      donemYili: Number.isInteger(studentSnap.get('donemYili')) ? studentSnap.get('donemYili') : null,
       ogretmenUid: teacherUid,
       ogrenciKayitId: data.ogrenciKayitId,
       ogrenciUid: data.ogrenciUid,
