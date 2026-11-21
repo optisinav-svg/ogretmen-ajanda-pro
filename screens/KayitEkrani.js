@@ -51,7 +51,8 @@ export default function KayitEkrani({ navigation }) {
       const sonuc = await createUserWithEmailAndPassword(auth, eposta, sifre);
       await updateProfile(sonuc.user, { displayName: kullaniciAdi });
       await setDoc(doc(db, 'kullanicilar', sonuc.user.uid), {
-        kullaniciAdi,
+        kullaniciAdi: kullaniciAdi.trim(),
+        rol: 'ogretmen',
         brans,
         sezon,
         eposta,
