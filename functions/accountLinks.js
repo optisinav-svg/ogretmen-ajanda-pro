@@ -40,6 +40,33 @@ function assertStudentRecordAvailable(existing, studentUid) {
   }
 }
 
+function normalizeIdentityEmail(value) {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase('en-US') : '';
+}
+
+function normalizeIdentityName(value) {
+  return typeof value === 'string'
+    ? value.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\\p{L}\\p{N}]/gu, '')
+    : '';
+}
+
+function assertStudentIdentityMatches(student, email, name, emailVerified) {
+  const registeredEmail = normalizeIdentityEmail(student?.eposta || student?.email);
+  const accountEmail = normalizeIdentityEmail(email);
+  const registeredName = normalizeIdentityName(student?.adSoyad || [student?.ad, student?.soyad].filter(Boolean).join(' '));
+  const accountName = normalizeIdentityName(name);
+  if (!emailVerified) {
+    throw new HttpsError('failed-precondition', 'Öğrenci hesabının e-posta adresi doğrulanmalıdır.');
+  }
+  if (!registeredEmail || !accountEmail || registeredEmail !== accountEmail) {
+    throw new HttpsError('permission-denied', 'Hesabın e-posta adresi öğrenci kaydındaki e-posta ile eşleşmiyor. Öğretmeninizden kaydı kontrol etmesini isteyin.');
+  }
+  if (!registeredName || !accountName || registeredName !== accountName) {
+    throw new HttpsError('permission-denied', 'Hesap adı öğrenci kaydındaki ad-soyad ile eşleşmiyor.');
+  }
+  return true;
+}
+
 function normalizePermissions(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new HttpsError('invalid-argument', 'Paylaşım izinleri belirtilmelidir.');
@@ -170,7 +197,8 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
     }
     const email = request.auth.token.email || '';
     const suppliedName = typeof request.data?.adSoyad === 'string' ? request.data.adSoyad.trim().slice(0, 80) : '';
-    const displayName = suppliedName || request.auth.token.name || email.split('@')[0] || 'Öğrenci';
+    const displayName = suppliedName || request.auth.token.name || '';
+    assertStudentIdentityMatches(studentSnap.data(), email, displayName, request.auth.token.email_verified === true);
     if (!profileSnap.exists) {
       tx.create(profileRef, {
         rol: 'ogrenci',
