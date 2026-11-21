@@ -2,6 +2,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDrAEcc1a2lMF6vBNjYz5WDTzlIJ0PtZsQ",
@@ -25,3 +26,4 @@ try {
 
 export const auth = authInstance;
 export const db = getFirestore(app);
+export const functions = getFunctions(app, 'europe-west1');
