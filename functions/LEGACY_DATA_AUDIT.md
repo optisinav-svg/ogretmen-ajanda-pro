@@ -98,3 +98,8 @@ The non-destructive recovery procedure is documented in `functions/RECOVERY_RUNB
 - Legacy documents without those fields are not eligible.
 - No live Firestore data was read, migrated, or deleted during this audit.
 - The cleanup remains dry-run by default and is not deployed.
+
+
+## Newly introduced student-account collection
+
+`ogrenciOdevBildirimleri` is introduced by the teacher–student account workflow. It stores a student's "completed" notification separately from the teacher's homework assessment. New documents carry the teacher's `uid` and the homework's explicit numeric `donemYili`, so they are covered by the three-year retention allowlist. The collection has no live records from this source change because account linking remains disabled and no Functions have been deployed.
