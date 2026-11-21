@@ -25,6 +25,7 @@ const BRANSLAR = [
 
 export default function KayitEkrani({ navigation }) {
   const [adim, setAdim] = useState(1);
+  const [hesapTuru] = useState('ogretmen');
   const [sezon, setSezon] = useState('');
   const [brans, setBrans] = useState('');
   const [kullaniciAdi, setKullaniciAdi] = useState('');
@@ -52,7 +53,7 @@ export default function KayitEkrani({ navigation }) {
       await updateProfile(sonuc.user, { displayName: kullaniciAdi });
       await setDoc(doc(db, 'kullanicilar', sonuc.user.uid), {
         kullaniciAdi: kullaniciAdi.trim(),
-        rol: 'ogretmen',
+        rol: hesapTuru,
         brans,
         sezon,
         eposta,
@@ -93,6 +94,17 @@ export default function KayitEkrani({ navigation }) {
         </View>
 
         <View style={styles.form}>
+          <Text style={styles.soru}>Hesap Türü</Text>
+          <View style={styles.rolSatir}>
+            <View style={[styles.rolSecim, styles.rolAktif]}>
+              <Text style={styles.rolMetinAktif}>👨‍🏫 Öğretmen</Text>
+            </View>
+            <View style={[styles.rolSecim, styles.rolKapali]}>
+              <Text style={styles.rolMetinKapali}>🎓 Öğrenci</Text>
+              <Text style={styles.rolAlt}>Henüz kapalı</Text>
+            </View>
+          </View>
+          <Text style={styles.rolBilgi}>Öğrenci hesabı, öğrenci kayıt ve giriş ekranı hazır olduğunda açılacaktır.</Text>
           {adim === 1 && (
             <>
               <Text style={styles.soru}>Eğitim-öğretim sezonunu seçin:</Text>
@@ -224,6 +236,14 @@ const styles = StyleSheet.create({
   adimAktif: { backgroundColor: '#2E7D32' },
   form: { backgroundColor: '#fff', borderRadius: 16, padding: 24, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8 },
   soru: { fontSize: 16, fontWeight: '600', color: '#1B5E20', marginBottom: 16 },
+  rolSatir: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  rolSecim: { flex: 1, borderWidth: 1, borderRadius: 9, padding: 11, alignItems: 'center' },
+  rolAktif: { backgroundColor: '#E8F5E9', borderColor: '#2E7D32' },
+  rolKapali: { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0' },
+  rolMetinAktif: { color: '#1B5E20', fontWeight: 'bold', fontSize: 13 },
+  rolMetinKapali: { color: '#9E9E9E', fontWeight: '600', fontSize: 13 },
+  rolAlt: { color: '#9E9E9E', fontSize: 10, marginTop: 3 },
+  rolBilgi: { color: '#777', fontSize: 11, marginBottom: 16 },
   secimButon: { borderWidth: 1, borderColor: '#C8E6C9', borderRadius: 10, padding: 14, marginBottom: 10 },
   secimAktif: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },
   secimMetni: { fontSize: 15, color: '#333', textAlign: 'center' },
