@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 
@@ -29,6 +29,12 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     }
     setYukleniyor(true);
     try {
+      await reload(auth.currentUser);
+      await auth.currentUser.getIdToken(true);
+      if (!auth.currentUser.emailVerified) {
+        Alert.alert('E-posta doğrulanmadı', 'Önce e-posta kutunuza gönderilen doğrulama bağlantısını açın. Ardından tekrar deneyin.');
+        return;
+      }
       await httpsCallable(functions, 'ogrenciEslesmeTalebiGonder')({
         kod: temizKod,
         adSoyad: adSoyad.trim(),
@@ -53,10 +59,11 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     try {
       const result = await createUserWithEmailAndPassword(auth, eposta.trim(), sifre);
       await updateProfile(result.user, { displayName: adSoyad.trim() });
+      await sendEmailVerification(result.user);
       setHesapHazir(true);
       setSifre('');
       setSifreTekrar('');
-      Alert.alert('Hesap oluşturuldu', 'Şimdi öğretmeninizin verdiği eşleştirme kodunu girin.');
+      Alert.alert('Doğrulama e-postası gönderildi', 'E-posta kutunuza gönderilen bağlantıyı açıp adresinizi doğrulayın. Doğrulama tamamlanmadan eşleştirme isteği gönderemezsiniz.');
     } catch (e) {
       const message = e?.code === 'auth/email-already-in-use'
         ? 'Bu e-posta ile bir hesap zaten var. Giriş ekranından giriş yapıp öğrenci kaydınızı kodla tamamlayabilirsiniz.'
