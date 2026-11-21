@@ -35,9 +35,20 @@ export default function RaporEkrani({navigation,route}){
      return {notlar:n.docs.map(x=>({id:x.id,...x.data()})),yoklamalar:y.docs.map(x=>({id:x.id,...x.data()})),odevler:o.docs.map(x=>({id:x.id,...x.data()}))};
     }));
     if(!aktif)return;
-    setGecmisNotlar(kayitlar.flatMap(x=>x.notlar).filter(x=>donemUygun(x,donemYili)));
-    setGecmisYoklamalar(kayitlar.flatMap(x=>x.yoklamalar).filter(x=>donemUygun(x,donemYili)));
-    setGecmisOdevler(kayitlar.flatMap(x=>x.odevler).filter(x=>donemUygun(x,donemYili)));
+    const sinifCikisTarihleri=new Map();
+    (detay.sinifGecmisi||[]).forEach(h=>{
+     if(!h?.sinifId||!h.tarih)return;
+     const onceki=sinifCikisTarihleri.get(h.sinifId);
+     if(!onceki||new Date(h.tarih).getTime()>new Date(onceki).getTime())sinifCikisTarihleri.set(h.sinifId,h.tarih);
+    });
+    const cikistanOnce=(kayit)=>{
+     const cikis=sinifCikisTarihleri.get(kayit.sinifId);
+     const tarih=kayit.tarih||kayit.olusturulma||kayit.teslimTarihi;
+     return !cikis||!tarih||new Date(tarih).getTime()<=new Date(cikis).getTime();
+    };
+    setGecmisNotlar(kayitlar.flatMap(x=>x.notlar).filter(x=>donemUygun(x,donemYili)&&cikistanOnce(x)));
+    setGecmisYoklamalar(kayitlar.flatMap(x=>x.yoklamalar).filter(x=>donemUygun(x,donemYili)&&cikistanOnce(x)));
+    setGecmisOdevler(kayitlar.flatMap(x=>x.odevler).filter(x=>donemUygun(x,donemYili)&&cikistanOnce(x)));
    }catch(e){if(aktif)Alert.alert('Hata','Öğrencinin önceki sınıf geçmişi yüklenemedi. '+(e?.message||''));}
   };
   yukleGecmis();
