@@ -73,6 +73,8 @@ service cloud.firestore {
       return !data.keys().hasAny(['dersId'])
         || data.dersId == null
         || data.dersId == ''
+        // Silinen gelecek ders programları geçmiş ödev/not kayıtlarını bozmaz.
+        || !exists(/databases/$(database)/documents/dersler/$(data.dersId))
         || (
           ownsDocument('dersler', data.dersId)
           && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
