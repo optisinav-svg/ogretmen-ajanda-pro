@@ -3,7 +3,7 @@ name: Firestore Rules Tests
 on:
   push:
     branches:
-      - security/firestore-rules-v2
+      - security/firestore-rules-final
   pull_request:
     branches:
       - feature/kitap-tanimlama
@@ -20,9 +20,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Install project and test tools
-        run: |
-          npm install
-          npm install --no-save firebase-tools @firebase/rules-unit-testing
+      - name: Install isolated Firestore test tools
+        run: npm install --prefix /tmp/firestore-test-env firebase firebase-tools @firebase/rules-unit-testing
       - name: Run Firestore rules tests in emulator
-        run: npx firebase emulators:exec --only firestore --project demo-ogretmen-ajanda-rules "node --test tests/firestore.rules.test.js"
+        env:
+          NODE_PATH: /tmp/firestore-test-env/node_modules
+        run: /tmp/firestore-test-env/node_modules/.bin/firebase emulators:exec --only firestore --project demo-ogretmen-ajanda-rules "NODE_PATH=/tmp/firestore-test-env/node_modules node --test tests/firestore.rules.test.js"
