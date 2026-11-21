@@ -33,10 +33,18 @@ service cloud.firestore {
       return /databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(teacherUid + '__' + request.auth.uid + '__' + classId);
     }
 
+    function linkedStudentRecordExists(teacherUid, classId) {
+      let link = get(studentLinkPath(teacherUid, classId)).data;
+      let studentPath = /databases/$(database)/documents/ogrenciler/$(link.ogrenciKayitId);
+      return exists(studentPath)
+        && get(studentPath).data.uid == teacherUid;
+    }
+
     function studentHasPermission(teacherUid, classId, permission) {
       return isStudent()
         && exists(studentLinkPath(teacherUid, classId))
         && get(studentLinkPath(teacherUid, classId)).data.durum == 'active'
+        && linkedStudentRecordExists(teacherUid, classId)
         && get(studentLinkPath(teacherUid, classId)).data.izinler.get(permission, false) == true;
     }
 
