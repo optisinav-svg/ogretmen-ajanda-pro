@@ -47,7 +47,7 @@ Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapı
 - `ogrenciEslesmeKodlari`: kod özeti, öğretmen UID, öğrenci kayıt kimliği, sınıf, kullanım ve sona erme bilgisi. İstemci erişimi tamamen kapalıdır.
 - `ogrenciEslesmeTalepleri`: öğrenci/öğretmen UID, eşlenecek öğrenci kaydı ve talep durumu. İstemciler yalnızca kendi taraf oldukları talepleri okuyabilir; yazma sunucuya aittir.
 - `ogretmenOgrenciBaglantilari`: öğretmen, öğrenci, öğrenci kayıt kimliği, sınıf, altı izin ve bağlantı durumu. İstemciler yalnızca kendi bağlantı özetlerini okuyabilir; yazma sunucuya aittir.
-- `ogrenciOdevBildirimleri`: öğrencinin tamamlandı bildirimi; öğretmen değerlendirmesinden ayrıdır. İstemci yazması kapalıdır.
+- `ogrenciOdevBildirimleri`: öğrencinin tamamlandı bildirimi; öğretmen değerlendirmesinden ayrıdır. Öğretmen UID'si ve ödevin açık `donemYili` alanıyla üç yıllık saklama politikasına dahildir. İstemci yazması kapalıdır.
 
 ## Güvenlik ve dağıtım sınırları
 
