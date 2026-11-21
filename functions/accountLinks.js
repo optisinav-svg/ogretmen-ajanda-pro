@@ -373,6 +373,9 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     if (!Number.isInteger(period)) {
       throw new HttpsError('failed-precondition', 'Ödevin akademik dönem bilgisi doğrulanamadı.');
     }
+    if (Number.isInteger(link.donemYili) && period !== link.donemYili) {
+      throw new HttpsError('permission-denied', 'Bu ödev, öğrenci bağlantısının akademik dönemine ait değil.');
+    }
     const targeted = homeworkSnap.get('hedefOgrenciIds') || [];
     if (!targeted.includes(link.ogrenciKayitId)) {
       throw new HttpsError('permission-denied', 'Bu ödev bu öğrenciye verilmemiş.');
