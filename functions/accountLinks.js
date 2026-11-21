@@ -134,6 +134,9 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
     throw new HttpsError('not-found', 'Öğrenci kaydı bulunamadı.');
   }
   const student = studentSnap.data();
+  if (typeof student.eposta !== 'string' || !student.eposta.trim()) {
+    throw new HttpsError('failed-precondition', 'Öğrenci kaydına hesapta kullanılacak e-posta adresi eklenmelidir.');
+  }
   if (typeof student.sinifId !== 'string' || !student.sinifId) {
     throw new HttpsError('failed-precondition', 'Öğrencinin geçerli bir sınıf kaydı bulunmuyor.');
   }
