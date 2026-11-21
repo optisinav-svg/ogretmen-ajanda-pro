@@ -64,7 +64,8 @@ export default function RaporEkrani({navigation,route}){
       olusturmaTarihi:new Date().toISOString(),
       konular:studentTopics(id).ders,
       odevler:raporOdevleri,
-      kitaplar:ogrenciKitapRaporu(id),\n      bireyselEtkinlikler:bireyselEtkinlikler.filter(x=>x.ogrenciId===id)
+      kitaplar:ogrenciKitapRaporu(id),
+      bireyselEtkinlikler:bireyselEtkinlikler.filter(x=>x.ogrenciId===id)
     });
     const dosya=await Print.printToFileAsync({html,base64:false});
     const temizAd=(detay.adSoyad||'Ogrenci')
