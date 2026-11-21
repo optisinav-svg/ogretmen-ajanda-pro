@@ -15,6 +15,7 @@ const {
   setDoc,
   updateDoc,
   addDoc,
+  writeBatch,
 } = require('firebase/firestore');
 
 const PROJECT_ID = 'demo-ogretmen-ajanda-rules';
@@ -144,4 +145,82 @@ test('Kullanıcı başka bir kullanıcının profilini okuyamaz', async () => {
 test('Tanımlanmamış koleksiyonlara erişim reddedilir', async () => {
   const db = testEnv.authenticatedContext('teacher-a').firestore();
   await assertFails(getDoc(doc(db, 'bilinmeyenKoleksiyon', 'x')));
+});
+
+test('Öğretmen başka öğretmenin sınıfına öğrenci ekleyemez', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'ogrenciler'), {
+    uid: 'teacher-a',
+    sinifId: 'class-b',
+    adSoyad: 'Yetkisiz öğrenci',
+    donemYili: 2026,
+  }));
+});
+
+test('Yoklama yalnızca aynı öğretmenin sınıfındaki öğrenci için yazılabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'yoklamalar'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-from-another-teacher',
+    durum: 'geldi',
+    donemYili: 2026,
+  }));
+});
+
+test('Kitap yalnızca öğretmenin kendi sınıfındaki öğrenciye atanabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'kitaplar'), {
+    uid: 'teacher-a',
+    sinifId: 'class-b',
+    ogrenciId: 'student-a',
+    ad: 'Yetkisiz kitap',
+    donemYili: 2026,
+  }));
+});
+
+test('Kitap ve konu aynı batch içinde güvenli biçimde oluşturulabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const batch = writeBatch(db);
+  const bookRef = doc(collection(db, 'kitaplar'));
+  const topicRef = doc(collection(db, 'konular'));
+
+  batch.set(bookRef, {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-a',
+    ad: 'Test kitabı',
+    sayfaSayisi: 100,
+    donemYili: 2026,
+  });
+  batch.set(topicRef, {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-a',
+    kitapId: bookRef.id,
+    ad: 'Test konusu',
+    baslangicSayfa: 1,
+    bitisSayfa: 10,
+    donemYili: 2026,
+  });
+
+  await assertSucceeds(batch.commit());
+});
+
+test('Öğretmen başka öğretmenin kitap kütüphanesi kitabına konu ekleyemez', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'kitapKutuphanesi', 'library-book-b'), {
+      uid: 'teacher-b',
+      ad: 'B öğretmeninin kitabı',
+    });
+  });
+
+  await assertFails(addDoc(collection(db, 'kitapKutuphanesiKonulari'), {
+    uid: 'teacher-a',
+    kitapId: 'library-book-b',
+    ad: 'Yetkisiz konu',
+    baslangicSayfa: 1,
+    bitisSayfa: 5,
+  }));
 });
