@@ -67,3 +67,13 @@ test('İptal edilmiş öğrenci kaydı başka hesapla yeniden eşleştirilebilir
     () => _test.assertStudentRecordAvailable({ durum: 'revoked', ogrenciUid: 'student-a' }, 'student-b'),
   );
 });
+
+
+test('Öğrenci eşleştirmesi yalnızca lise kademeleri için açıktır', () => {
+  for (const grade of ['9', '10', '11', '12', 'TYT', 'AYT']) {
+    assert.equal(_test.isAllowedStudentGrade(grade), true);
+  }
+  for (const grade of ['1', '2', '3', '4', '5', '6', '7', '8', '', null, undefined]) {
+    assert.equal(_test.isAllowedStudentGrade(grade), false);
+  }
+});
