@@ -155,21 +155,25 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
     if (profileSnap.exists && profileSnap.get('rol') !== 'ogrenci') {
       throw new HttpsError('permission-denied', 'Bu hesap öğrenci hesabı olarak tanımlanmamış.');
     }
+    const email = request.auth.token.email || '';
+    const suppliedName = typeof request.data?.adSoyad === 'string' ? request.data.adSoyad.trim().slice(0, 80) : '';
+    const displayName = suppliedName || request.auth.token.name || email.split('@')[0] || 'Öğrenci';
     if (!profileSnap.exists) {
-      const email = request.auth.token.email || '';
       tx.create(profileRef, {
         rol: 'ogrenci',
         eposta: email,
-        kullaniciAdi: request.auth.token.name || email.split('@')[0] || 'Öğrenci',
+        kullaniciAdi: displayName,
         olusturulmaTarihi: new Date().toISOString(),
       });
+    } else if (suppliedName) {
+      tx.update(profileRef, { kullaniciAdi: suppliedName, eposta: email });
     }
     tx.create(requestRef, {
       ogrenciUid: studentUid,
       ogretmenUid: codeData.ogretmenUid,
       ogrenciKayitId: codeData.ogrenciKayitId,
       sinifId: codeData.sinifId,
-      ogrenciHesapAdi: request.auth.token.name || (profileSnap.exists ? profileSnap.get('kullaniciAdi') : '') || (request.auth.token.email || '').split('@')[0],
+      ogrenciHesapAdi: displayName,
       ogrenciEposta: request.auth.token.email || (profileSnap.exists ? profileSnap.get('eposta') : '') || '',
       durum: 'bekliyor',
       olusturulma: FieldValue.serverTimestamp(),
