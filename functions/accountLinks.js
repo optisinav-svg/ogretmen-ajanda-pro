@@ -151,6 +151,9 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
     throw new HttpsError('not-found', 'Öğrenci kaydı bulunamadı.');
   }
   const student = studentSnap.data();
+  if (!isAcademicPeriodEditable(student.donemYili)) {
+    throw new HttpsError('failed-precondition', 'Bu öğrenci kaydının dönemi yeni hesap bağlantısı için kapalı.');
+  }
   if (typeof student.eposta !== 'string' || !student.eposta.trim()) {
     throw new HttpsError('failed-precondition', 'Öğrenci kaydına hesapta kullanılacak e-posta adresi eklenmelidir.');
   }
@@ -205,6 +208,9 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       || !studentSnap.exists || studentSnap.get('uid') !== codeData.ogretmenUid
       || studentSnap.get('sinifId') !== codeData.sinifId) {
       throw new HttpsError('failed-precondition', 'Öğretmen, sınıf veya öğrenci kaydı artık geçerli değil. Yeni kod isteyin.');
+    }
+    if (!isAcademicPeriodEditable(studentSnap.get('donemYili'))) {
+      throw new HttpsError('failed-precondition', 'Bu eğitim öğretim dönemi sona erdiği için yeni öğrenci bağlantısı kurulamaz.');
     }
     if (codeData.kullanildi || codeData.sonaErme.toMillis() <= Date.now()) {
       throw new HttpsError('deadline-exceeded', 'Eşleştirme kodunun süresi dolmuş veya kod daha önce kullanılmış.');
@@ -275,6 +281,7 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       tx.get(db.collection('kullanicilar').doc(teacherUid)),
     ]);
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
+      || !isAcademicPeriodEditable(studentSnap.get('donemYili'))
       || studentSnap.get('sinifId') !== data.sinifId
       || !classSnap.exists || classSnap.get('uid') !== teacherUid
       || !profileSnap.exists || profileSnap.get('rol') !== 'ogrenci'
