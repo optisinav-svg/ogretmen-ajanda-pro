@@ -70,6 +70,10 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
 
   const ogrenciBul = id => ogrenciler.find(x => x.id === id);
   const kodOlustur = async ogrenci => {
+    if (!String(ogrenci.eposta || '').trim()) {
+      Alert.alert('E-posta eksik', 'Öğrenci kaydını düzenleyip öğrencinin kullanacağı e-posta adresini ekleyin. Eşleştirme için doğrulanmış e-posta ve kayıtlı ad-soyadın ikisi de eşleşmelidir.');
+      return;
+    }
     setIslem(true);
     try {
       const sonuc = await httpsCallable(functions, 'ogrenciEslesmeKoduOlustur')({ ogrenciKayitId: ogrenci.id });
@@ -177,6 +181,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
               <View style={{ flex: 1 }}>
                 <Text style={s.name}>{o.adSoyad || o.ad || 'İsimsiz öğrenci'}</Text>
                 <Text style={s.sub}>{o.sinifAd || 'Sınıf belirtilmemiş'}</Text>
+                <Text style={s.sub}>{o.eposta || "E-posta eklenmemiş"}</Text>
               </View>
               <TouchableOpacity style={s.smallButton} disabled={islem} onPress={() => kodOlustur(o)}>
                 <Text style={s.smallButtonText}>Kod üret</Text>
