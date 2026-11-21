@@ -3,7 +3,7 @@ import {View,Text,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,SafeAreaVie
 import AsyncStorage from'@react-native-async-storage/async-storage';
 import {signOut}from'firebase/auth';
 import {doc,getDoc,collection,getDocs,query,where}from'firebase/firestore';
-import {auth,db}from'../firebaseConfig';
+import {auth,db,ACCOUNT_LINKING_ENABLED}from'../firebaseConfig';
 import {donemUygun,donemYiliBugun,donemBilgi}from'../utils/donem';
 const DONEM_KEY='@ogretmenAjandaPro_secilenDonem';
 export default function AnaSayfa({navigation}){const[kullaniciBilgi,setKullaniciBilgi]=useState(null),[siniflar,setSiniflar]=useState([]),[donemler,setDonemler]=useState([]),[sinifModal,setSinifModal]=useState(false),[hedef,setHedef]=useState(null),[donemModal,setDonemModal]=useState(false),[secilenDonem,setSecilenDonem]=useState(null);
