@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { auth, db, functions } from '../firebaseConfig';
+import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { donemYiliBugun, donemUygun } from '../utils/donem';
 
 const IZINLER = [
@@ -34,7 +34,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
   const [kodBilgi, setKodBilgi] = useState(null);
 
   const yukle = async () => {
-    if (!uid) return;
+    if (!uid || !ACCOUNT_LINKING_ENABLED) { setYukleniyor(false); return; }
     setYukleniyor(true);
     try {
       const profil = await getDoc(doc(db, 'kullanicilar', uid));
@@ -144,6 +144,15 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
     );
   };
 
+  if (!ACCOUNT_LINKING_ENABLED) return (
+    <View style={[s.wrap, { justifyContent: 'center', padding: 24 }]}>
+      <View style={s.info}>
+        <Text style={s.infoTitle}>Öğrenci hesap bağlantısı henüz etkin değil</Text>
+        <Text style={s.infoText}>Kod üretme ve öğrenci eşleştirme altyapısı hazırlandı; ancak Firestore güvenlik kuralları ve Cloud Functions canlı Firebase'e henüz dağıtılmadı. Güvenlik doğrulaması ve dağıtım onayı tamamlanmadan bu özellik açılmayacak.</Text>
+      </View>
+      <TouchableOpacity style={s.primary} onPress={() => navigation.goBack()}><Text style={s.primaryText}>Geri dön</Text></TouchableOpacity>
+    </View>
+  );
   if (yukleniyor) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#2E7D32"/>;
 
   return (
