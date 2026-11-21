@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  RETENTION_COLLECTIONS,
   expiredPeriodStartYear,
   isEligiblePeriodRecord,
 } = require('./retentionPolicy');
@@ -28,4 +29,15 @@ test('only explicitly period-tagged, owned records are eligible', () => {
   assert.equal(isEligiblePeriodRecord({ donemYili: '2026', uid: 'teacher-1' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1' }, 2026), false);
+});
+
+
+test('student homework notifications are included in three-year retention', () => {
+  assert.ok(RETENTION_COLLECTIONS.includes('ogrenciOdevBildirimleri'));
+  assert.equal(isEligiblePeriodRecord({
+    uid: 'teacher-1',
+    donemYili: 2026,
+    ogrenciUid: 'student-1',
+    durum: 'tamamlandi_bildirildi',
+  }, 2026), true);
 });
