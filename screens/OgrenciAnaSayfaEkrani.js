@@ -205,7 +205,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         })}
 
         {!gruplar.length && <View style={s.card}><Text style={s.sectionTitle}>Henüz öğretmen bağlantınız yok</Text><Text style={s.muted}>Öğretmeninizden eşleştirme kodu isteyin. Kod girildikten sonra öğretmeninizin onayı beklenir.</Text></View>}
-        {!!bildirimler.length && <View style={s.card}><Text style={s.sectionTitle}>Ödev bildirimlerim</Text>{bildirimler.map(x => <Text key={x.id} style={s.meta}>✓ {x.durum === 'tamamlandi_bildirildi' ? 'Tamamlandı bildirimi gönderildi' : x.durum}</Text>)}</View>}
+        {!!bildirimler.length && <View style={s.card}><Text style={s.sectionTitle}>Ödev bildirimlerim</Text>{bildirimler.map(x => <Text key={x.id} style={s.meta}>✓ {x.odevAciklama || 'Ödev'} · {x.durum === 'tamamlandi_bildirildi' ? 'Tamamlandı bildirimi gönderildi' : x.durum}</Text>)}</View>}
         <TouchableOpacity style={s.refresh} onPress={() => yukle(true)}><Text style={s.refreshText}>↻ Yenile</Text></TouchableOpacity>
       </ScrollView>
     </View>
