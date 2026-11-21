@@ -127,6 +127,12 @@ before(async () => {
         kitaplar: true,
       },
     });
+    await setDoc(doc(db, 'bireyselEtkinlikler', 'event-a'), {
+      uid: 'teacher-a', ogrenciId: 'student-a', sinifId: 'class-a', tur: 'Özel Ders', donemYili: 2026,
+    });
+    await setDoc(doc(db, 'bireyselEtkinlikler', 'event-b'), {
+      uid: 'teacher-b', ogrenciId: 'student-b', sinifId: 'class-b', tur: 'Etüt', donemYili: 2026,
+    });
     await setDoc(doc(db, 'dersNotlari', 'note-b'), {
       uid: 'teacher-b',
       sinifId: 'class-b',
@@ -411,4 +417,29 @@ test('İptal edilmiş öğretmen bağlantısı öğrenci erişimini anında enge
 test('Öğrenci eşleştirme indeksi istemciye kapalıdır', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertFails(getDoc(doc(db, 'ogrenciKayitEslesmeleri', 'teacher-a__student-a')));
+});
+
+
+test('Bireysel etkinlik yalnızca öğretmenin kendi sınıfındaki öğrenci için oluşturulabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(addDoc(collection(db, 'bireyselEtkinlikler'), {
+    uid: 'teacher-a', ogrenciId: 'student-a', sinifId: 'class-a',
+    tur: 'Özel Ders', donemYili: 2026,
+  }));
+  await assertFails(addDoc(collection(db, 'bireyselEtkinlikler'), {
+    uid: 'teacher-a', ogrenciId: 'student-b', sinifId: 'class-b',
+    tur: 'Özel Ders', donemYili: 2026,
+  }));
+});
+
+test('Bireysel ders oturumu yalnızca öğretmenin kendi etkinliğine bağlanabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(addDoc(collection(db, 'bireyselDersOturumlari'), {
+    uid: 'teacher-a', bireyselEtkinlikId: 'event-a',
+    ogrenciId: 'student-a', sinifId: 'class-a', donemYili: 2026,
+  }));
+  await assertFails(addDoc(collection(db, 'bireyselDersOturumlari'), {
+    uid: 'teacher-a', bireyselEtkinlikId: 'event-b',
+    ogrenciId: 'student-a', sinifId: 'class-a', donemYili: 2026,
+  }));
 });
