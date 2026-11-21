@@ -13,6 +13,7 @@ import DersNotuEkrani from './screens/DersNotuEkrani';
 import OdevEkrani from './screens/OdevEkrani';
 import RaporEkrani from './screens/RaporEkrani';
 import SifreDegistirEkrani from './screens/SifreDegistirEkrani';
+import OgrenciHesaplariEkrani from './screens/OgrenciHesaplariEkrani';
 const Stack=createNativeStackNavigator();
 const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',headerTitleStyle:{fontWeight:'bold'}};
 export default function App(){return <NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
