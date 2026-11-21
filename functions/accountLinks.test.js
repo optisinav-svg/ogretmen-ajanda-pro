@@ -57,6 +57,11 @@ test('Öğrenci eşleştirmesi doğrulanmış e-posta ve kayıtlı ad-soyadın i
   assert.throws(() => _test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', false), /doğrulanmalıdır/i);
 });
 
+test('Ad-soyad karşılaştırması Türkçe harfleri ve biçim farklarını güvenli biçimde normalize eder', () => {
+  const record = { adSoyad: 'Çağrı Öztürk', eposta: 'ogrenci@example.com' };
+  assert.equal(_test.assertStudentIdentityMatches(record, ' Ogrenci@Example.com ', 'ÇAĞRI   ÖZTÜRK', true), true);
+});
+
 test('Eski kayıtta e-posta yoksa otomatik öğrenci hesabı eşleştirmesi yapılmaz', () => {
   assert.throws(
     () => _test.assertStudentIdentityMatches({ adSoyad: 'Çağrı Öztürk' }, 'ogrenci@example.com', 'Çağrı Öztürk', true),
