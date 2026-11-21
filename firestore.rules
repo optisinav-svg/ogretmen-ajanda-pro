@@ -108,6 +108,13 @@ service cloud.firestore {
         && ownsDocument('kitapKutuphanesi', data.kitapId);
     }
 
+    function individualEventBelongsToTeacher(data) {
+      return data.bireyselEtkinlikId is string
+        && ownsDocument('bireyselEtkinlikler', data.bireyselEtkinlikId)
+        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.ogrenciId == data.ogrenciId
+        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.sinifId == data.sinifId;
+    }
+
     function assignedBookBelongsToStudent(data) {
       return data.kitapId is string
         && ownsDocumentAfter('kitaplar', data.kitapId)
@@ -268,14 +275,14 @@ service cloud.firestore {
     // Takvimdeki bireysel ders / etüt / soru çözümü kayıtları öğretmen sahibine aittir.
     match /bireyselEtkinlikler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord();
+      allow create: if createsOwnRecord() && studentBelongsToClass(request.resource.data);
       allow update: if ownsRecord() && keepsOwner();
       allow delete: if ownsRecord();
     }
 
     match /bireyselDersOturumlari/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord();
+      allow create: if createsOwnRecord() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
       allow update: if ownsRecord() && keepsOwner();
       allow delete: if ownsRecord();
     }
