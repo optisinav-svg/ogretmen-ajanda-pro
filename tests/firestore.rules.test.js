@@ -18,6 +18,7 @@ const {
   writeBatch,
 } = require('firebase/firestore');
 
+// These tests run only against the local Firestore Emulator.
 const PROJECT_ID = 'demo-ogretmen-ajanda-rules';
 let testEnv;
 
