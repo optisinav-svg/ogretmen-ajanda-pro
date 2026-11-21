@@ -111,6 +111,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
           <View style={s.card}>
             <Text style={s.label}>Hesap</Text>
             <Text style={s.account}>{auth.currentUser?.email || eposta}</Text>
+            <TouchableOpacity style={s.link} onPress={async () => { try { await sendEmailVerification(auth.currentUser); Alert.alert("E-posta gönderildi", "Doğrulama bağlantısını e-posta kutunuzdan açın."); } catch (e) { Alert.alert("Gönderilemedi", e?.message || "Doğrulama e-postası gönderilemedi."); } }}><Text style={s.linkText}>Doğrulama e-postasını yeniden gönder</Text></TouchableOpacity>
             <Text style={s.label}>Öğretmen Eşleştirme Kodu</Text>
             <TextInput style={s.input} value={kod} onChangeText={setKod} placeholder="16 karakterli kod" autoCapitalize="characters" autoCorrect={false} maxLength={16}/>
             <TouchableOpacity style={s.button} onPress={kodGonder} disabled={yukleniyor}>
