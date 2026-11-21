@@ -3,6 +3,10 @@ const RETENTION_COLLECTIONS = Object.freeze([
   // are intentionally excluded because they are not owned by one school year.
   'bireyselDersOturumlari',
   'ogrenciOdevBildirimleri',
+  'ogrenciEslesmeTalepleri',
+  'ogrenciEslesmeKodlari',
+  'ogretmenOgrenciBaglantilari',
+  'ogrenciKayitEslesmeleri',
   'bireyselEtkinlikler',
   'dersNotlari',
   'yoklamalar',
