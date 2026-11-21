@@ -20,7 +20,33 @@ export default function OkulSinifEkrani({ navigation,route }) {
 
   useEffect(() => { okullariYukle(); }, [donemYili]);
   const okullariYukle = async () => { setYukleniyor(true); try { const q=query(collection(db,'okullar'),where('uid','==',uid)); const s=await getDocs(q); setOkullar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.arsivlendi)); } catch(e){Alert.alert('Hata','Okullar yüklenemedi.');} setYukleniyor(false); };
-  const okulEkle = async () => { if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul kayıtları değiştirilemez.'); if(!yeniOkul.trim()) return Alert.alert('Hata','Okul adı girin.'); try { if(duzenlenenOkul) await updateDoc(doc(db,'okullar',duzenlenenOkul.id),{ad:yeniOkul.trim()}); else await addDoc(collection(db,'okullar'),{ad:yeniOkul.trim(),uid,donemYili,olusturulma:new Date().toISOString()}); kapatOkulModal(); okullariYukle(); } catch(e){Alert.alert('Hata','Okul kaydedilemedi.');} };
+  const okulEkle = async () => {
+    if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul kayıtları değiştirilemez.');
+    if(!yeniOkul.trim())return Alert.alert('Hata','Okul adı girin.');
+    try{
+      const ad=yeniOkul.trim();
+      if(duzenlenenOkul){
+        const [sinifSnap,ogrenciSnap]=await Promise.all([
+          getDocs(query(collection(db,'siniflar'),where('okulId','==',duzenlenenOkul.id),where('uid','==',uid))),
+          getDocs(query(collection(db,'ogrenciler'),where('okulId','==',duzenlenenOkul.id),where('uid','==',uid)))
+        ]);
+        const bagliKayitlar=[
+          ...sinifSnap.docs.filter(x=>donemUygun(x.data(),donemYili)),
+          ...ogrenciSnap.docs.filter(x=>donemUygun(x.data(),donemYili))
+        ];
+        for(let i=0;i<bagliKayitlar.length;i+=450){
+          const batch=writeBatch(db);
+          bagliKayitlar.slice(i,i+450).forEach(x=>batch.update(x.ref,{okulAd:ad}));
+          await batch.commit();
+        }
+        await updateDoc(doc(db,'okullar',duzenlenenOkul.id),{ad});
+      }else{
+        await addDoc(collection(db,'okullar'),{ad,uid,donemYili,olusturulma:new Date().toISOString()});
+      }
+      kapatOkulModal();
+      await okullariYukle();
+    }catch(e){Alert.alert('Hata','Okul kaydedilemedi. Bağlı sınıf ve öğrenci kayıtları tekrar denenerek eşitlenebilir. '+(e?.message||''));}
+  };
   const kapatOkulModal=()=>{setYeniOkul('');setDuzenlenenOkul(null);setModalAcik(false)};
   const okulDuzenle=(o)=>{setDuzenlenenOkul(o);setYeniOkul(o.ad);setModalAcik(true)};
   const kayitsizSinifGetir=async(okul)=>{
