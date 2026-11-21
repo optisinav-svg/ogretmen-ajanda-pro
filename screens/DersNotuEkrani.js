@@ -11,7 +11,7 @@ export default function DersNotuEkrani({route}){
  const [siniflar,setSiniflar]=useState([]),[secili,setSecili]=useState(ders?{id:ders.sinifId,ad:ders.sinifAd,okulAd:ders.okulAd,okulId:ders.okulId,kademe:ders.kademe,ders:ders.ders}:null),[notlar,setNotlar]=useState([]),[modal,setModal]=useState(!!ders),[yeni,setYeni]=useState(''),[csvModu,setCsvModu]=useState(false),[arama,setArama]=useState(''),[seciliKazanimlar,setSeciliKazanimlar]=useState([]),[sinifBilgi,setSinifBilgi]=useState(null),[duzenlenenNot,setDuzenlenenNot]=useState(null);
  const uid=auth.currentUser?.uid;
  useEffect(()=>{getDocs(query(collection(db,'siniflar'),where('uid','==',uid))).then(x=>setSiniflar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)))).catch(()=>{})},[uid,donemYili]);
- const yukle=async s=>{setSecili(s);setSinifBilgi(s);try{const x=await getDocs(query(collection(db,'dersNotlari'),where('sinifId','==',s.id),where('uid','==',uid)));setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort((a,b)=>new Date(b.olusturulma||b.tarih)-new Date(a.olusturulma||a.tarih)))}catch(e){Alert.alert('Hata','Ders notları yüklenemedi.')}};
+ const yukle=async s=>{setSecili(s);setSinifBilgi(s);try{const x=await getDocs(query(collection(db,'dersNotlari'),where('sinifId','==',s.id),where('uid','==',uid)));setNotlar(x.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)).sort((a,b)=>String(b.tarih||'').localeCompare(String(a.tarih||''))||new Date(b.olusturulma||b.tarih)-new Date(a.olusturulma||a.tarih)))}catch(e){Alert.alert('Hata','Ders notları yüklenemedi.')}};
  useEffect(()=>{if(secili)yukle(secili)},[]);
  const sonKonu=notlar[0]||null;
  const aktifSinifBilgi=sinifBilgi||secili||{};
