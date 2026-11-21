@@ -63,10 +63,22 @@ before(async () => {
       ad: '9-A',
       donemYili: 2026,
     });
+    await setDoc(doc(db, 'siniflar', 'class-b'), {
+      uid: 'teacher-b',
+      okulId: 'school-b',
+      ad: '9-B',
+      donemYili: 2026,
+    });
     await setDoc(doc(db, 'ogrenciler', 'student-a'), {
       uid: 'teacher-a',
       sinifId: 'class-a',
       adSoyad: 'Test Öğrencisi',
+      donemYili: 2026,
+    });
+    await setDoc(doc(db, 'ogrenciler', 'student-b'), {
+      uid: 'teacher-b',
+      sinifId: 'class-b',
+      adSoyad: 'Başka Öğretmenin Öğrencisi',
       donemYili: 2026,
     });
     await setDoc(doc(db, 'dersNotlari', 'note-a'), {
@@ -162,7 +174,7 @@ test('Yoklama yalnızca aynı öğretmenin sınıfındaki öğrenci için yazıl
   await assertFails(addDoc(collection(db, 'yoklamalar'), {
     uid: 'teacher-a',
     sinifId: 'class-a',
-    ogrenciId: 'student-from-another-teacher',
+    ogrenciId: 'student-b',
     durum: 'geldi',
     donemYili: 2026,
   }));
@@ -173,7 +185,7 @@ test('Kitap yalnızca öğretmenin kendi sınıfındaki öğrenciye atanabilir',
   await assertFails(addDoc(collection(db, 'kitaplar'), {
     uid: 'teacher-a',
     sinifId: 'class-b',
-    ogrenciId: 'student-a',
+    ogrenciId: 'student-b',
     ad: 'Yetkisiz kitap',
     donemYili: 2026,
   }));
