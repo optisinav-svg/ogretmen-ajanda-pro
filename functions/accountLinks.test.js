@@ -47,3 +47,23 @@ test('Bilinmeyen paylaşım izni reddedilir', () => {
 test('Boolean olmayan paylaşım izni reddedilir', () => {
   assert.throws(() => _test.normalizePermissions({ odevler: 'true' }), { code: 'invalid-argument' });
 });
+
+
+test('Aynı öğretmen öğrenci kaydı ikinci bir öğrenci hesabına bağlanamaz', () => {
+  assert.throws(
+    () => _test.assertStudentRecordAvailable({ durum: 'active', ogrenciUid: 'student-a' }, 'student-b'),
+    { code: 'already-exists' },
+  );
+});
+
+test('Aynı öğrenci hesabı için mevcut bağlantı yeniden etkinleştirilebilir', () => {
+  assert.doesNotThrow(
+    () => _test.assertStudentRecordAvailable({ durum: 'active', ogrenciUid: 'student-a' }, 'student-a'),
+  );
+});
+
+test('İptal edilmiş öğrenci kaydı başka hesapla yeniden eşleştirilebilir', () => {
+  assert.doesNotThrow(
+    () => _test.assertStudentRecordAvailable({ durum: 'revoked', ogrenciUid: 'student-a' }, 'student-b'),
+  );
+});
