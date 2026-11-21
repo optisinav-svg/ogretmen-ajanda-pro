@@ -88,6 +88,9 @@ the calendar date.
 This is a source-code change only. The selector behavior still requires
 verification in the Android build after APK creation.
 
+
+The non-destructive recovery procedure is documented in `functions/RECOVERY_RUNBOOK.md`. It requires a verified data export and a reviewed candidate list; it does not overwrite current documents.
+
 ## Current safety status
 
 - The scheduled cleanup allowlist excludes shared libraries and user profiles.
