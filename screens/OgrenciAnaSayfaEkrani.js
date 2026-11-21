@@ -10,6 +10,7 @@ import { signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { donemUygun, donemYiliBugun } from '../utils/donem';
+import { donemHatirlatmaGosterilebilir, donemHatirlatmaKaydet } from '../utils/donemHatirlatici';
 
 const PERMISSIONS = [
   ['dersProgrami', 'Ders programı'],
@@ -108,6 +109,28 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         return result;
       }));
       setGruplar(dataGroups);
+
+      const bugun = new Date();
+      const mevcutDonemYili = donemYiliBugun();
+      const oncekiDonemBaglantisiVar = links.some(link =>
+        link.durum === 'active' && Number(link.donemYili) === mevcutDonemYili - 1
+      );
+      const yeniDonemBaglantisiVar = links.some(link =>
+        link.durum === 'active' && Number(link.donemYili) === mevcutDonemYili
+      );
+      if (bugun.getMonth() === 5 && bugun.getDate() <= 30
+        && oncekiDonemBaglantisiVar && !yeniDonemBaglantisiVar
+        && await donemHatirlatmaGosterilebilir(uid, 'ogrenci', mevcutDonemYili)) {
+        await donemHatirlatmaKaydet(uid, 'ogrenci', mevcutDonemYili);
+        Alert.alert(
+          'Yeni eğitim öğretim dönemi başladı',
+          'Yeni döneme ait derslerinizi ve ödevlerinizi görebilmek için öğretmeninizden yeni dönem eşleştirme kodu isteyin. Eski dönem kayıtlarınız görüntülenmeye devam eder.',
+          [
+            { text: 'Daha sonra', style: 'cancel' },
+            { text: 'Kod gir', onPress: () => navigation.navigate('OgrenciKayit', { devamEt: true }) },
+          ],
+        );
+      }
     } catch (e) {
       Alert.alert('Veriler yüklenemedi', e?.message || 'İnternet bağlantınızı kontrol edip tekrar deneyin.');
     } finally {
