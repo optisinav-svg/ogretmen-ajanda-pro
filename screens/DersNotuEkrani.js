@@ -5,7 +5,7 @@ import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun}from'../utils/donem';
 import {listeleKazanimlar} from '../utils/kazanimArama';
-const sinifKodlari=s=>{const k=String(s?.kademe||'');if(k==='TYT'||k==='AYT')return ['21','22'];if(k)return [k];const m=String(s?.ad||'').match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);return m?[m[2]]:[]};
+const sinifKodlari=s=>{const k=String(s?.kademe||'').toLocaleUpperCase('tr-TR');const ad=String(s?.ad||'').toLocaleUpperCase('tr-TR');if(k==='TYT'||k==='AYT'||ad.includes('TYT')||ad.includes('AYT'))return ['21','22'];if(k)return [k];const m=String(s?.ad||'').match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);return m?[m[2]]:[]};
 export default function DersNotuEkrani({route}){
  const ders=route?.params?.ders||null,tarih=route?.params?.oturumTarihi||bugun(),oturumId=route?.params?.oturumId||(ders?oturumIdOlustur(ders.id,tarih):null),donemYili=Number(route?.params?.donemYili||ders?.donemYili||donemYiliBugun());
  const [siniflar,setSiniflar]=useState([]),[secili,setSecili]=useState(ders?{id:ders.sinifId,ad:ders.sinifAd,okulAd:ders.okulAd,okulId:ders.okulId,kademe:ders.kademe,ders:ders.ders}:null),[notlar,setNotlar]=useState([]),[modal,setModal]=useState(!!ders),[yeni,setYeni]=useState(''),[csvModu,setCsvModu]=useState(false),[arama,setArama]=useState(''),[seciliKazanimlar,setSeciliKazanimlar]=useState([]),[sinifBilgi,setSinifBilgi]=useState(null),[duzenlenenNot,setDuzenlenenNot]=useState(null);
