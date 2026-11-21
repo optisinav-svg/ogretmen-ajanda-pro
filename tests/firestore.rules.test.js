@@ -100,6 +100,18 @@ before(async () => {
       not: 'Test konusu',
       donemYili: 2026,
     });
+    await setDoc(doc(db, 'kullanicilar', 'student-2'), { kullaniciAdi: 'Öğrenci 2', rol: 'ogrenci' });
+    await setDoc(doc(db, 'kullanicilar', 'student-3'), { kullaniciAdi: 'Öğrenci 3', rol: 'ogrenci' });
+    await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-2__class-a'), {
+      ogretmenUid: 'teacher-a', ogrenciUid: 'student-2', ogrenciKayitId: 'student-a',
+      sinifId: 'class-a', durum: 'active',
+      izinler: { dersProgrami: true, dersNotlari: false, konular: true, yoklama: true, odevler: true, kitaplar: true },
+    });
+    await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-3__class-a'), {
+      ogretmenUid: 'teacher-a', ogrenciUid: 'student-3', ogrenciKayitId: 'student-a',
+      sinifId: 'class-a', durum: 'revoked',
+      izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
+    });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-1__class-a'), {
       ogretmenUid: 'teacher-a',
       ogrenciUid: 'student-1',
@@ -383,4 +395,20 @@ test('İstemci öğretmen-öğrenci bağlantısı oluşturamaz veya izin değiş
   await assertFails(updateDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-1__class-a'), {
     durum: 'revoked',
   }));
+});
+
+
+test('Kapalı paylaşım izni ilgili öğrenci verisini engeller', async () => {
+  const db = testEnv.authenticatedContext('student-2').firestore();
+  await assertFails(getDoc(doc(db, 'dersNotlari', 'note-a')));
+});
+
+test('İptal edilmiş öğretmen bağlantısı öğrenci erişimini anında engeller', async () => {
+  const db = testEnv.authenticatedContext('student-3').firestore();
+  await assertFails(getDoc(doc(db, 'dersNotlari', 'note-a')));
+});
+
+test('Öğrenci eşleştirme indeksi istemciye kapalıdır', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertFails(getDoc(doc(db, 'ogrenciKayitEslesmeleri', 'teacher-a__student-a')));
 });
