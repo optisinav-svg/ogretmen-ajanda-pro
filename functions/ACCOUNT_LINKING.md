@@ -29,6 +29,7 @@ Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapı
 - Kayıt ekranında `Öğretmen / Öğrenci` hesap türü seçimi görünür. Öğretmen seçeneği aktiftir; öğrenci seçeneği kullanıcı talimatı gereği şimdilik kapalıdır.
 - `OgrenciHesaplariEkrani` öğretmene öğrenci kaydı için kod üretme, gelen talepleri onaylama/reddetme, altı izni seçme/değiştirme ve bağlantıyı iptal etme ekranını sağlar.
 - Öğrencinin kayıt, kod gönderme ve kendi verilerini görüntüleme ekranları Grup 5 kapsamında hazırlanacaktır. Bu ekranlar tamamlanmadan öğrenci hesabı açılmayacaktır.
+- `firebaseConfig.js` içindeki `ACCOUNT_LINKING_ENABLED` güvenlik anahtarı şimdilik `false`; öğretmen menüsünde bağlantı ekranı gizlidir. Firestore kuralları ve Functions dağıtımı onaylanıp doğrulandıktan sonra ayrıca açılmalıdır.
 
 ## Sunucu uçları
 
