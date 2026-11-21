@@ -23,6 +23,27 @@ service cloud.firestore {
         );
     }
 
+    function isStudent() {
+      return signedIn()
+        && exists(profilePath(request.auth.uid))
+        && get(profilePath(request.auth.uid)).data.rol == 'ogrenci';
+    }
+
+    function studentLinkPath(teacherUid, classId) {
+      return /databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(teacherUid + '__' + request.auth.uid + '__' + classId);
+    }
+
+    function studentHasPermission(teacherUid, classId, permission) {
+      return isStudent()
+        && exists(studentLinkPath(teacherUid, classId))
+        && get(studentLinkPath(teacherUid, classId)).data.durum == 'active'
+        && get(studentLinkPath(teacherUid, classId)).data.izinler.get(permission, false) == true;
+    }
+
+    function linkedStudentRecordId(teacherUid, classId) {
+      return get(studentLinkPath(teacherUid, classId)).data.ogrenciKayitId;
+    }
+
     function ownsRecord() {
       return isTeacher()
         && resource.data.uid == request.auth.uid;
@@ -65,8 +86,9 @@ service cloud.firestore {
     }
 
     function schoolBelongsToTeacher(data) {
-      return data.okulId is string
-        && ownsDocument('okullar', data.okulId);
+      return !data.keys().hasAny(['okulId'])
+        || data.okulId == ''
+        || (data.okulId is string && ownsDocument('okullar', data.okulId));
     }
 
     function optionalLessonBelongsToTeacher(data) {
@@ -99,10 +121,8 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.auth.uid == userId
-        && (
-          !request.resource.data.keys().hasAny(['rol'])
-          || request.resource.data.rol == 'ogretmen'
-        );
+        && request.resource.data.keys().hasAny(['rol'])
+        && request.resource.data.rol == 'ogretmen';
 
       // Profil rolü oluşturulduktan sonra değiştirilemez.
       allow update: if signedIn()
@@ -133,7 +153,7 @@ service cloud.firestore {
 
     // Sınıf, yalnızca aynı öğretmene ait bir okula bağlanabilir.
     match /siniflar/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || studentHasPermission(resource.data.uid, docId, 'dersProgrami');
       allow create: if createsOwnRecord()
         && schoolBelongsToTeacher(request.resource.data);
       allow update: if ownsRecord()
@@ -144,7 +164,7 @@ service cloud.firestore {
 
     // Ders programı
     match /dersler/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami');
       allow create: if createsOwnRecord()
         && classBelongsToTeacher(request.resource.data);
       allow update: if ownsRecord()
@@ -155,7 +175,7 @@ service cloud.firestore {
 
     // Öğrenci kayıtları (öğretmenin kendi öğrenci listesi)
     match /ogrenciler/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (isStudent() && studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && linkedStudentRecordId(resource.data.uid, resource.data.sinifId) == docId);
       allow create: if createsOwnRecord()
         && classBelongsToTeacher(request.resource.data);
       allow update: if ownsRecord()
@@ -165,7 +185,7 @@ service cloud.firestore {
     }
 
     match /dersNotlari/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersNotlari');
       allow create: if createsOwnRecord()
         && classBelongsToTeacher(request.resource.data)
         && optionalLessonBelongsToTeacher(request.resource.data);
@@ -177,7 +197,7 @@ service cloud.firestore {
     }
 
     match /yoklamalar/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'yoklama') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnRecord()
         && classBelongsToTeacher(request.resource.data)
         && studentBelongsToClass(request.resource.data)
@@ -191,7 +211,7 @@ service cloud.firestore {
     }
 
     match /odevler/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'odevler') && resource.data.hedefOgrenciIds.hasAny([linkedStudentRecordId(resource.data.uid, resource.data.sinifId)]));
       allow create: if createsOwnRecord()
         && classBelongsToTeacher(request.resource.data)
         && optionalLessonBelongsToTeacher(request.resource.data);
@@ -203,7 +223,7 @@ service cloud.firestore {
     }
 
     match /kitaplar/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'kitaplar') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnRecord()
         && studentBelongsToClass(request.resource.data);
       allow update: if ownsRecord()
@@ -213,7 +233,7 @@ service cloud.firestore {
     }
 
     match /konular/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'konular') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnRecord()
         && studentBelongsToClass(request.resource.data)
         && assignedBookBelongsToStudent(request.resource.data);
@@ -247,7 +267,7 @@ service cloud.firestore {
 
     // Takvimdeki bireysel ders / etüt / soru çözümü kayıtları öğretmen sahibine aittir.
     match /bireyselEtkinlikler/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId) && studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami'));
       allow create: if createsOwnRecord();
       allow update: if ownsRecord() && keepsOwner();
       allow delete: if ownsRecord();
