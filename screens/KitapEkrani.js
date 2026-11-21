@@ -48,7 +48,7 @@ export default function KitapEkrani({route,navigation}){
     const ogr=kutuphaneOgrencileri.find(x=>x.id===ogrId);
     if(!ogr)continue;
     const mevcut=await getDocs(query(collection(db,'kitaplar'),where('ogrenciId','==',ogr.id),where('uid','==',uid)));
-    if(mevcut.docs.some(d=>d.data().kitapKutuphanesiId===seciliKitap.id)){
+    if(mevcut.docs.some(d=>{const veri=d.data();return donemUygun(veri,donemYili)&&veri.kitapKutuphanesiId===seciliKitap.id;})){
      atlanan++;
      continue;
     }
