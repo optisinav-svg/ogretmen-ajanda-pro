@@ -62,6 +62,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
       const snap=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid)));
       snap.docs.map(d=>({id:d.id,...d.data()})).filter(o=>donemUygun(o,donemYili)).forEach(o=>ogrenciler.push({ogrenci:o,sinif}));
     }
+    if(ogrenciler.some(({ogrenci:o})=>o.sinifTasiIslemi||o.kayitsizTasiIslemi))throw new Error('Bu sınıfta tamamlanmamış öğrenci taşıma işlemi var. Önce ilgili öğrenci taşımasını tamamlayıp arşivlemeyi yeniden deneyin.');
     for(let i=0;i<ogrenciler.length;i+=400){
       const batch=writeBatch(db);
       ogrenciler.slice(i,i+400).forEach(({ogrenci:o,sinif})=>{
