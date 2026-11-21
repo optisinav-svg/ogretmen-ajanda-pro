@@ -267,14 +267,14 @@ service cloud.firestore {
 
     // Takvimdeki bireysel ders / etüt / soru çözümü kayıtları öğretmen sahibine aittir.
     match /bireyselEtkinlikler/{docId} {
-      allow read: if ownsRecord() || (resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId) && studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami'));
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnRecord();
       allow update: if ownsRecord() && keepsOwner();
       allow delete: if ownsRecord();
     }
 
     match /bireyselDersOturumlari/{docId} {
-      allow read: if ownsRecord();
+      allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnRecord();
       allow update: if ownsRecord() && keepsOwner();
       allow delete: if ownsRecord();
