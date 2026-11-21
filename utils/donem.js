@@ -8,4 +8,6 @@ export const donemTarihAraliginda=(tarih,y)=>!!tarih&&String(tarih).slice(0,10)>
 export const donemKayitTarihi=r=>r?.tarih||r?.baslangicTarih||r?.teslimTarihi||r?.olusturulma;
 export const kayitDonemYili=r=>{if(r?.donemYili!==undefined&&r?.donemYili!==null)return Number(r.donemYili);const v=donemKayitTarihi(r);const d=v?new Date(v):new Date();if(Number.isNaN(d.getTime()))return donemYiliBugun();const y=d.getFullYear();return d>=new Date(y,5,1)?y:y-1};
 export const donemUygun=(r,y)=>kayitDonemYili(r)===Number(y);
+export const donemDuzenlemeyeAcik=(y,bugun=new Date())=>{const tarih=new Date(bugun.getFullYear(),bugun.getMonth(),bugun.getDate());return tarih>=new Date(Number(y),5,1)&&tarih<=new Date(Number(y)+1,5,30,23,59,59)};
+
 export const seciliDonemYili=async()=>{try{const x=await AsyncStorage.getItem(DONEM_KEY);return x?Number(JSON.parse(x).yil):donemYiliBugun()}catch(e){return donemYiliBugun()}};
