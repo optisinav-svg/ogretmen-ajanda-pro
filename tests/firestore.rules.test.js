@@ -136,6 +136,18 @@ before(async () => {
     await setDoc(doc(db, 'bireyselEtkinlikler', 'event-a'), {
       uid: 'teacher-a', ogrenciId: 'student-a', sinifId: 'class-a', tur: 'Özel Ders', donemYili: 2026,
     });
+    await setDoc(doc(db, 'bireyselDersOturumlari', 'event-a_2026-11-20'), {
+      uid: 'teacher-a', bireyselEtkinlikId: 'event-a', ogrenciId: 'student-a',
+      sinifId: 'class-a', donemYili: 2026, tarih: '2026-11-20', konular: ['Test konusu'],
+    });
+    await setDoc(doc(db, 'kitaplar', 'book-a'), {
+      uid: 'teacher-a', sinifId: 'class-a', ogrenciId: 'student-a',
+      ad: 'Coğrafya kitabı', sayfaSayisi: 200, donemYili: 2026,
+    });
+    await setDoc(doc(db, 'konular', 'topic-a'), {
+      uid: 'teacher-a', sinifId: 'class-a', ogrenciId: 'student-a',
+      kitapId: 'book-a', ad: 'Harita bilgisi', baslangicSayfa: 1, bitisSayfa: 20, donemYili: 2026,
+    });
     await setDoc(doc(db, 'bireyselEtkinlikler', 'event-b'), {
       uid: 'teacher-b', ogrenciId: 'student-b', sinifId: 'class-b', tur: 'Etüt', donemYili: 2026,
     });
@@ -487,4 +499,61 @@ test('Öğretmen öğrenci ödev bildirimini okuyabilir ancak istemciden değiş
   await assertFails(updateDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a'), {
     durum: 'incelendi',
   }));
+});
+
+
+test('Öğrenci paneli kendi bağlantı özetini ve izinli ders programını sorgulayabilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDocs(query(
+    collection(db, 'ogretmenOgrenciBaglantilari'),
+    where('ogrenciUid', '==', 'student-1'),
+  )));
+  await assertSucceeds(getDoc(doc(db, 'siniflar', 'class-a')));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'dersler'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'bireyselEtkinlikler'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-a'),
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'bireyselDersOturumlari'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-a'),
+  )));
+});
+
+test('Öğrenci paneli kendi kitap ve konu kayıtlarını listeleyebilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDocs(query(
+    collection(db, 'kitaplar'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-a'),
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'konular'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-a'),
+  )));
+});
+
+test('Öğrenci paneli yalnızca kendi ödevlerini ve bildirimlerini sorgulayabilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDocs(query(
+    collection(db, 'odevler'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('hedefOgrenciIds', 'array-contains', 'student-a'),
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'ogrenciOdevBildirimleri'),
+    where('ogrenciUid', '==', 'student-1'),
+  )));
 });
