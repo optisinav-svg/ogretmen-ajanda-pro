@@ -119,6 +119,7 @@ export default function OgrenciEkrani({route,navigation}){
    if(!ogrenciSnap.exists())throw new Error('Öğrenci kaydı bulunamadı.');
    const guncel=ogrenciSnap.data();
    if(guncel.uid!==uid||guncel.sinifId!==sinif.id)throw new Error('Öğrencinin sınıf bilgisi değişmiş. Listeyi yenileyip tekrar deneyin.');
+   if(guncel.kayitsizTasiIslemi)throw new Error('Öğrenci için kayıtsızlara taşıma işlemi sürüyor. Önce aynı işlemi tamamlayın.');
    let islem=guncel.sinifTasiIslemi;
    if(islem){
     if(islem.hedefSinifId!==yeniSinif.id||islem.kaynakSinifId!==sinif.id||Number(islem.donemYili)!==donemYili)
