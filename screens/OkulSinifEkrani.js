@@ -50,9 +50,10 @@ export default function OkulSinifEkrani({ navigation,route }) {
   const dersProgramlariniKaldir=async(sinifKayitlari)=>{
     for(const sinif of sinifKayitlari){
       const snap=await getDocs(query(collection(db,'dersler'),where('sinifId','==',sinif.id),where('uid','==',uid)));
-      for(let i=0;i<snap.docs.length;i+=400){
+      const donemProgramlari=snap.docs.filter(x=>donemUygun(x.data(),donemYili));
+      for(let i=0;i<donemProgramlari.length;i+=400){
         const batch=writeBatch(db);
-        snap.docs.slice(i,i+400).forEach(x=>batch.delete(x.ref));
+        donemProgramlari.slice(i,i+400).forEach(x=>batch.delete(x.ref));
         await batch.commit();
       }
     }
@@ -61,7 +62,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
     try{
       await updateDoc(doc(db,'okullar',okul.id),{arsivDurumu:'isleniyor',arsivBaslangic:new Date().toISOString()});
       const snap=await getDocs(query(collection(db,'siniflar'),where('okulId','==',okul.id),where('uid','==',uid)));
-      const okulSiniflari=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>!x.ozelTur);
+      const okulSiniflari=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.ozelTur&&!x.arsivlendi);
       const hedef=await kayitsizSinifGetir(okul);
       await ogrencileriKorumaliTasi(okulSiniflari,hedef);
       await dersProgramlariniKaldir(okulSiniflari);
