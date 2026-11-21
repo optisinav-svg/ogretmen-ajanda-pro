@@ -28,5 +28,7 @@ jobs:
         run: firebase emulators:exec --only firestore --project demo-ogretmen-ajanda-rules "node --test tests/firestore.rules.test.js"
       - name: Install Cloud Functions dependencies
         run: npm install --prefix functions
+      - name: Check Cloud Functions JavaScript syntax
+        run: node --check functions/index.js && node --check functions/accountLinks.js
       - name: Run Cloud Functions policy tests
         run: npm test --prefix functions
