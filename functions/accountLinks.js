@@ -146,6 +146,17 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
     const [codeSnap, profileSnap] = await Promise.all([tx.get(codeRef), tx.get(profileRef)]);
     if (!codeSnap.exists) throw new HttpsError('not-found', 'Eşleştirme kodu geçersiz veya kullanılmış.');
     const codeData = codeSnap.data();
+    const [teacherProfileSnap, classSnap, studentSnap] = await Promise.all([
+      tx.get(db.collection('kullanicilar').doc(codeData.ogretmenUid)),
+      tx.get(db.collection('siniflar').doc(codeData.sinifId)),
+      tx.get(db.collection('ogrenciler').doc(codeData.ogrenciKayitId)),
+    ]);
+    if (!teacherProfileSnap.exists || (teacherProfileSnap.get('rol') && teacherProfileSnap.get('rol') !== 'ogretmen')
+      || !classSnap.exists || classSnap.get('uid') !== codeData.ogretmenUid
+      || !studentSnap.exists || studentSnap.get('uid') !== codeData.ogretmenUid
+      || studentSnap.get('sinifId') !== codeData.sinifId) {
+      throw new HttpsError('failed-precondition', 'Öğretmen, sınıf veya öğrenci kaydı artık geçerli değil. Yeni kod isteyin.');
+    }
     if (codeData.kullanildi || codeData.sonaErme.toMillis() <= Date.now()) {
       throw new HttpsError('deadline-exceeded', 'Eşleştirme kodunun süresi dolmuş veya kod daha önce kullanılmış.');
     }
@@ -173,6 +184,9 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       ogretmenUid: codeData.ogretmenUid,
       ogrenciKayitId: codeData.ogrenciKayitId,
       sinifId: codeData.sinifId,
+      sinifAd: classSnap.get('ad') || '',
+      donemYili: Number.isInteger(studentSnap.get('donemYili')) ? studentSnap.get('donemYili') : null,
+      ogretmenHesapAdi: teacherProfileSnap.get('kullaniciAdi') || '',
       ogrenciHesapAdi: displayName,
       ogrenciEposta: request.auth.token.email || (profileSnap.exists ? profileSnap.get('eposta') : '') || '',
       durum: 'bekliyor',
