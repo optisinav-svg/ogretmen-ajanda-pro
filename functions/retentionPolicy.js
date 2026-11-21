@@ -2,6 +2,7 @@ const RETENTION_COLLECTIONS = Object.freeze([
   // Period-owned records. Shared book-library definitions and user profiles
   // are intentionally excluded because they are not owned by one school year.
   'bireyselDersOturumlari',
+  'ogrenciOdevBildirimleri',
   'bireyselEtkinlikler',
   'dersNotlari',
   'yoklamalar',
