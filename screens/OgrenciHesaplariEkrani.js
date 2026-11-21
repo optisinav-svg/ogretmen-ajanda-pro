@@ -25,6 +25,8 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
   const [donemOgrencileri, setDonemOgrencileri] = useState([]);
   const [talepler, setTalepler] = useState([]);
   const [baglantilar, setBaglantilar] = useState([]);
+  const [odevBildirimleri, setOdevBildirimleri] = useState([]);
+  const [odevler, setOdevler] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [islem, setIslem] = useState(false);
   const [izinModal, setIzinModal] = useState(false);
@@ -43,16 +45,20 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
         navigation.goBack();
         return;
       }
-      const [os, ts, bs] = await Promise.all([
+      const [os, ts, bs, ns, hs] = await Promise.all([
         getDocs(query(collection(db, 'ogrenciler'), where('uid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciEslesmeTalepleri'), where('ogretmenUid', '==', uid))),
         getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('ogretmenUid', '==', uid))),
+        getDocs(query(collection(db, 'ogrenciOdevBildirimleri'), where('ogretmenUid', '==', uid))),
+        getDocs(query(collection(db, 'odevler'), where('uid', '==', uid))),
       ]);
       const all = os.docs.map(x => ({ id: x.id, ...x.data() }));
       setOgrenciler(all);
       setDonemOgrencileri(all.filter(x => donemUygun(x, donemYili) && !x.kayitsizMi));
       setTalepler(ts.docs.map(x => ({ id: x.id, ...x.data() })).filter(x => x.durum === 'bekliyor'));
       setBaglantilar(bs.docs.map(x => ({ id: x.id, ...x.data() })).filter(x => x.durum === 'active'));
+      setOdevBildirimleri(ns.docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => (b.bildirimTarihi?.toMillis?.() || 0) - (a.bildirimTarihi?.toMillis?.() || 0)));
+      setOdevler(hs.docs.map(x => ({ id: x.id, ...x.data() })));
     } catch (e) {
       Alert.alert('Hata', 'Öğrenci hesap bilgileri yüklenemedi. ' + (e?.message || ''));
     } finally {
@@ -227,6 +233,23 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
             );
           })}
           {!baglantilar.length && <Text style={s.empty}>Henüz onaylanmış öğrenci bağlantısı yok.</Text>}
+        </View>
+
+        <View style={s.section}>
+          <Text style={s.heading}>Öğrenci ödev bildirimleri ({odevBildirimleri.length})</Text>
+          {odevBildirimleri.map(b => {
+            const o = ogrenciBul(b.ogrenciKayitId);
+            const homework = odevler.find(x => x.id === b.odevId);
+            const date = b.bildirimTarihi?.toDate?.();
+            return (
+              <View key={b.id} style={s.card}>
+                <Text style={s.name}>{o?.adSoyad || 'Öğrenci'} · {homework?.aciklama || 'Ödev kaydı bulunamadı'}</Text>
+                <Text style={s.sub}>Öğrenci bu ödevi tamamlandı olarak bildirdi{date ? ' · ' + date.toLocaleString('tr-TR') : ''}.</Text>
+                <Text style={s.sub}>Bu bildirim öğretmen değerlendirmesini değiştirmez; ödev durumu sizin kontrolünüzdedir.</Text>
+              </View>
+            );
+          })}
+          {!odevBildirimleri.length && <Text style={s.empty}>Henüz öğrenci tarafından gönderilmiş ödev bildirimi yok.</Text>}
         </View>
 
         <TouchableOpacity style={s.refresh} disabled={islem} onPress={yukle}>
