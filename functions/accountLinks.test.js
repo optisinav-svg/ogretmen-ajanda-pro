@@ -1,0 +1,49 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { initializeApp, getApps } = require('firebase-admin/app');
+if (!getApps().length) initializeApp({ projectId: 'demo-ogretmen-ajanda-functions' });
+const { _test } = require('./accountLinks');
+
+test('Eşleştirme kodu kriptografik rastgele 16 karakter hex üretir', () => {
+  const code = _test.createPairingCode();
+  assert.match(code, /^[A-F0-9]{16}$/);
+});
+
+test('Kod özeti ham kodu içermez ve sabit uzunluktadır', () => {
+  const code = _test.createPairingCode();
+  const digest = _test.sha256(code);
+  assert.equal(digest.length, 64);
+  assert.notEqual(digest, code);
+});
+
+test('Bağlantı kimliği öğretmen, öğrenci ve sınıfa göre ayrıdır', () => {
+  const id = _test.createLinkId('teacher-a', 'student-a', 'class-a');
+  assert.equal(id, 'teacher-a__student-a__class-a');
+  assert.notEqual(id, _test.createLinkId('teacher-a', 'student-b', 'class-a'));
+  assert.notEqual(id, _test.createLinkId('teacher-b', 'student-a', 'class-a'));
+});
+
+test('Eşleştirme kodu süresi tam 12 saattir', () => {
+  assert.equal(_test.CODE_TTL_MS, 12 * 60 * 60 * 1000);
+});
+
+test('Paylaşım izinleri yalnızca bilinen altı anahtarı kabul eder', () => {
+  const normalized = _test.normalizePermissions({
+    dersProgrami: true,
+    dersNotlari: false,
+    konular: true,
+    yoklama: true,
+    odevler: false,
+    kitaplar: true,
+  });
+  assert.deepEqual(Object.keys(normalized).sort(), [..._test.PERMISSION_KEYS].sort());
+  assert.equal(normalized.dersNotlari, false);
+});
+
+test('Bilinmeyen paylaşım izni reddedilir', () => {
+  assert.throws(() => _test.normalizePermissions({ tumVeriler: true }), { code: 'invalid-argument' });
+});
+
+test('Boolean olmayan paylaşım izni reddedilir', () => {
+  assert.throws(() => _test.normalizePermissions({ odevler: 'true' }), { code: 'invalid-argument' });
+});
