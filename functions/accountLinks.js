@@ -26,6 +26,16 @@ function createLinkId(teacherUid, studentUid, classId) {
   return [teacherUid, studentUid, classId].join('__');
 }
 
+function createRecordLinkIndexId(teacherUid, studentRecordId) {
+  return [teacherUid, studentRecordId].join('__');
+}
+
+function assertStudentRecordAvailable(existing, studentUid) {
+  if (existing?.durum === 'active' && existing.ogrenciUid !== studentUid) {
+    throw new HttpsError('already-exists', 'Bu öğrenci kaydı başka bir öğrenci hesabına bağlı. Aynı öğrenci kaydı iki hesaba açılamaz.');
+  }
+}
+
 function normalizePermissions(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new HttpsError('invalid-argument', 'Paylaşım izinleri belirtilmelidir.');
@@ -197,7 +207,9 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
     }
     const linkId = createLinkId(teacherUid, data.ogrenciUid, data.sinifId);
     const linkRef = db.collection('ogretmenOgrenciBaglantilari').doc(linkId);
-    const linkSnap = await tx.get(linkRef);
+    const recordIndexRef = db.collection('ogrenciKayitEslesmeleri').doc(createRecordLinkIndexId(teacherUid, data.ogrenciKayitId));
+    const [linkSnap, recordIndexSnap] = await Promise.all([tx.get(linkRef), tx.get(recordIndexRef)]);
+    assertStudentRecordAvailable(recordIndexSnap.exists ? recordIndexSnap.data() : null, data.ogrenciUid);
     if (linkSnap.exists && linkSnap.get('durum') === 'active') {
       throw new HttpsError('already-exists', 'Bu öğrenciyle etkin bağlantı zaten bulunuyor.');
     }
@@ -210,6 +222,15 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       durum: 'active',
       olusturulma: FieldValue.serverTimestamp(),
       iptalTarihi: null,
+    });
+    tx.set(recordIndexRef, {
+      ogretmenUid: teacherUid,
+      ogrenciKayitId: data.ogrenciKayitId,
+      ogrenciUid: data.ogrenciUid,
+      sinifId: data.sinifId,
+      baglantiId: linkId,
+      durum: 'active',
+      guncellenme: FieldValue.serverTimestamp(),
     });
     tx.update(requestRef, {
       durum: 'onaylandi',
@@ -257,7 +278,12 @@ exports.ogrenciBaglantisiniIptalEt = onCall({ region: REGION }, async (request) 
       throw new HttpsError('not-found', 'Öğrenci bağlantısı bulunamadı.');
     }
     if (snap.get('durum') === 'revoked') return;
+    const indexRef = db.collection('ogrenciKayitEslesmeleri').doc(createRecordLinkIndexId(teacherUid, snap.get('ogrenciKayitId')));
+    const indexSnap = await tx.get(indexRef);
     tx.update(ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
+    if (indexSnap.exists && indexSnap.get('baglantiId') === linkId) {
+      tx.update(indexRef, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
+    }
   });
   return { durum: 'revoked' };
 });
@@ -321,6 +347,8 @@ module.exports._test = {
   sha256,
   createPairingCode,
   createLinkId,
+  createRecordLinkIndexId,
+  assertStudentRecordAvailable,
   normalizePermissions,
   CODE_TTL_MS,
   PERMISSION_KEYS,
