@@ -339,13 +339,19 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
       || homeworkSnap.get('sinifId') !== link.sinifId) {
       throw new HttpsError('not-found', 'Paylaşılan ödev bulunamadı.');
     }
+    const period = homeworkSnap.get('donemYili');
+    if (!Number.isInteger(period)) {
+      throw new HttpsError('failed-precondition', 'Ödevin akademik dönem bilgisi doğrulanamadı.');
+    }
     const targeted = homeworkSnap.get('hedefOgrenciIds') || [];
     if (!targeted.includes(link.ogrenciKayitId)) {
       throw new HttpsError('permission-denied', 'Bu ödev bu öğrenciye verilmemiş.');
     }
     tx.set(notificationRef, {
+      uid: link.ogretmenUid,
       ogrenciUid: studentUid,
       ogretmenUid: link.ogretmenUid,
+      donemYili: period,
       ogrenciKayitId: link.ogrenciKayitId,
       baglantiId,
       odevId,
