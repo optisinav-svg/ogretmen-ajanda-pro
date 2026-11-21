@@ -361,7 +361,7 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const link = linkSnap.data();
     const homeworkRef = db.collection('odevler').doc(odevId);
     const studentRef = db.collection('ogrenciler').doc(link.ogrenciKayitId);
-    const [homeworkSnap, studentSnap] = await Promise.all([tx.get(homeworkRef), tx.get(studentRef)]);
+    const [homeworkSnap, studentSnap, notificationSnap] = await Promise.all([tx.get(homeworkRef), tx.get(studentRef), tx.get(notificationRef)]);
     if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid) {
       throw new HttpsError('permission-denied', 'Öğrenci kaydı artık etkin değil.');
     }
@@ -380,7 +380,8 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     if (!targeted.includes(link.ogrenciKayitId)) {
       throw new HttpsError('permission-denied', 'Bu ödev bu öğrenciye verilmemiş.');
     }
-    tx.set(notificationRef, {
+    if (notificationSnap.exists) return;
+    tx.create(notificationRef, {
       uid: link.ogretmenUid,
       ogrenciUid: studentUid,
       ogretmenUid: link.ogretmenUid,
