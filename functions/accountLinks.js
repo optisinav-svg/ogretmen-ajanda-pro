@@ -50,6 +50,23 @@ function normalizeIdentityName(value) {
     : '';
 }
 
+function istanbulDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function isAcademicPeriodEditable(period, date = new Date()) {
+  if (!Number.isInteger(period)) return false;
+  const today = istanbulDateString(date);
+  return today >= `${period}-06-01` && today <= `${period + 1}-06-30`;
+}
+
 function assertStudentIdentityMatches(student, email, name, emailVerified) {
   const registeredEmail = normalizeIdentityEmail(student?.eposta || student?.email);
   const accountEmail = normalizeIdentityEmail(email);
@@ -410,6 +427,9 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     if (!Number.isInteger(period)) {
       throw new HttpsError('failed-precondition', 'Ödevin akademik dönem bilgisi doğrulanamadı.');
     }
+    if (!isAcademicPeriodEditable(period)) {
+      throw new HttpsError('failed-precondition', 'Bu eğitim öğretim dönemi sona erdi. Eski dönem ödevleri artık yalnızca görüntülenebilir.');
+    }
     if (Number.isInteger(link.donemYili) && period !== link.donemYili) {
       throw new HttpsError('permission-denied', 'Bu ödev, öğrenci bağlantısının akademik dönemine ait değil.');
     }
@@ -448,6 +468,8 @@ module.exports._test = {
   normalizeIdentityEmail,
   normalizeIdentityName,
   assertStudentIdentityMatches,
+  istanbulDateString,
+  isAcademicPeriodEditable,
   normalizePermissions,
   CODE_TTL_MS,
   PERMISSION_KEYS,
