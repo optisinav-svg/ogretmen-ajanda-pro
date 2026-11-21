@@ -528,6 +528,21 @@ test('Öğrenci paneli kendi bağlantı özetini ve izinli ders programını sor
   )));
 });
 
+test('Öğrenci paneli kendi ders notlarını ve yoklamalarını sınıf/öğrenci filtresiyle listeleyebilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDocs(query(
+    collection(db, 'dersNotlari'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(db, 'yoklamalar'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-a'),
+  )));
+});
+
 test('Öğrenci paneli kendi kitap ve konu kayıtlarını listeleyebilir', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDocs(query(
