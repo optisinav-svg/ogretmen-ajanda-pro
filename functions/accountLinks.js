@@ -219,6 +219,8 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       ogretmenUid: teacherUid,
       ogrenciUid: data.ogrenciUid,
       ogrenciKayitId: data.ogrenciKayitId,
+      ogrenciHesapAdi: profileSnap.get('kullaniciAdi') || '',
+      ogrenciEposta: profileSnap.get('eposta') || '',
       sinifId: data.sinifId,
       izinler: permissions,
       durum: 'active',
