@@ -204,14 +204,16 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
     const data = reqSnap.data();
     const studentRef = db.collection('ogrenciler').doc(data.ogrenciKayitId);
     const classRef = db.collection('siniflar').doc(data.sinifId);
-    const [studentSnap, classSnap, profileSnap] = await Promise.all([
+    const [studentSnap, classSnap, profileSnap, teacherProfileSnap] = await Promise.all([
       tx.get(studentRef), tx.get(classRef),
       tx.get(db.collection('kullanicilar').doc(data.ogrenciUid)),
+      tx.get(db.collection('kullanicilar').doc(teacherUid)),
     ]);
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== data.sinifId
       || !classSnap.exists || classSnap.get('uid') !== teacherUid
-      || !profileSnap.exists || profileSnap.get('rol') !== 'ogrenci') {
+      || !profileSnap.exists || profileSnap.get('rol') !== 'ogrenci'
+      || !teacherProfileSnap.exists) {
       throw new HttpsError('failed-precondition', 'Öğrenci kaydı veya hesap eşleşmesi doğrulanamadı.');
     }
     const linkId = createLinkId(teacherUid, data.ogrenciUid, data.sinifId);
@@ -224,6 +226,13 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
     }
     tx.set(linkRef, {
       ogretmenUid: teacherUid,
+      ogretmenHesapAdi: teacherProfileSnap.get('kullaniciAdi') || '',
+      ogrenciAd: studentSnap.get('adSoyad') || studentSnap.get('ad') || '',
+      sinifAd: classSnap.get('ad') || '',
+      okulAd: studentSnap.get('okulAd') || classSnap.get('okulAd') || '',
+      donemYili: Number.isInteger(studentSnap.get('donemYili')) ? studentSnap.get('donemYili') : null,
+      kademe: classSnap.get('kademe') || studentSnap.get('kademe') || '',
+      ders: classSnap.get('ders') || studentSnap.get('brans') || '',
       ogrenciUid: data.ogrenciUid,
       ogrenciKayitId: data.ogrenciKayitId,
       ogrenciHesapAdi: profileSnap.get('kullaniciAdi') || '',
