@@ -102,6 +102,7 @@ before(async () => {
     });
     await setDoc(doc(db, 'kullanicilar', 'student-2'), { kullaniciAdi: 'Öğrenci 2', rol: 'ogrenci' });
     await setDoc(doc(db, 'kullanicilar', 'student-3'), { kullaniciAdi: 'Öğrenci 3', rol: 'ogrenci' });
+    await setDoc(doc(db, 'kullanicilar', 'student-4'), { kullaniciAdi: 'Öğrenci 4', rol: 'ogrenci' });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-2__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-2', ogrenciKayitId: 'student-a',
       sinifId: 'class-a', durum: 'active',
@@ -110,6 +111,11 @@ before(async () => {
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-3__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-3', ogrenciKayitId: 'student-a',
       sinifId: 'class-a', durum: 'revoked',
+      izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
+    });
+    await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-4__class-a'), {
+      ogretmenUid: 'teacher-a', ogrenciUid: 'student-4', ogrenciKayitId: 'deleted-student',
+      sinifId: 'class-a', durum: 'active',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-1__class-a'), {
@@ -442,4 +448,10 @@ test('Bireysel ders oturumu yalnızca öğretmenin kendi etkinliğine bağlanabi
     uid: 'teacher-a', bireyselEtkinlikId: 'event-b',
     ogrenciId: 'student-a', sinifId: 'class-a', donemYili: 2026,
   }));
+});
+
+
+test('Öğretmen öğrenci kaydını silmişse etkin bağlantı öğrenci erişimi sağlamaz', async () => {
+  const db = testEnv.authenticatedContext('student-4').firestore();
+  await assertFails(getDoc(doc(db, 'dersNotlari', 'note-a')));
 });
