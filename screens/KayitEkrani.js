@@ -218,9 +218,7 @@ export default function KayitEkrani({ navigation }) {
               Zaten hesabınız var mı? <Text style={styles.girisVurgu}>Giriş Yapın</Text>
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.girisLink} onPress={() => navigation.navigate('OgrenciKayit')}>
-            <Text style={styles.girisMetni}>Öğrenci misiniz? <Text style={styles.girisVurgu}>Öğrenci Kaydı</Text></Text>
-          </TouchableOpacity>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
