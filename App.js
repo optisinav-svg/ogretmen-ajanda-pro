@@ -14,11 +14,13 @@ import OdevEkrani from './screens/OdevEkrani';
 import RaporEkrani from './screens/RaporEkrani';
 import SifreDegistirEkrani from './screens/SifreDegistirEkrani';
 import OgrenciHesaplariEkrani from './screens/OgrenciHesaplariEkrani';
+import OgrenciKayitEkrani from './screens/OgrenciKayitEkrani';
+import OgrenciAnaSayfaEkrani from './screens/OgrenciAnaSayfaEkrani';
 const Stack=createNativeStackNavigator();
 const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',headerTitleStyle:{fontWeight:'bold'}};
 export default function App(){return <NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
 <Stack.Screen name="Giris" component={GirisEkrani} options={{headerShown:false}}/>
-<Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>
+<Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>\n<Stack.Screen name="OgrenciKayit" component={OgrenciKayitEkrani} options={{title:"Öğrenci Kaydı"}}/>\n<Stack.Screen name="OgrenciAnaSayfa" component={OgrenciAnaSayfaEkrani} options={{title:"Öğrenci Ajandası",headerBackVisible:false}}/>
 <Stack.Screen name="AnaSayfa" component={AnaSayfa} options={{title:'Öğretmen AjandaPro',headerBackVisible:false}}/>
 <Stack.Screen name="OkulSinif" component={OkulSinifEkrani} options={{title:'Okul & Sınıf Yönetimi'}}/>
 <Stack.Screen name="Ogrenci" component={OgrenciEkrani} options={{title:'Öğrenci Yönetimi'}}/>
