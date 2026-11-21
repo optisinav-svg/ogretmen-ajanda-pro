@@ -1,0 +1,247 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function profilePath(userId) {
+      return /databases/$(database)/documents/kullanicilar/$(userId);
+    }
+
+    // Eski öğretmen profillerinde rol alanı bulunmadığı için
+    // geriye dönük uyumluluk korunur. Yeni öğrenci profilleri
+    // rol == 'ogrenci' olduğunda öğretmen koleksiyonlarına erişemez.
+    function isTeacher() {
+      return signedIn()
+        && exists(profilePath(request.auth.uid))
+        && (
+          !get(profilePath(request.auth.uid)).data.keys().hasAny(['rol'])
+          || get(profilePath(request.auth.uid)).data.rol == 'ogretmen'
+        );
+    }
+
+    function ownsRecord() {
+      return isTeacher()
+        && resource.data.uid == request.auth.uid;
+    }
+
+    function createsOwnRecord() {
+      return isTeacher()
+        && request.resource.data.uid == request.auth.uid;
+    }
+
+    function keepsOwner() {
+      return request.resource.data.uid == resource.data.uid
+        && resource.data.uid == request.auth.uid;
+    }
+
+    function ownsDocument(collectionName, documentId) {
+      return documentId is string
+        && exists(/databases/$(database)/documents/$(collectionName)/$(documentId))
+        && get(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
+    }
+
+    // Batch içinde aynı anda oluşturulan kitap + konu kayıtlarını
+    // doğrulayabilmek için getAfter / existsAfter kullanılır.
+    function ownsDocumentAfter(collectionName, documentId) {
+      return documentId is string
+        && existsAfter(/databases/$(database)/documents/$(collectionName)/$(documentId))
+        && getAfter(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
+    }
+
+    function classBelongsToTeacher(data) {
+      return data.sinifId is string
+        && ownsDocument('siniflar', data.sinifId);
+    }
+
+    function studentBelongsToClass(data) {
+      return data.ogrenciId is string
+        && data.sinifId is string
+        && ownsDocument('ogrenciler', data.ogrenciId)
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId;
+    }
+
+    function schoolBelongsToTeacher(data) {
+      return data.okulId is string
+        && ownsDocument('okullar', data.okulId);
+    }
+
+    function optionalLessonBelongsToTeacher(data) {
+      return !data.keys().hasAny(['dersId'])
+        || data.dersId == null
+        || data.dersId == ''
+        || ownsDocument('dersler', data.dersId);
+    }
+
+    function libraryBookBelongsToTeacher(data) {
+      return data.kitapId is string
+        && ownsDocument('kitapKutuphanesi', data.kitapId);
+    }
+
+    function assignedBookBelongsToStudent(data) {
+      return data.kitapId is string
+        && ownsDocumentAfter('kitaplar', data.kitapId)
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId;
+    }
+
+    // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
+    match /kullanicilar/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list: if false;
+
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && (
+          !request.resource.data.keys().hasAny(['rol'])
+          || request.resource.data.rol in ['ogretmen', 'ogrenci']
+        );
+
+      // Profil rolü oluşturulduktan sonra değiştirilemez.
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && (
+          (
+            !resource.data.keys().hasAny(['rol'])
+            && !request.resource.data.keys().hasAny(['rol'])
+          )
+          || (
+            resource.data.keys().hasAny(['rol'])
+            && request.resource.data.keys().hasAny(['rol'])
+            && resource.data.rol == request.resource.data.rol
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    // Öğretmene ait okul kayıtları
+    match /okullar/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord();
+      allow update: if ownsRecord()
+        && keepsOwner();
+      allow delete: if ownsRecord();
+    }
+
+    // Sınıf, yalnızca aynı öğretmene ait bir okula bağlanabilir.
+    match /siniflar/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && schoolBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && schoolBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    // Ders programı
+    match /dersler/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && classBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && classBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    // Öğrenci kayıtları (öğretmenin kendi öğrenci listesi)
+    match /ogrenciler/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && classBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && classBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    match /dersNotlari/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && classBelongsToTeacher(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && classBelongsToTeacher(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    match /yoklamalar/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && classBelongsToTeacher(request.resource.data)
+        && studentBelongsToClass(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && classBelongsToTeacher(request.resource.data)
+        && studentBelongsToClass(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    match /odevler/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && classBelongsToTeacher(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && classBelongsToTeacher(request.resource.data)
+        && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    match /kitaplar/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && studentBelongsToClass(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && studentBelongsToClass(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    match /konular/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && studentBelongsToClass(request.resource.data)
+        && assignedBookBelongsToStudent(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && studentBelongsToClass(request.resource.data)
+        && assignedBookBelongsToStudent(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    // Kitap kütüphanesi şu an ortak değil, öğretmen hesabına özeldir.
+    // Kütüphane tanımları sezondan bağımsızdır; öğrenci ilerlemesi
+    // ayrı ve sezonlu kitaplar / konular koleksiyonlarında tutulur.
+    match /kitapKutuphanesi/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord();
+      allow update: if ownsRecord() && keepsOwner();
+      allow delete: if ownsRecord();
+    }
+
+    match /kitapKutuphanesiKonulari/{docId} {
+      allow read: if ownsRecord();
+      allow create: if createsOwnRecord()
+        && libraryBookBelongsToTeacher(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && libraryBookBelongsToTeacher(request.resource.data);
+      allow delete: if ownsRecord();
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
