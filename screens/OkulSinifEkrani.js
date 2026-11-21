@@ -76,7 +76,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
       Alert.alert('Tamamlandı','Okul arşivlendi. Öğrenciler ve geçmiş kayıtları korundu.');
     }catch(e){Alert.alert('İşlem tamamlanamadı','Arşivleme kaldığı yerden tekrar başlatılabilir. Mevcut kayıtlar silinmedi. '+(e?.message||''));}
   }}]);
-  const siniflariYukle=async(o)=>{setSeciliOkul(o);try{const q=query(collection(db,'siniflar'),where('okulId','==',o.id),where('uid','==',uid));const s=await getDocs(q);setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)));}catch(e){Alert.alert('Hata','Sınıflar yüklenemedi.');}};
+  const siniflariYukle=async(o)=>{setSeciliOkul(o);try{const q=query(collection(db,'siniflar'),where('okulId','==',o.id),where('uid','==',uid));const s=await getDocs(q);setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.arsivlendi));}catch(e){Alert.alert('Hata','Sınıflar yüklenemedi.');}};
   const sinifEkle=async()=>{if(!yeniSinif.trim()||!seciliKademe||!seciliDers) return Alert.alert('Eksik bilgi','Sınıf adı, kademe ve ders seçin.');try{const data={ad:yeniSinif.trim(),kademe:seciliKademe,ders:seciliDers,okulId:seciliOkul.id,okulAd:seciliOkul.ad,uid};if(duzenlenenSinif) await updateDoc(doc(db,'siniflar',duzenlenenSinif.id),data);else await addDoc(collection(db,'siniflar'),{...data,donemYili,olusturulma:new Date().toISOString()});kapatSinifModal();siniflariYukle(seciliOkul);}catch(e){Alert.alert('Hata','Sınıf kaydedilemedi.');}};
   const kapatSinifModal=()=>{setYeniSinif('');setSeciliKademe('');setSeciliDers('');setDersArama('');setDuzenlenenSinif(null);setSinifModalAcik(false)};
   const sinifDuzenle=(s)=>{setDuzenlenenSinif(s);setYeniSinif(s.ad||'');setSeciliKademe(s.kademe||'');setSeciliDers(s.ders||'');setDersArama(s.ders||'');setSinifModalAcik(true)};
@@ -86,9 +86,9 @@ export default function OkulSinifEkrani({ navigation,route }) {
       const hedef=await kayitsizSinifGetir({id:sinifKaydi.okulId||'',ad:sinifKaydi.okulAd||''});
       await ogrencileriKorumaliTasi([sinifKaydi],hedef);
       await dersProgramlariniKaldir([sinifKaydi]);
-      await deleteDoc(doc(db,'siniflar',sinifKaydi.id));
+      await updateDoc(doc(db,'siniflar',sinifKaydi.id),{arsivlendi:true,arsivTarihi:new Date().toISOString()});
       await siniflariYukle(seciliOkul);
-      Alert.alert('Tamamlandı','Sınıf kaldırıldı. Öğrenciler ve geçmiş kayıtları korundu.');
+      Alert.alert('Tamamlandı','Sınıf arşivlendi. Öğrenciler ve geçmiş kayıtları korundu.');
     }catch(e){Alert.alert('İşlem tamamlanamadı','Sınıf kaldırma işlemi tamamlanamadı. Kayıtlar silinmedi; tekrar deneyebilirsiniz. '+(e?.message||''));}
   }}]);
 
