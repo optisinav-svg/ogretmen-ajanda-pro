@@ -243,8 +243,8 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
             const date = b.bildirimTarihi?.toDate?.();
             return (
               <View key={b.id} style={s.card}>
-                <Text style={s.name}>{o?.adSoyad || 'Öğrenci'} · {homework?.aciklama || 'Ödev kaydı bulunamadı'}</Text>
-                <Text style={s.sub}>Öğrenci bu ödevi tamamlandı olarak bildirdi{date ? ' · ' + date.toLocaleString('tr-TR') : ''}.</Text>
+                <Text style={s.name}>{o?.adSoyad || b.ogrenciHesapAdi || 'Öğrenci'} · {homework?.aciklama || b.odevAciklama || 'Ödev kaydı bulunamadı'}</Text>
+                <Text style={s.sub}>Öğrenci bu ödevi tamamlandı olarak bildirdi{date ? ' · ' + date.toLocaleString('tr-TR') : ''}{b.teslimTarihi ? ' · Teslim: ' + b.teslimTarihi : ''}.</Text>
                 <Text style={s.sub}>Bu bildirim öğretmen değerlendirmesini değiştirmez; ödev durumu sizin kontrolünüzdedir.</Text>
               </View>
             );
