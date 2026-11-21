@@ -83,10 +83,27 @@ before(async () => {
       adSoyad: 'Başka Öğretmenin Öğrencisi',
       donemYili: 2026,
     });
+    await setDoc(doc(db, 'dersler', 'lesson-a'), {
+      uid: 'teacher-a',
+      sinifId: 'class-a',
+      donemYili: 2026,
+    });
+    await setDoc(doc(db, 'dersler', 'lesson-b'), {
+      uid: 'teacher-b',
+      sinifId: 'class-b',
+      donemYili: 2026,
+    });
     await setDoc(doc(db, 'dersNotlari', 'note-a'), {
       uid: 'teacher-a',
       sinifId: 'class-a',
       not: 'Test konusu',
+      donemYili: 2026,
+    });
+    await setDoc(doc(db, 'dersNotlari', 'note-historical'), {
+      uid: 'teacher-a',
+      sinifId: 'class-a',
+      dersId: 'deleted-lesson',
+      not: 'Silinen gelecek dersin tarihsel notu',
       donemYili: 2026,
     });
   });
@@ -236,5 +253,23 @@ test('Öğretmen başka öğretmenin kitap kütüphanesi kitabına konu ekleyeme
     ad: 'Yetkisiz konu',
     baslangicSayfa: 1,
     bitisSayfa: 5,
+  }));
+});
+
+test('Not başka öğretmenin ders programına bağlanamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'dersNotlari'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    dersId: 'lesson-b',
+    not: 'Başka öğretmenin dersi',
+    donemYili: 2026,
+  }));
+});
+
+test('Silinmiş ders programına bağlı tarihsel not düzenlenebilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(updateDoc(doc(db, 'dersNotlari', 'note-historical'), {
+    not: 'Tarihsel not düzenlendi',
   }));
 });
