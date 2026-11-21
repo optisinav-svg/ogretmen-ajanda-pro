@@ -145,6 +145,16 @@ before(async () => {
       not: 'Başka öğretmenin notu',
       donemYili: 2026,
     });
+    await setDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a'), {
+      uid: 'teacher-a',
+      ogretmenUid: 'teacher-a',
+      ogrenciUid: 'student-1',
+      ogrenciKayitId: 'student-a',
+      baglantiId: 'teacher-a__student-1__class-a',
+      odevId: 'homework-a',
+      donemYili: 2026,
+      durum: 'tamamlandi_bildirildi',
+    });
     await setDoc(doc(db, 'odevler', 'homework-a'), {
       uid: 'teacher-a',
       sinifId: 'class-a',
@@ -454,4 +464,27 @@ test('Bireysel ders oturumu yalnızca öğretmenin kendi etkinliğine bağlanabi
 test('Öğretmen öğrenci kaydını silmişse etkin bağlantı öğrenci erişimi sağlamaz', async () => {
   const db = testEnv.authenticatedContext('student-4').firestore();
   await assertFails(getDoc(doc(db, 'dersNotlari', 'note-a')));
+});
+
+
+test('Öğrenci kendi ödev bildiriminin sonucunu okuyabilir ancak doğrudan bildirim yazamaz', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a')));
+  await assertFails(setDoc(doc(db, 'ogrenciOdevBildirimleri', 'manual-notification'), {
+    uid: 'teacher-a',
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-1',
+    ogrenciKayitId: 'student-a',
+    odevId: 'homework-a',
+    donemYili: 2026,
+    durum: 'tamamlandi_bildirildi',
+  }));
+});
+
+test('Öğretmen öğrenci ödev bildirimini okuyabilir ancak istemciden değiştiremez', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(getDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a')));
+  await assertFails(updateDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a'), {
+    durum: 'incelendi',
+  }));
 });
