@@ -24,6 +24,12 @@ Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapı
 9. Öğretmen bağlantıyı iptal edebilir veya izinleri güncelleyebilir. Firestore kuralları her okuma sırasında bağlantının etkin ve ilgili iznin açık olmasını denetler.
 10. Öğrencinin ödev tamamlandı bildirimi `ogrenciOdevBildirimleri` koleksiyonuna ayrı yazılır; öğretmenin ödev değerlendirmesi veya öğrenci durum geçmişi değiştirilmez.
 
+## Uygulama ekranları
+
+- Kayıt ekranında `Öğretmen / Öğrenci` hesap türü seçimi görünür. Öğretmen seçeneği aktiftir; öğrenci seçeneği kullanıcı talimatı gereği şimdilik kapalıdır.
+- `OgrenciHesaplariEkrani` öğretmene öğrenci kaydı için kod üretme, gelen talepleri onaylama/reddetme, altı izni seçme/değiştirme ve bağlantıyı iptal etme ekranını sağlar.
+- Öğrencinin kayıt, kod gönderme ve kendi verilerini görüntüleme ekranları Grup 5 kapsamında hazırlanacaktır. Bu ekranlar tamamlanmadan öğrenci hesabı açılmayacaktır.
+
 ## Sunucu uçları
 
 - `eskiOgretmenRolunuTanimla`
