@@ -70,3 +70,6 @@ Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapı
 - Ödev sorgusu `hedefOgrenciIds` alanında bağlantılı öğrenci kayıt kimliğini arar; gerekli bileşik indeks `firestore.indexes.json` dosyasında tanımlıdır.
 - Öğrenci paneli kayıtları düzenlemez veya silmez. Ödev tamamlandı bildirimi yalnızca güvenilir callable Function üzerinden yazılır.
 - Onaylanmış bağlantı belgesinde öğretmen adı, sınıf adı, kademe, ders ve akademik dönem özet bilgileri saklanır; ekran bu bilgileri göstermek için öğretmen profilini okuyamaz.
+
+
+**Index deployment caution:** `firestore.student-indexes.example.json` contains only the new homework query index. Before configuring or deploying it, export/inspect the Firebase project's existing composite indexes and merge this entry into the complete index manifest. Do not deploy this example as the complete index list, because that could remove indexes used by existing teacher screens.
