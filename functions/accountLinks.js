@@ -23,7 +23,7 @@ function createPairingCode() {
 }
 
 function createLinkId(teacherUid, studentUid, classId) {
-  return sha256([teacherUid, studentUid, classId].join(':'));
+  return [teacherUid, studentUid, classId].join('__');
 }
 
 function normalizePermissions(value) {
