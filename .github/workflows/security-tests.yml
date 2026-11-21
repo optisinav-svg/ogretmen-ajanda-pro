@@ -32,3 +32,6 @@ jobs:
         run: node --check functions/index.js && node --check functions/accountLinks.js
       - name: Run Cloud Functions policy tests
         run: npm test --prefix functions
+
+      - name: Validate Android JavaScript bundle
+        run: npx expo export --platform android --output-dir .expo-ci-check
