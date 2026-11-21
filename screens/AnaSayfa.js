@@ -6,7 +6,7 @@ import {doc,getDoc,collection,getDocs,query,where}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {donemUygun}from'../utils/donem';
 const DONEM_KEY='@ogretmenAjandaPro_secilenDonem';
-const donemYili=()=>{const d=new Date(),y=d.getFullYear(),temmuz1=new Date(y,6,1);return d>=temmuz1?y:y-1};
+const donemYili=()=>{const d=new Date(),y=d.getFullYear(),haziran1=new Date(y,5,1);return d>=haziran1?y:y-1};
 const donemBilgi=y=>({yil:y,ad:`${y}/${y+1}`,baslangic:`1 Haziran ${y}`,bitis:`30 Haziran ${y+1}`});
 export default function AnaSayfa({navigation}){const[kullaniciBilgi,setKullaniciBilgi]=useState(null),[siniflar,setSiniflar]=useState([]),[sinifModal,setSinifModal]=useState(false),[hedef,setHedef]=useState(null),[donemModal,setDonemModal]=useState(false),[secilenDonem,setSecilenDonem]=useState(null);
  const mevcutYil=donemYili(),mevcut=donemBilgi(mevcutYil),onceki=donemBilgi(mevcutYil-1),sonraki=donemBilgi(mevcutYil+1);
