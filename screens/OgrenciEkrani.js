@@ -15,7 +15,101 @@ export default function OgrenciEkrani({route,navigation}){
  const formAc=(o=null)=>{setDuzenlenen(o);setAd(o?.ad||'');setSoyad(o?.soyad||'');setTelefon(o?.telefon||'');setModalAcik(true)};
  const formKapat=()=>{setModalAcik(false);setDuzenlenen(null);setAd('');setSoyad('');setTelefon('')};
  const ogrenciKaydet=async()=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kayıtları yalnızca görüntülenebilir.');if(!ad.trim()||!soyad.trim())return Alert.alert('Hata','Ad ve soyad zorunludur.');try{const data={ad:ad.trim(),soyad:soyad.trim(),adSoyad:`${ad.trim()} ${soyad.trim()}`,telefon:telefon.trim()};if(duzenlenen)await updateDoc(doc(db,'ogrenciler',duzenlenen.id),data);else await addDoc(collection(db,'ogrenciler'),{...data,sinifId:sinif.id,sinifAd:sinif.ad,okulId:sinif.okulId,okulAd:sinif.okulAd,uid,donemYili,olusturulma:new Date().toISOString()});formKapat();ogrencileriYukle()}catch(e){Alert.alert('Hata','Öğrenci kaydedilemedi.')}};
- const ogrenciSil=o=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci sınıfı değiştirilemez.');Alert.alert('Öğrenciyi kayıtsızlara taşı','Öğrenci kaydı ve geçmişi silinmeyecek. Öğrenci, aynı okul içindeki “Kayıtsız Öğrenciler” sınıfına taşınacak; eski yoklama, ödev, kitap ve konu kayıtları korunacak.',[{text:'Vazgeç',style:'cancel'},{text:'Kayıtsızlara taşı',style:'destructive',onPress:async()=>{try{const snap=await getDocs(query(collection(db,'siniflar'),where('uid','==',uid)));const kayitsiz=snap.docs.map(d=>({id:d.id,...d.data()})).find(x=>x.ozelTur==='kayitsiz'&&x.okulId===(sinif.okulId||'')&&Number(x.donemYili)===donemYili);let hedef=kayitsiz;if(!hedef){const ref=await addDoc(collection(db,'siniflar'),{ad:'Kayıtsız Öğrenciler',kademe:'',ders:'',okulId:sinif.okulId||'',okulAd:sinif.okulAd||'',uid,donemYili,ozelTur:'kayitsiz',olusturulma:new Date().toISOString()});hedef={id:ref.id,ad:'Kayıtsız Öğrenciler',okulId:sinif.okulId||'',okulAd:sinif.okulAd||'',ozelTur:'kayitsiz'};}await updateDoc(doc(db,'ogrenciler',o.id),{sinifGecmisi:arrayUnion({sinifId:o.sinifId,sinifAd:o.sinifAd||sinif.ad,okulId:o.okulId||sinif.okulId||'',okulAd:o.okulAd||sinif.okulAd||'',donemYili,tarih:new Date().toISOString(),neden:'kayitsizlara_tasima'}),sinifId:hedef.id,sinifAd:hedef.ad,okulId:hedef.okulId||'',okulAd:hedef.okulAd||'',kademe:'',brans:'',kayitsizMi:true,kayitsizTarihi:new Date().toISOString()});await ogrencileriYukle();Alert.alert('Tamamlandı','Öğrenci kaydı korunarak Kayıtsız Öğrenciler sınıfına taşındı.');}catch(e){Alert.alert('Hata','Öğrenci kayıtsızlara taşınamadı. '+(e?.message||''));}}}]);};
+ const ogrenciSil = o => {
+  if (!donemDuzenlemeyeAcik(donemYili)) return Alert.alert('Geçmiş dönem', 'Dönem sona erdiği için öğrenci sınıfı değiştirilemez.');
+  Alert.alert(
+    'Öğrenciyi kayıtsızlara taşı',
+    'Öğrenci kaydı ve geçmişi silinmeyecek. Öğrenci, aynı okul içindeki “Kayıtsız Öğrenciler” sınıfına taşınacak; eski yoklama, ödev, kitap ve konu kayıtları korunacak.',
+    [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Kayıtsızlara taşı', style: 'destructive', onPress: async () => {
+        try {
+          const ogrenciRef = doc(db, 'ogrenciler', o.id);
+          const ogrenciSnap = await getDoc(ogrenciRef);
+          if (!ogrenciSnap.exists()) throw new Error('Öğrenci kaydı bulunamadı.');
+          const guncel = ogrenciSnap.data();
+          if (guncel.uid !== uid) throw new Error('Bu öğrenci kaydının sahibi doğrulanamadı.');
+
+          const sinifSnap = await getDocs(query(collection(db, 'siniflar'), where('uid', '==', uid)));
+          const kayitsizlar = sinifSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          let islem = guncel.kayitsizTasiIslemi;
+          let hedef = null;
+
+          if (islem) {
+            if (islem.kaynakSinifId !== sinif.id || Number(islem.donemYili) !== donemYili) {
+              throw new Error('Bu öğrenci için yarım kalmış başka bir taşıma işlemi var. Önce aynı işlemi tamamlayın.');
+            }
+            hedef = kayitsizlar.find(x => x.id === islem.hedefSinifId) || null;
+          } else {
+            if (guncel.sinifId !== sinif.id) {
+              if (guncel.kayitsizMi) {
+                Alert.alert('Bilgi', 'Öğrenci zaten kayıtsız öğrenci olarak kayıtlı.');
+                return;
+              }
+              throw new Error('Öğrencinin sınıfı değişmiş. Listeyi yenileyip tekrar deneyin.');
+            }
+            if (guncel.sinifTasiIslemi) {
+              throw new Error('Öğrenci için başka bir sınıf taşıma işlemi sürüyor. Önce onu tamamlayın.');
+            }
+            hedef = kayitsizlar.find(x => x.ozelTur === 'kayitsiz' && x.okulId === (sinif.okulId || '') && Number(x.donemYili) === donemYili) || null;
+            if (!hedef) {
+              const ref = await addDoc(collection(db, 'siniflar'), {
+                ad: 'Kayıtsız Öğrenciler', kademe: '', ders: '',
+                okulId: sinif.okulId || '', okulAd: sinif.okulAd || '',
+                uid, donemYili, ozelTur: 'kayitsiz', olusturulma: new Date().toISOString(),
+              });
+              hedef = { id: ref.id, ad: 'Kayıtsız Öğrenciler', okulId: sinif.okulId || '', okulAd: sinif.okulAd || '', ozelTur: 'kayitsiz' };
+            }
+            islem = {
+              kaynakSinifId: sinif.id,
+              hedefSinifId: hedef.id,
+              donemYili,
+              tarih: new Date().toISOString(),
+            };
+            await updateDoc(ogrenciRef, { kayitsizTasiIslemi: islem });
+          }
+
+          if (!hedef) {
+            const hedefSnap = await getDoc(doc(db, 'siniflar', islem.hedefSinifId));
+            if (!hedefSnap.exists() || hedefSnap.get('uid') !== uid || hedefSnap.get('ozelTur') !== 'kayitsiz') {
+              throw new Error('Hedef Kayıtsız Öğrenciler sınıfı doğrulanamadı. İşlem tekrar denenebilir.');
+            }
+            hedef = { id: hedefSnap.id, ...hedefSnap.data() };
+          }
+
+          const sonDurum = (await getDoc(ogrenciRef)).data();
+          if (sonDurum.sinifId !== sinif.id && sonDurum.sinifId !== hedef.id) {
+            throw new Error('Öğrenci başka bir sınıfa taşınmış. Listeyi yenileyin.');
+          }
+          await updateDoc(ogrenciRef, {
+            sinifGecmisi: arrayUnion({
+              sinifId: islem.kaynakSinifId,
+              sinifAd: o.sinifAd || sinif.ad,
+              okulId: o.okulId || sinif.okulId || '',
+              okulAd: o.okulAd || sinif.okulAd || '',
+              donemYili,
+              tarih: islem.tarih,
+              neden: 'kayitsizlara_tasima',
+            }),
+            sinifId: hedef.id,
+            sinifAd: hedef.ad,
+            okulId: hedef.okulId || '',
+            okulAd: hedef.okulAd || '',
+            kademe: '',
+            brans: '',
+            kayitsizMi: true,
+            kayitsizTarihi: islem.tarih,
+            kayitsizTasiIslemi: deleteField(),
+          });
+          await ogrencileriYukle();
+          Alert.alert('Tamamlandı', 'Öğrenci kaydı korunarak Kayıtsız Öğrenciler sınıfına taşındı.');
+        } catch (e) {
+          Alert.alert('Hata', 'Öğrenci kayıtsızlara taşınamadı. Aynı işlem yeniden denenebilir. ' + (e?.message || ''));
+        }
+      }},
+    ],
+  );
+ };
  const ogrenciTasi=async(o,yeniSinif)=>{
   if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci sınıfı değiştirilemez.');
   if(!o||!yeniSinif)return;
