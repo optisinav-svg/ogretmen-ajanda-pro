@@ -15,12 +15,18 @@ export const donemHatirlatmaGerekli = (sonHatirlatma, bugun = new Date()) => {
 
 export const donemHatirlatmaGosterilebilir = async (uid, rol, yil, bugun = new Date()) => {
   if (!uid || !['ogretmen', 'ogrenci'].includes(rol)) return false;
-  const key = donemHatirlatmaAnahtari(uid, rol, yil);
-  const son = await AsyncStorage.getItem(key);
-  return donemHatirlatmaGerekli(son, bugun);
+  try {
+    const key = donemHatirlatmaAnahtari(uid, rol, yil);
+    const son = await AsyncStorage.getItem(key);
+    return donemHatirlatmaGerekli(son, bugun);
+  } catch (error) {
+    return true;
+  }
 };
 
 export const donemHatirlatmaKaydet = async (uid, rol, yil, bugun = new Date()) => {
   if (!uid || !['ogretmen', 'ogrenci'].includes(rol)) return;
-  await AsyncStorage.setItem(donemHatirlatmaAnahtari(uid, rol, yil), bugun.toISOString());
+  try {
+    await AsyncStorage.setItem(donemHatirlatmaAnahtari(uid, rol, yil), bugun.toISOString());
+  } catch (error) {}
 };
