@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 export const DONEM_KEY='@ogretmenAjandaPro_secilenDonem';
-const iso=t=>`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
 export const donemBaslangicTarihi=y=>`${Number(y)}-06-01`;
 export const donemBitisTarihi=y=>`${Number(y)+1}-06-30`;
 export const donemBilgi=y=>({yil:Number(y),ad:`${y}/${Number(y)+1}`,baslangic:`1 Haziran ${y}`,bitis:`30 Haziran ${Number(y)+1}`,baslangicTarihi:donemBaslangicTarihi(y),bitisTarihi:donemBitisTarihi(y)});
