@@ -18,6 +18,10 @@ function sha256(value) {
   return createHash('sha256').update(String(value)).digest('hex');
 }
 
+function isAllowedStudentGrade(value) {
+  return ['9', '10', '11', '12', 'TYT', 'AYT'].includes(String(value || '').trim().toUpperCase());
+}
+
 function createPairingCode() {
   return randomBytes(8).toString('hex').toUpperCase();
 }
@@ -111,8 +115,7 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
     throw new HttpsError('failed-precondition', 'Öğrencinin sınıf sahipliği doğrulanamadı.');
   }
 
-  const grade = String(classSnap.get('kademe') || '').trim().toUpperCase();
-  if (!['9', '10', '11', '12', 'TYT', 'AYT'].includes(grade)) {
+  if (!isAllowedStudentGrade(classSnap.get('kademe'))) {
     throw new HttpsError('failed-precondition', 'Öğrenci hesabı yalnızca lise düzeyi doğrulanmış sınıflar için açılabilir. Ortaokul hesapları veli/vasi süreci netleşene kadar kapalıdır.');
   }
 
@@ -365,6 +368,7 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
 module.exports._test = {
   sha256,
   createPairingCode,
+  isAllowedStudentGrade,
   createLinkId,
   createRecordLinkIndexId,
   assertStudentRecordAvailable,
