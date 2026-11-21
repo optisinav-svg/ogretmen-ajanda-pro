@@ -21,6 +21,11 @@ academic-period start year has completed three academic years.
 Shared book-library definitions (`kitapKutuphanesi`,
 `kitapKutuphanesiKonulari`) and user profiles are deliberately excluded.
 
+The Firebase inventory previously supplied also listed `Dersler` (uppercase D),
+while the current app code writes to `dersler` (lowercase d). The uppercase
+collection is intentionally not included until its ownership and legacy data
+are reviewed; Firestore collection names are case-sensitive.
+
 The function deletes child/activity records before student, class, and school
 records. Student history embedded in an expired student document expires with
 that document.
