@@ -41,3 +41,14 @@ test('student homework notifications are included in three-year retention', () =
     durum: 'tamamlandi_bildirildi',
   }, 2026), true);
 });
+
+
+test('student account metadata collections are covered by three-year retention', () => {
+  for (const name of [
+    'ogrenciEslesmeTalepleri',
+    'ogrenciEslesmeKodlari',
+    'ogretmenOgrenciBaglantilari',
+    'ogrenciKayitEslesmeleri',
+  ]) assert.ok(RETENTION_COLLECTIONS.includes(name), name);
+  assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1', donemYili: 2026, ogrenciUid: 'student-1' }, 2026), true);
+});
