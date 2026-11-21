@@ -19,6 +19,7 @@ const {
 } = require('firebase/firestore');
 
 // These tests run only against the local Firestore Emulator.
+// The project ID is intentionally a demo ID, never the production Firebase project.
 const PROJECT_ID = 'demo-ogretmen-ajanda-rules';
 let testEnv;
 
