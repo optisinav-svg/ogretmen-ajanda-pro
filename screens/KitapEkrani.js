@@ -3,7 +3,7 @@ import{View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Activity
 import{collection,addDoc,getDocs,deleteDoc,doc,query,where,updateDoc,writeBatch}from'firebase/firestore';
 import{auth,db}from'../firebaseConfig';
 import kazanmlar from'../assets/kazanimlar.json';
-import{donemYiliBugun,donemUygun}from'../utils/donem';
+import{donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
 const norm=x=>(x||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const duzeltTurkce=x=>{const s=String(x??'');if(!/[ÃÂÄÅ]/.test(s))return s;try{return decodeURIComponent(Array.from(s).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join(''))}catch(e){return s}};
 const sinifKodlari=x=>{const s=norm(x);if(s.includes('tyt')||s.includes('ayt'))return['21','22'];const m=s.match(/(^|\D)([1-9]|1[0-2])(?:\D|$)/);return m?[m[2]]:[]};
@@ -36,6 +36,7 @@ export default function KitapEkrani({route,navigation}){
  };
 
  const kitapAta=async()=>{
+  if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrencilere kitap atanamaz.');
   if(!seciliKitap)return Alert.alert('Kitap seçilmedi','Önce bir kitap seçin.');
   if(!kutuphaneSeciliOgrenciler.length)return Alert.alert('Öğrenci seçilmedi','En az bir öğrenci seçin.');
   const kaynakKonular=kutuphaneKonulari.filter(x=>x.kitapId===seciliKitap.id);
@@ -125,6 +126,7 @@ export default function KitapEkrani({route,navigation}){
 
  const kitapFormAc=k=>{setDuzenlenenKitap(k);setKitapAdi(duzeltTurkce(k?.ad||''));setSayfaSayisi(k?.sayfaSayisi?String(k.sayfaSayisi):'');setKitapModal(true)};const kitapFormKapat=()=>{setKitapModal(false);setDuzenlenenKitap(null);setKitapAdi('');setSayfaSayisi('')};
  const kitapKaydet=async()=>{
+ if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap kayıtları değiştirilemez.');
  if(!kitapAdi.trim())return Alert.alert('Hata','Kitap adı girin.');
  const toplamSayfa=pozitifTamSayi(sayfaSayisi);
  if(!toplamSayfa)return Alert.alert('Hata','Toplam sayfa sayısı zorunludur ve 0’dan büyük tam sayı olmalıdır.');
@@ -163,10 +165,11 @@ export default function KitapEkrani({route,navigation}){
  }catch(e){Alert.alert('Hata','Kitap kaydedilemedi. '+(e?.message||''))}
 };
 
- const kitapSil=k=>Alert.alert('Kitabı Sil',kutuphaneModu?'Bu kitap yalnızca kütüphaneden silinecek. Öğrencilere atanmış kopyalar korunacak.':'Kitap ve içindeki konular silinecek.',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{const koleksiyon=kutuphaneModu?'kitapKutuphanesiKonulari':'konular';const q=await getDocs(query(collection(db,koleksiyon),where('kitapId','==',k.id),where('uid','==',uid)));if(q.docs.length+1>450){Alert.alert('Hata','Bu kitapta çok fazla konu var. Güvenli silme sınırı 449 konudur.');return;}const batch=writeBatch(db);q.docs.forEach(x=>batch.delete(x.ref));batch.delete(doc(db,kutuphaneModu?'kitapKutuphanesi':'kitaplar',k.id));await batch.commit();setSeciliKitap(null);if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Kitap silinemedi. '+(e?.message||''))}}}]);
+ const kitapSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitapları silinemez.');Alert.alert('Kitabı Sil',kutuphaneModu?'Bu kitap yalnızca kütüphaneden silinecek. Öğrencilere atanmış kopyalar korunacak.':'Kitap ve içindeki konular silinecek.',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{const koleksiyon=kutuphaneModu?'kitapKutuphanesiKonulari':'konular';const q=await getDocs(query(collection(db,koleksiyon),where('kitapId','==',k.id),where('uid','==',uid)));if(q.docs.length+1>450){Alert.alert('Hata','Bu kitapta çok fazla konu var. Güvenli silme sınırı 449 konudur.');return;}const batch=writeBatch(db);q.docs.forEach(x=>batch.delete(x.ref));batch.delete(doc(db,kutuphaneModu?'kitapKutuphanesi':'kitaplar',k.id));await batch.commit();setSeciliKitap(null);if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Kitap silinemedi. '+(e?.message||''))}}}]);};
 
  const konuFormAc=k=>{setDuzenlenenKonu(k);setKonuAdi(duzeltTurkce(k?.ad||''));setBaslangicSayfa(k?.baslangicSayfa?String(k.baslangicSayfa):'');setBitisSayfa(k?.bitisSayfa?String(k.bitisSayfa):'');setManuelKonu(!k||k.kaynak==='manuel');setSeciliKazanim(k?{kod:k.kazanımKodu||'',ad:k.ad}:null);setKonuModal(true)};const konuFormKapat=()=>{setKonuModal(false);setDuzenlenenKonu(null);setKonuAdi('');setBaslangicSayfa('');setBitisSayfa('');setArama('');setSeciliKazanim(null);setManuelKonu(true)};
  const konuKaydet=async()=>{
+ if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları değiştirilemez.');
  if(!seciliKitap)return;
  const ad=manuelKonu?duzeltTurkce(konuAdi.trim()):duzeltTurkce(seciliKazanim?.ad?.trim());
  const bas=pozitifTamSayi(baslangicSayfa),bit=pozitifTamSayi(bitisSayfa);
@@ -191,7 +194,7 @@ export default function KitapEkrani({route,navigation}){
  }catch(e){Alert.alert('Hata','Konu kaydedilemedi. '+(e?.message||''))}
 };
 
- const konuSil=k=>Alert.alert('Konuyu Sil','Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);
+ const konuSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları silinemez.');Alert.alert('Konuyu Sil','Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);};
 
  const konuOdevDurumu=k=>{const h=odevler.filter(o=>o.konuId===k.id&&((o.hedef==='sinif'&&o.sinifId===ogrenci?.sinifId)||(o.hedefOgrenciIds||[]).includes(ogrenci?.id)));if(!h.length)return null;const x=[...h].sort((a,b)=>new Date(b.olusturulma||0)-new Date(a.olusturulma||0))[0];return x.ogrenciDurumlari?.[ogrenci.id]||x.durum||'bekliyor'};
  const ilerleme=k=>{const ks=konular.filter(x=>x.kitapId===k.id),tam=ks.reduce((n,x)=>konuOdevDurumu(x)==='yapildi'?n+sayfaAdedi(x):n+0,0),top=parseInt(k.sayfaSayisi,10)||0;return{tam,top,yuzde:top?Math.min(100,Math.round(tam/top*100)):0}};
