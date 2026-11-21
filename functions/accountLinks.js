@@ -385,6 +385,11 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
       ogrenciKayitId: link.ogrenciKayitId,
       baglantiId,
       odevId,
+      odevAciklama: homeworkSnap.get('aciklama') || 'Ödev',
+      teslimTarihi: homeworkSnap.get('teslimTarihi') || '',
+      kitapAd: homeworkSnap.get('kitapAd') || '',
+      sinifAd: link.sinifAd || '',
+      ogrenciHesapAdi: link.ogrenciHesapAdi || '',
       durum: 'tamamlandi_bildirildi',
       bildirimTarihi: FieldValue.serverTimestamp(),
     });
