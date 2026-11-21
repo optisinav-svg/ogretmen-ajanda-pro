@@ -27,3 +27,6 @@ try {
 export const auth = authInstance;
 export const db = getFirestore(app);
 export const functions = getFunctions(app, 'europe-west1');
+
+// Enable only after the matching Firestore rules and Cloud Functions are deployed and verified.
+export const ACCOUNT_LINKING_ENABLED = false;
