@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - name: Install Firestore test dependencies
         run: npm install --no-save firebase@11 @firebase/rules-unit-testing@4
       - name: Install Firebase CLI
