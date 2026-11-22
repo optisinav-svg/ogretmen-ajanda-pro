@@ -121,17 +121,17 @@ before(async () => {
     await setDoc(doc(db, 'kullanicilar', 'student-4'), { kullaniciAdi: 'Öğrenci 4', rol: 'ogrenci' });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-2__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-2', ogrenciKayitId: 'student-a',
-      sinifId: 'class-a', durum: 'active',
+      sinifId: 'class-a', donemYili: 2026, durum: 'active',
       izinler: { dersProgrami: true, dersNotlari: false, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-3__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-3', ogrenciKayitId: 'student-a',
-      sinifId: 'class-a', durum: 'revoked',
+      sinifId: 'class-a', donemYili: 2026, durum: 'revoked',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-4__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-4', ogrenciKayitId: 'deleted-student',
-      sinifId: 'class-a', durum: 'active',
+      sinifId: 'class-a', donemYili: 2026, durum: 'active',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-1__class-a'), {
@@ -139,6 +139,7 @@ before(async () => {
       ogrenciUid: 'student-1',
       ogrenciKayitId: 'student-a',
       sinifId: 'class-a',
+      donemYili: 2026,
       durum: 'active',
       izinler: {
         dersProgrami: true,
@@ -634,6 +635,40 @@ test('Firestore eski, gelecekteki veya dönem alanı eksik kayıt oluşturulmas�
   }));
   await assertFails(addDoc(collection(db, 'okullar'), {
     uid: 'teacher-a', ad: 'Dönem alanı yok',
+  }));
+});
+
+test('Sınıf ve bağlı kayıtlar farklı akademik dönemlere bağlanamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'dersler'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    donemYili: 2025,
+  }));
+  await assertFails(addDoc(collection(db, 'siniflar'), {
+    uid: 'teacher-a',
+    okulId: 'school-old',
+    ad: 'Dönem uyuşmazlığı',
+    donemYili: 2026,
+  }));
+});
+
+test('Öğrenci, sınıf ve öğrenciye atanan kitap aynı akademik dönemde olmalıdır', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'ogrenciler', 'student-old-period'), {
+      uid: 'teacher-a',
+      sinifId: 'class-a',
+      adSoyad: 'Eski dönem öğrencisi',
+      donemYili: 2025,
+    });
+  });
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'kitaplar'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-old-period',
+    ad: 'Dönemi uyuşmayan kitap',
+    donemYili: 2026,
   }));
 });
 
