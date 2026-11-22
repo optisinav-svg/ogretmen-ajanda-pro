@@ -2,7 +2,6 @@ import React,{useState,useEffect}from'react';
 import {View,Text,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,SafeAreaView}from'react-native';
 import AsyncStorage from'@react-native-async-storage/async-storage';
 import {signOut}from'firebase/auth';
-import {auth,db,ACCOUNT_LINKING_ENABLED}from'../firebaseConfig';
 import {doc,getDoc,collection,getDocs,query,where}from'firebase/firestore';
 import {auth,db,ACCOUNT_LINKING_ENABLED}from'../firebaseConfig';
 import {donemUygun,donemYiliBugun,donemBilgi}from'../utils/donem';
