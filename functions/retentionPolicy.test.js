@@ -2,53 +2,45 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   RETENTION_COLLECTIONS,
+  activePeriodStartYear,
+  archivedPeriodStartYear,
   expiredPeriodStartYear,
   isEligiblePeriodRecord,
 } = require('./retentionPolicy');
 
 const istanbulDate = value => new Date(value);
 
-test('keeps the expiring period throughout June', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-06-01T12:00:00+03:00')), null);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-06-30T23:59:59+03:00')), null);
+test('July 2026 keeps 2025/26 as archive and identifies only 2024/25 for cleanup', () => {
+  const date = istanbulDate('2026-07-01T03:20:00+03:00');
+  assert.equal(activePeriodStartYear(date), 2026);
+  assert.equal(archivedPeriodStartYear(date), 2025);
+  assert.equal(expiredPeriodStartYear(date), 2024);
 });
 
-test('expires 2026/27 from July 1, 2029', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-07-01T00:00:00+03:00')), 2026);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-05-31T12:00:00+03:00')), 2026);
+test('the cleanup guard is closed outside July', () => {
+  assert.equal(expiredPeriodStartYear(istanbulDate('2026-06-30T23:59:59+03:00')), null);
+  assert.equal(expiredPeriodStartYear(istanbulDate('2026-08-01T03:20:00+03:00')), null);
+  assert.equal(expiredPeriodStartYear(istanbulDate('2027-05-15T12:00:00+03:00')), null);
 });
 
-test('expires the next period only after its third year ends', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-06-30T23:59:59+03:00')), null);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-07-01T00:00:00+03:00')), 2027);
+test('the next July advances the single-period cleanup target by one year', () => {
+  assert.equal(expiredPeriodStartYear(istanbulDate('2027-07-01T03:20:00+03:00')), 2025);
 });
 
-test('only explicitly period-tagged, owned records are eligible', () => {
-  assert.equal(isEligiblePeriodRecord({ donemYili: 2026, uid: 'teacher-1' }, 2026), true);
-  assert.equal(isEligiblePeriodRecord({ donemYili: 2027, uid: 'teacher-1' }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ donemYili: '2026', uid: 'teacher-1' }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1' }, 2026), false);
+test('only the exact expired period and an explicitly owned record are eligible', () => {
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2024, uid: 'teacher-1' }, 2024), true);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2023, uid: 'teacher-1' }, 2024), false);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2025, uid: 'teacher-1' }, 2024), false);
+  assert.equal(isEligiblePeriodRecord({ donemYili: '2024', uid: 'teacher-1' }, 2024), false);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2024 }, 2024), false);
 });
 
-
-test('student homework notifications are included in three-year retention', () => {
-  assert.ok(RETENTION_COLLECTIONS.includes('ogrenciOdevBildirimleri'));
-  assert.equal(isEligiblePeriodRecord({
-    uid: 'teacher-1',
-    donemYili: 2026,
-    ogrenciUid: 'student-1',
-    durum: 'tamamlandi_bildirildi',
-  }, 2026), true);
-});
-
-
-test('student account metadata collections are covered by three-year retention', () => {
-  for (const name of [
-    'ogrenciEslesmeTalepleri',
-    'ogrenciEslesmeKodlari',
-    'ogretmenOgrenciBaglantilari',
-    'ogrenciKayitEslesmeleri',
-  ]) assert.ok(RETENTION_COLLECTIONS.includes(name), name);
-  assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1', donemYili: 2026, ogrenciUid: 'student-1' }, 2026), true);
+test('cleanup allowlist contains only the agreed period activity categories', () => {
+  assert.deepEqual([...RETENTION_COLLECTIONS], [
+    'dersNotlari',
+    'yoklamalar',
+    'odevler',
+    'kitaplar',
+    'konular',
+  ]);
 });
