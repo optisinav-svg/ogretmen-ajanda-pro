@@ -165,6 +165,12 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   useEffect(() => { yukle(); }, [yukle]);
 
   useEffect(() => {
+    AsyncStorage.getItem(PUSH_TOKEN_KEY).then(value => {
+      if (value) setPushToken(value);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const received = Notifications.addNotificationReceivedListener(() => yukle(true));
     const response = Notifications.addNotificationResponseReceivedListener(() => yukle(true));
     return () => {
