@@ -39,7 +39,12 @@ before(async () => {
     await setDoc(doc(db, 'kullanicilar', 'teacher-a'), {
       kullaniciAdi: 'Öğretmen A',
       brans: 'Coğrafya',
-    }); // Eski profil: rol alanı yok.
+      rol: 'ogretmen',
+    });
+
+    await setDoc(doc(db, 'kullanicilar', 'teacher-legacy'), {
+      kullaniciAdi: 'Rolü tanımsız hesap',
+    });
 
     await setDoc(doc(db, 'kullanicilar', 'teacher-b'), {
       kullaniciAdi: 'Öğretmen B',
@@ -59,6 +64,11 @@ before(async () => {
     await setDoc(doc(db, 'okullar', 'school-b'), {
       uid: 'teacher-b',
       ad: 'B Okulu',
+      donemYili: 2026,
+    });
+    await setDoc(doc(db, 'okullar', 'school-legacy'), {
+      uid: 'teacher-legacy',
+      ad: 'Rolü tanımsız hesabın okulu',
       donemYili: 2026,
     });
     await setDoc(doc(db, 'okullar', 'school-old'), {
@@ -400,9 +410,9 @@ test('Kullanıcı oluşturduğu rolü öğretmen veya öğrenci olarak değişti
   }));
 });
 
-test('Eski rol alanı olmayan öğretmen profili mevcut kayıtlarını kullanmaya devam eder', async () => {
-  const db = testEnv.authenticatedContext('teacher-a').firestore();
-  await assertSucceeds(getDoc(doc(db, 'okullar', 'school-a')));
+test('Rol alanı olmayan hesap öğretmen yetkisi alamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-legacy').firestore();
+  await assertFails(getDoc(doc(db, 'okullar', 'school-legacy')));
 });
 
 
