@@ -38,6 +38,7 @@ test('only the exact expired period and an explicitly owned record are eligible'
 test('cleanup allowlist contains only the agreed period activity categories', () => {
   assert.deepEqual([...RETENTION_COLLECTIONS], [
     'dersNotlari',
+    'dersler',
     'yoklamalar',
     'odevler',
     'kitaplar',
