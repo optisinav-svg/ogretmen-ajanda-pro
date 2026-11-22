@@ -7,6 +7,8 @@ test('teacher profile input accepts normalized valid fields', () => {
     kullaniciAdi: '  Rıza Gökçe  ',
     brans: 'Coğrafya',
     sezon: '2026/2027',
+    rol: 'ogrenci',
+    uid: 'attacker-controlled-uid',
   }), {
     kullaniciAdi: 'Rıza Gökçe',
     brans: 'Coğrafya',
