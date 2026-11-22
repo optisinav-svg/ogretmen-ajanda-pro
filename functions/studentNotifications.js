@@ -1,7 +1,7 @@
 const { createHash } = require('node:crypto');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 
 const REGION = 'europe-west1';
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
@@ -147,7 +147,7 @@ async function processHomeworkChange(homeworkId, homework, newlyTargetedIds, rem
     : [];
   if (typeof teacherUid !== 'string' || !teacherUid
     || typeof classId !== 'string' || !classId
-    || !Number.isInteger(period) || !allTargets.length) return;
+    || !Number.isInteger(period) || (!allTargets.length && !removedIds.length)) return;
 
   const [teacherSnap, classSnap] = await Promise.all([
     db.collection('kullanicilar').doc(teacherUid).get(),
@@ -295,3 +295,15 @@ module.exports._test = {
   isHomeworkTargeted,
   buildHomeworkPushMessage,
 };
+
+
+exports.odevSilindiOgrenciBildirimleri = onDocumentDeleted({
+  document: 'odevler/{odevId}',
+  region: REGION,
+  retry: true,
+}, async event => {
+  const homework = event.data?.data();
+  if (!homework) return;
+  const targets = Array.isArray(homework.hedefOgrenciIds) ? homework.hedefOgrenciIds : [];
+  await processHomeworkChange(event.params.odevId, homework, [], targets);
+});
