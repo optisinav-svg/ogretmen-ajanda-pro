@@ -23,7 +23,7 @@ function validateTeacherProfileInput(data) {
   if (!brans || brans.length > 50) {
     throw new HttpsError('invalid-argument', 'Geçerli bir branş seçin.');
   }
-  const match = /^(\\d{4})\\/(\\d{4})$/.exec(sezon);
+  const match = /^(\d{4})\/(\d{4})$/.exec(sezon);
   if (!match || Number(match[2]) !== Number(match[1]) + 1) {
     throw new HttpsError('invalid-argument', 'Eğitim-öğretim sezonu geçersiz.');
   }
