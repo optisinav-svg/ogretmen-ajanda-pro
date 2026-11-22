@@ -1,23 +1,17 @@
+// Dönem saklama politikası — Firebase Spark uyumlu, saf yardımcı fonksiyonlar.
+// Bu modül kendi başına hiçbir veriyi silmez ve zamanlayıcı başlatmaz.
+// Silme işlemi, uygulama içinde yetkili kullanıcı tarafından Temmuz ayında
+// başlatılan, önce önizleme sunan ve açık onay gerektiren akıştan yürütülmelidir.
+
 const RETENTION_COLLECTIONS = Object.freeze([
-  // Period-owned records. Shared book-library definitions and user profiles
-  // are intentionally excluded because they are not owned by one school year.
-  'bireyselDersOturumlari',
-  'ogrenciOdevBildirimleri',
-  'ogrenciYeniOdevBildirimleri',
-  'ogrenciEslesmeTalepleri',
-  'ogrenciEslesmeKodlari',
-  'ogretmenOgrenciBaglantilari',
-  'ogrenciKayitEslesmeleri',
-  'bireyselEtkinlikler',
+  // Kullanıcının tarif ettiği dönemsel çalışma verileri.
+  // Ana kayıtlar (okullar/sınıflar/öğrenciler), kullanıcı profilleri,
+  // bağlantı metadata'sı ve ortak kitap kütüphanesi burada bulunmaz.
   'dersNotlari',
   'yoklamalar',
   'odevler',
-  'konular',
   'kitaplar',
-  'dersler',
-  'ogrenciler',
-  'siniflar',
-  'okullar',
+  'konular',
 ]);
 
 function istanbulDateParts(date = new Date()) {
@@ -36,34 +30,39 @@ function istanbulDateParts(date = new Date()) {
   };
 }
 
-/**
- * Returns the academic-period start year that has completed its third
- * academic year, or null throughout June.
- *
- * Example: 2029-07-01 in Europe/Istanbul => 2026 (2026/27 is now expired).
- * June is deliberately skipped so the period ending on June 30 is retained
- * through its final day.
- */
-function expiredPeriodStartYear(date = new Date()) {
+function activePeriodStartYear(date = new Date()) {
   const { year, month } = istanbulDateParts(date);
+  return month >= 7 ? year : year - 1;
+}
 
-  if (month === 6) return null;
-
-  const activePeriodStartYear = month >= 7 ? year : year - 1;
-  return activePeriodStartYear - 3;
+function archivedPeriodStartYear(date = new Date()) {
+  return activePeriodStartYear(date) - 1;
 }
 
 /**
- * Fail closed: only records with an explicit numeric period and a non-empty
- * owner UID can be deleted. Legacy records without donemYili are not inferred
- * from timestamps because June overlap makes that inference unsafe.
+ * Returns the one academic period eligible for the current year's July cleanup.
+ * The current period is untouched; the immediately previous period remains
+ * readable as an archive; only the period before that is eligible.
+ *
+ * Example: July 2026 => 2024 (2024/25); 2025/26 remains archived and
+ * 2026/27 remains the active period.
+ *
+ * Returns null outside July. This is not a scheduler: Spark cannot run
+ * scheduled Cloud Functions. It is a guard for the in-app cleanup flow.
  */
+function expiredPeriodStartYear(date = new Date()) {
+  const { month } = istanbulDateParts(date);
+  if (month !== 7) return null;
+  return activePeriodStartYear(date) - 2;
+}
+
 function isEligiblePeriodRecord(data, cutoffYear) {
   return Boolean(
     data &&
+    Number.isInteger(cutoffYear) &&
     typeof data.donemYili === 'number' &&
     Number.isInteger(data.donemYili) &&
-    data.donemYili <= cutoffYear &&
+    data.donemYili === cutoffYear &&
     typeof data.uid === 'string' &&
     data.uid.trim().length > 0
   );
@@ -72,6 +71,8 @@ function isEligiblePeriodRecord(data, cutoffYear) {
 module.exports = {
   RETENTION_COLLECTIONS,
   istanbulDateParts,
+  activePeriodStartYear,
+  archivedPeriodStartYear,
   expiredPeriodStartYear,
   isEligiblePeriodRecord,
 };
