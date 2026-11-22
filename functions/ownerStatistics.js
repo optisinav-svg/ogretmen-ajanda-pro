@@ -8,7 +8,7 @@ function isApplicationOwner(request) {
   return request?.auth?.token?.uygulamaSahibi === true;
 }
 
-async function readCollection(collectionName, selectedFields, filters = []) {
+async function readCollection(db, collectionName, selectedFields, filters = []) {
   const records = [];
   let cursor = null;
   while (true) {
@@ -110,10 +110,10 @@ exports.getUygulamaSahibiIstatistikleri = onCall(
 
     const db = getFirestore();
     const [teachers, studentCountSnapshot, links, requests] = await Promise.all([
-      readCollection('kullanicilar', ['kullaniciAdi', 'brans'], [['rol', 'ogretmen']]),
+      readCollection(db, 'kullanicilar', ['kullaniciAdi', 'brans'], [['rol', 'ogretmen']]),
       db.collection('kullanicilar').where('rol', '==', 'ogrenci').count().get(),
-      readCollection('ogretmenOgrenciBaglantilari', ['ogretmenUid', 'ogrenciUid', 'durum']),
-      readCollection('ogrenciEslesmeTalepleri', ['ogretmenUid', 'durum']),
+      readCollection(db, 'ogretmenOgrenciBaglantilari', ['ogretmenUid', 'ogrenciUid', 'durum']),
+      readCollection(db, 'ogrenciEslesmeTalepleri', ['ogretmenUid', 'durum']),
     ]);
 
     return {
