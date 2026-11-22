@@ -444,20 +444,13 @@ service cloud.firestore {
       // Teacher profiles are self-created on Spark. Student profiles require a verified invite request.
       allow create: if createsOwnUserProfile(userId);
 
-      // Profil rolü oluşturulduktan sonra değiştirilemez.
+      // Kullanıcı rolünü, e-posta adresini veya uygulama sahibi claim alanlarını değiştiremez.
       allow update: if signedIn()
         && request.auth.uid == userId
-        && (
-          (
-            !resource.data.keys().hasAny(['rol'])
-            && !request.resource.data.keys().hasAny(['rol'])
-          )
-          || (
-            resource.data.keys().hasAny(['rol'])
-            && request.resource.data.keys().hasAny(['rol'])
-            && resource.data.rol == request.resource.data.rol
-          )
-        );
+        && resource.data.keys().hasAny(['rol'])
+        && request.resource.data.rol == resource.data.rol
+        && request.resource.data.eposta == resource.data.eposta
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kullaniciAdi', 'brans', 'sezon']);
 
       allow delete: if false;
     }
