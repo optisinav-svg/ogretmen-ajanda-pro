@@ -32,8 +32,14 @@ service cloud.firestore {
     function linkedStudentRecordExists(teacherUid, classId) {
       let link = get(studentLinkPath(teacherUid, classId)).data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(link.ogrenciKayitId);
+      let classPath = /databases/$(database)/documents/siniflar/$(classId);
       return exists(studentPath)
-        && get(studentPath).data.uid == teacherUid;
+        && get(studentPath).data.uid == teacherUid
+        && get(studentPath).data.sinifId == classId
+        && get(studentPath).data.donemYili == link.donemYili
+        && exists(classPath)
+        && get(classPath).data.uid == teacherUid
+        && get(classPath).data.donemYili == link.donemYili;
     }
 
     function studentHasPermission(teacherUid, classId, permission) {
@@ -108,20 +114,26 @@ service cloud.firestore {
 
     function classBelongsToTeacher(data) {
       return data.sinifId is string
-        && ownsDocument('siniflar', data.sinifId);
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
     }
 
     function studentBelongsToClass(data) {
       return data.ogrenciId is string
         && data.sinifId is string
         && ownsDocument('ogrenciler', data.ogrenciId)
-        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId;
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
     }
 
     function schoolBelongsToTeacher(data) {
       return !data.keys().hasAny(['okulId'])
         || data.okulId == ''
-        || (data.okulId is string && ownsDocument('okullar', data.okulId));
+        || (data.okulId is string
+          && ownsDocument('okullar', data.okulId)
+          && get(/databases/$(database)/documents/okullar/$(data.okulId)).data.donemYili == data.donemYili);
     }
 
     function optionalLessonBelongsToTeacher(data) {
@@ -133,6 +145,7 @@ service cloud.firestore {
         || (
           ownsDocument('dersler', data.dersId)
           && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
+          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.donemYili == data.donemYili
         );
     }
 
@@ -151,7 +164,9 @@ service cloud.firestore {
     function assignedBookBelongsToStudent(data) {
       return data.kitapId is string
         && ownsDocumentAfter('kitaplar', data.kitapId)
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId;
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.sinifId == data.sinifId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.donemYili == data.donemYili;
     }
 
     // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
