@@ -36,7 +36,7 @@ jobs:
       - name: Install Cloud Functions dependencies
         run: npm install --prefix functions
       - name: Check Cloud Functions JavaScript syntax
-        run: node --check functions/index.js && node --check functions/accountLinks.js && node --check functions/scripts/firestore-backup.js
+        run: node --check functions/index.js && node --check functions/accountLinks.js && node --check functions/ownerStatistics.js && node --check functions/scripts/firestore-backup.js && node --check functions/scripts/configure-existing-accounts.js
       - name: Run Cloud Functions policy tests
         run: npm test --prefix functions
 
