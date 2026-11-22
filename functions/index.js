@@ -132,6 +132,7 @@ exports.ogrenciPushTokenKaydet = studentNotifications.ogrenciPushTokenKaydet;
 exports.ogrenciPushTokenSil = studentNotifications.ogrenciPushTokenSil;
 exports.odevOlusturulduOgrenciBildirimleri = studentNotifications.odevOlusturulduOgrenciBildirimleri;
 exports.odeveOgrenciEklendiBildirimleri = studentNotifications.odeveOgrenciEklendiBildirimleri;
+exports.odevSilindiOgrenciBildirimleri = studentNotifications.odevSilindiOgrenciBildirimleri;
 
 const ownerStatistics = require('./ownerStatistics');
 exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
