@@ -382,6 +382,7 @@ service cloud.firestore {
         && linkId == request.auth.uid + '__' + data.ogrenciUid + '__' + data.sinifId
         && existsAfter(requestPath)
         && requestData.durum == 'onaylandi'
+        && requestData.yanitTarihi == request.time
         && requestData.baglantiId == linkId
         && requestData.ogretmenUid == request.auth.uid
         && requestData.ogrenciUid == data.ogrenciUid
@@ -454,6 +455,7 @@ service cloud.firestore {
       let pairingRequest = getAfter(requestPath).data;
       return isTeacher()
         && resource.data.ogretmenUid == request.auth.uid
+        && resource.data.uid == request.auth.uid
         && resource.data.durum == 'revoked'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'ogrenciUid', 'sinifId', 'donemYili', 'baglantiId', 'durum', 'iptalTarihi', 'guncellenme'
@@ -461,6 +463,7 @@ service cloud.firestore {
         && indexId == request.auth.uid + '__' + data.ogrenciKayitId
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
+        && data.ogrenciUid is string
         && data.ogrenciKayitId == resource.data.ogrenciKayitId
         && data.durum == 'active'
         && data.guncellenme == request.time
@@ -475,6 +478,7 @@ service cloud.firestore {
         && link.durum == 'active'
         && existsAfter(requestPath)
         && pairingRequest.durum == 'onaylandi'
+        && pairingRequest.yanitTarihi == request.time
         && pairingRequest.baglantiId == data.baglantiId
         && pairingRequest.ogretmenUid == request.auth.uid
         && pairingRequest.ogrenciUid == data.ogrenciUid
