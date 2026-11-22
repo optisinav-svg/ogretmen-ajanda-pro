@@ -780,6 +780,9 @@ test('Öğretmen yalnızca bağlantı kurulmuş ve ödev izni açık öğrenciye
     durum: 'aktif',
     okundu: false,
   }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await deleteDoc(doc(context.firestore(), 'ogrenciYeniOdevBildirimleri', notificationId));
+  });
 });
 
 test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık kod ve öğretmen onayı gerektirir', async () => {
@@ -884,7 +887,7 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     durum: 'active',
     guncellenme: serverTimestamp(),
   });
-  approve.update(requestRef, {
+  approve.update(doc(teacherDb, 'ogrenciEslesmeTalepleri', requestRef.id), {
     durum: 'onaylandi',
     baglantiId: linkId,
     yanitTarihi: serverTimestamp(),
