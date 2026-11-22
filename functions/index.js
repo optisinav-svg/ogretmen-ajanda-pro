@@ -115,7 +115,6 @@ exports.donemSonuVeriTemizligi = onSchedule(
 
 const accountLinks = require('./accountLinks');
 
-exports.eskiOgretmenRolunuTanimla = accountLinks.eskiOgretmenRolunuTanimla;
 exports.ogrenciEslesmeKoduOlustur = accountLinks.ogrenciEslesmeKoduOlustur;
 exports.ogrenciEslesmeTalebiGonder = accountLinks.ogrenciEslesmeTalebiGonder;
 exports.ogrenciEslesmeTalebiniOnayla = accountLinks.ogrenciEslesmeTalebiniOnayla;
