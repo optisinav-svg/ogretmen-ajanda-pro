@@ -7,12 +7,16 @@ on:
       - feature/group3-firestore-security-hardening
       - feature/group4-student-app
       - integration/pre-apk-2026-11-21
+      - release/pre-apk-2026-11-22
+      - fix/spark-retention-and-apk-readiness-2026-11-22
   pull_request:
     branches:
       - feature/group2-ders-konu-takvim
       - integration/pre-apk-2026-11-21
       - feature/group3-firestore-security-hardening
       - feature/group4-student-app
+      - release/pre-apk-2026-11-22
+      - fix/spark-retention-and-apk-readiness-2026-11-22
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
