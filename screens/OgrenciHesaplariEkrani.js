@@ -4,8 +4,8 @@ import {
   Alert, Modal, ActivityIndicator,
 } from 'react-native';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { auth, db, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { createStudentPairingCode, approveStudentPairingRequest, rejectStudentPairingRequest, updateStudentLinkPermissions, revokeStudentLink } from '../services/sparkStudentAccounts';
 import { donemYiliBugun, donemUygun, donemDuzenlemeyeAcik } from '../utils/donem';
 
 const IZINLER = [
@@ -80,8 +80,8 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
     }
     setIslem(true);
     try {
-      const sonuc = await httpsCallable(functions, 'ogrenciEslesmeKoduOlustur')({ ogrenciKayitId: ogrenci.id });
-      setKodBilgi({ kod: sonuc.data.kod, sonaErme: sonuc.data.sonaErme, ogrenci: ogrenci.adSoyad || ogrenci.ad || 'Öğrenci' });
+      const sonuc = await createStudentPairingCode(ogrenci);
+      setKodBilgi({ kod: sonuc.kod, sonaErme: sonuc.sonaErme, ogrenci: ogrenci.adSoyad || ogrenci.ad || 'Öğrenci' });
       setKodModal(true);
     } catch (e) {
       Alert.alert('Kod oluşturulamadı', e?.message || 'Öğrenci hesabı eşleştirme kodu oluşturulamadı.');
@@ -101,16 +101,10 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
     setIslem(true);
     try {
       if (hedef.tur === 'talep') {
-        await httpsCallable(functions, 'ogrenciEslesmeTalebiniOnayla')({
-          talepId: hedef.kayit.id,
-          izinler,
-        });
+        await approveStudentPairingRequest(hedef.kayit, izinler);
         Alert.alert('Bağlantı kuruldu', 'Öğrenci hesabı onaylandı. Yalnızca seçtiğiniz izinler geçerlidir.');
       } else {
-        await httpsCallable(functions, 'ogrenciBaglantiIzinleriniGuncelle')({
-          baglantiId: hedef.kayit.id,
-          izinler,
-        });
+        await updateStudentLinkPermissions(hedef.kayit.id, izinler);
         Alert.alert('İzinler güncellendi', 'Öğrencinin erişim izinleri yenilendi.');
       }
       setIzinModal(false);
@@ -131,7 +125,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
       { text: 'Reddet', style: 'destructive', onPress: async () => {
         setIslem(true);
         try {
-          await httpsCallable(functions, 'ogrenciEslesmeTalebiniReddet')({ talepId: talep.id });
+          await rejectStudentPairingRequest(talep.id);
           await yukle();
         } catch (e) { Alert.alert('Hata', e?.message || 'Talep reddedilemedi.'); }
         finally { setIslem(false); }
@@ -149,7 +143,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
         { text: 'Bağlantıyı iptal et', style: 'destructive', onPress: async () => {
           setIslem(true);
           try {
-            await httpsCallable(functions, 'ogrenciBaglantisiniIptalEt')({ baglantiId: baglanti.id });
+            await revokeStudentLink(baglanti);
             await yukle();
           } catch (e) { Alert.alert('Hata', e?.message || 'Bağlantı iptal edilemedi.'); }
           finally { setIslem(false); }
@@ -162,7 +156,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
     <View style={[s.wrap, { justifyContent: 'center', padding: 24 }]}>
       <View style={s.info}>
         <Text style={s.infoTitle}>Öğrenci hesap bağlantısı henüz etkin değil</Text>
-        <Text style={s.infoText}>Kod üretme ve öğrenci eşleştirme altyapısı hazırlandı; ancak Firestore güvenlik kuralları ve Cloud Functions canlı Firebase'e henüz dağıtılmadı. Güvenlik doğrulaması ve dağıtım onayı tamamlanmadan bu özellik açılmayacak.</Text>
+        <Text style={s.infoText}>Öğrenci eşleştirmesi Spark planında doğrudan Firestore işlemleriyle yürütülür. Öğretmen kod üretir, öğrenci doğrulanmış hesabıyla talep gönderir, son kararı öğretmen verir.</Text>
       </View>
       <TouchableOpacity style={s.primary} onPress={() => navigation.goBack()}><Text style={s.primaryText}>Geri dön</Text></TouchableOpacity>
     </View>
