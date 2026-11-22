@@ -49,6 +49,33 @@ test('Boolean olmayan paylaşım izni reddedilir', () => {
 });
 
 
+test('Öğrenci eski dönem ödev işlemlerini 30 Haziran sonuna kadar yapabilir; 1 Temmuzda dönem salt okunur olur', () => {
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2026-06-01T00:00:00+03:00')), true);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2027-06-30T23:59:59+03:00')), true);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2027-07-01T00:00:00+03:00')), false);
+  assert.equal(_test.isAcademicPeriodEditable(2026, new Date('2026-05-31T23:59:59+03:00')), false);
+});
+
+test('Öğrenci eşleştirmesi doğrulanmış e-posta ve kayıtlı ad-soyadın ikisini de gerektirir', () => {
+  const record = { adSoyad: 'Çağrı Öztürk', eposta: 'ogrenci@example.com' };
+  assert.equal(_test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', true), true);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'baska@example.com', 'Çağrı Öztürk', true), /e-posta/i);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Başka Öğrenci', true), /ad-soyad/i);
+  assert.throws(() => _test.assertStudentIdentityMatches(record, 'ogrenci@example.com', 'Çağrı Öztürk', false), /doğrulanmalıdır/i);
+});
+
+test('Ad-soyad karşılaştırması Türkçe harfleri ve biçim farklarını güvenli biçimde normalize eder', () => {
+  const record = { adSoyad: 'Çağrı Öztürk', eposta: 'ogrenci@example.com' };
+  assert.equal(_test.assertStudentIdentityMatches(record, ' Ogrenci@Example.com ', 'ÇAĞRI   ÖZTÜRK', true), true);
+});
+
+test('Eski kayıtta e-posta yoksa otomatik öğrenci hesabı eşleştirmesi yapılmaz', () => {
+  assert.throws(
+    () => _test.assertStudentIdentityMatches({ adSoyad: 'Çağrı Öztürk' }, 'ogrenci@example.com', 'Çağrı Öztürk', true),
+    /e-posta/i,
+  );
+});
+
 test('Aynı öğretmen öğrenci kaydı ikinci bir öğrenci hesabına bağlanamaz', () => {
   assert.throws(
     () => _test.assertStudentRecordAvailable({ durum: 'active', ogrenciUid: 'student-a' }, 'student-b'),

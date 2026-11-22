@@ -5,8 +5,8 @@ import {
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions } from '../firebaseConfig';
 
 const buYil = new Date().getFullYear();
 const SEZONLAR = [
@@ -25,7 +25,6 @@ const BRANSLAR = [
 
 export default function KayitEkrani({ navigation }) {
   const [adim, setAdim] = useState(1);
-  const [hesapTuru] = useState('ogretmen');
   const [sezon, setSezon] = useState('');
   const [brans, setBrans] = useState('');
   const [kullaniciAdi, setKullaniciAdi] = useState('');
@@ -49,20 +48,28 @@ export default function KayitEkrani({ navigation }) {
     }
     setYukleniyor(true);
     try {
-      const sonuc = await createUserWithEmailAndPassword(auth, eposta, sifre);
-      await updateProfile(sonuc.user, { displayName: kullaniciAdi });
-      await setDoc(doc(db, 'kullanicilar', sonuc.user.uid), {
+      const normalizedEmail = eposta.trim().toLowerCase();
+      let user = auth.currentUser;
+      if (user && (user.email || '').toLowerCase() !== normalizedEmail) {
+        throw new Error('Önce açık olan hesaptan çıkış yapın, ardından yeni öğretmen hesabını oluşturun.');
+      }
+      if (!user) {
+        const sonuc = await createUserWithEmailAndPassword(auth, normalizedEmail, sifre);
+        user = sonuc.user;
+      }
+      await updateProfile(user, { displayName: kullaniciAdi.trim() });
+      await httpsCallable(functions, 'ogretmenProfiliOlustur')({
         kullaniciAdi: kullaniciAdi.trim(),
-        rol: hesapTuru,
         brans,
         sezon,
-        eposta,
-        olusturulmaTarihi: new Date().toISOString(),
       });
+      navigation.replace('AnaSayfa');
     } catch (hata) {
       let mesaj = 'Kayıt oluşturulamadı.';
-      if (hata.code === 'auth/email-already-in-use') mesaj = 'Bu e-posta zaten kayıtlı.';
+      if (hata.code === 'auth/email-already-in-use') mesaj = 'Bu e-posta zaten kayıtlı. Giriş ekranından giriş yapın.';
       else if (hata.code === 'auth/invalid-email') mesaj = 'Geçersiz e-posta adresi.';
+      else if (hata.code === 'functions/already-exists') mesaj = 'Bu hesap için kullanıcı profili zaten mevcut. Giriş ekranına dönün.';
+      else if (hata.message) mesaj = hata.message;
       Alert.alert('Kayıt Hatası', mesaj);
     } finally {
       setYukleniyor(false);
@@ -209,6 +216,10 @@ export default function KayitEkrani({ navigation }) {
               <Text style={styles.geriMetni}>← Geri</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity style={styles.girisLink} onPress={() => navigation.navigate('KVKKBilgilendirme')}>
+            <Text style={styles.girisVurgu}>KVKK Aydınlatma Bilgisi</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.girisLink}

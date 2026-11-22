@@ -11,16 +11,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/kullanicilar/$(userId);
     }
 
-    // Eski öğretmen profillerinde rol alanı bulunmadığı için
-    // geriye dönük uyumluluk korunur. Yeni öğrenci profilleri
-    // rol == 'ogrenci' olduğunda öğretmen koleksiyonlarına erişemez.
+    // Öğretmen yetkisi yalnızca açıkça tanımlanmış rol üzerinden verilir.
+    // Rolü olmayan hesaplar migration tamamlanana kadar erişim alamaz.
     function isTeacher() {
       return signedIn()
         && exists(profilePath(request.auth.uid))
-        && (
-          !get(profilePath(request.auth.uid)).data.keys().hasAny(['rol'])
-          || get(profilePath(request.auth.uid)).data.rol == 'ogretmen'
-        );
+        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen';
     }
 
     function isStudent() {
@@ -36,8 +32,14 @@ service cloud.firestore {
     function linkedStudentRecordExists(teacherUid, classId) {
       let link = get(studentLinkPath(teacherUid, classId)).data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(link.ogrenciKayitId);
+      let classPath = /databases/$(database)/documents/siniflar/$(classId);
       return exists(studentPath)
-        && get(studentPath).data.uid == teacherUid;
+        && get(studentPath).data.uid == teacherUid
+        && get(studentPath).data.sinifId == classId
+        && get(studentPath).data.donemYili == link.donemYili
+        && exists(classPath)
+        && get(classPath).data.uid == teacherUid
+        && get(classPath).data.donemYili == link.donemYili;
     }
 
     function studentHasPermission(teacherUid, classId, permission) {
@@ -62,6 +64,35 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid;
     }
 
+    // request.time UTC'dir; +3 saat Europe/Istanbul yerel saatini verir.
+    // Haziran ayında biten eski dönem ve başlayan yeni dönem birlikte yazılabilir.
+    function isEditablePeriod(period) {
+      let localNow = request.time + duration.value(3, 'h');
+      let currentYear = localNow.year();
+      let currentMonth = localNow.month();
+      return period is int
+        && (
+          (period == currentYear && currentMonth >= 6)
+          || (period == currentYear - 1 && currentMonth <= 6)
+        );
+    }
+
+    function createsOwnPeriodRecord() {
+      return createsOwnRecord()
+        && request.resource.data.keys().hasAny(['donemYili'])
+        && isEditablePeriod(request.resource.data.donemYili);
+    }
+
+    function ownsEditablePeriodRecord() {
+      return ownsRecord()
+        && resource.data.keys().hasAny(['donemYili'])
+        && isEditablePeriod(resource.data.donemYili);
+    }
+
+    function keepsPeriod() {
+      return request.resource.data.donemYili == resource.data.donemYili;
+    }
+
     function keepsOwner() {
       return request.resource.data.uid == resource.data.uid
         && resource.data.uid == request.auth.uid;
@@ -83,20 +114,26 @@ service cloud.firestore {
 
     function classBelongsToTeacher(data) {
       return data.sinifId is string
-        && ownsDocument('siniflar', data.sinifId);
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
     }
 
     function studentBelongsToClass(data) {
       return data.ogrenciId is string
         && data.sinifId is string
         && ownsDocument('ogrenciler', data.ogrenciId)
-        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId;
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
     }
 
     function schoolBelongsToTeacher(data) {
       return !data.keys().hasAny(['okulId'])
         || data.okulId == ''
-        || (data.okulId is string && ownsDocument('okullar', data.okulId));
+        || (data.okulId is string
+          && ownsDocument('okullar', data.okulId)
+          && get(/databases/$(database)/documents/okullar/$(data.okulId)).data.donemYili == data.donemYili);
     }
 
     function optionalLessonBelongsToTeacher(data) {
@@ -108,6 +145,7 @@ service cloud.firestore {
         || (
           ownsDocument('dersler', data.dersId)
           && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
+          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.donemYili == data.donemYili
         );
     }
 
@@ -126,7 +164,9 @@ service cloud.firestore {
     function assignedBookBelongsToStudent(data) {
       return data.kitapId is string
         && ownsDocumentAfter('kitaplar', data.kitapId)
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId;
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.sinifId == data.sinifId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.donemYili == data.donemYili;
     }
 
     // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
@@ -134,10 +174,8 @@ service cloud.firestore {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list: if false;
 
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasAny(['rol'])
-        && request.resource.data.rol == 'ogretmen';
+      // All profile creation and role assignment must pass through trusted Cloud Functions.
+      allow create: if false;
 
       // Profil rolü oluşturulduktan sonra değiştirilemez.
       allow update: if signedIn()
@@ -160,103 +198,68 @@ service cloud.firestore {
     // Öğretmene ait okul kayıtları
     match /okullar/{docId} {
       allow read: if ownsRecord();
-      allow create: if createsOwnRecord();
-      allow update: if ownsRecord()
-        && keepsOwner();
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord();
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod();
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Sınıf, yalnızca aynı öğretmene ait bir okula bağlanabilir.
     match /siniflar/{docId} {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, docId, 'dersProgrami');
-      allow create: if createsOwnRecord()
-        && schoolBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && schoolBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && schoolBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && schoolBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Ders programı
     match /dersler/{docId} {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami');
-      allow create: if createsOwnRecord()
-        && classBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && classBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Öğrenci kayıtları (öğretmenin kendi öğrenci listesi)
     match /ogrenciler/{docId} {
       allow read: if ownsRecord() || (isStudent() && studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && linkedStudentRecordId(resource.data.uid, resource.data.sinifId) == docId);
-      allow create: if createsOwnRecord()
-        && classBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && classBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /dersNotlari/{docId} {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersNotlari');
-      allow create: if createsOwnRecord()
-        && classBelongsToTeacher(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && classBelongsToTeacher(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /yoklamalar/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'yoklama') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord()
-        && classBelongsToTeacher(request.resource.data)
-        && studentBelongsToClass(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && classBelongsToTeacher(request.resource.data)
-        && studentBelongsToClass(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && studentBelongsToClass(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && studentBelongsToClass(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /odevler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'odevler') && resource.data.hedefOgrenciIds.hasAny([linkedStudentRecordId(resource.data.uid, resource.data.sinifId)]));
-      allow create: if createsOwnRecord()
-        && classBelongsToTeacher(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && classBelongsToTeacher(request.resource.data)
-        && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /kitaplar/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'kitaplar') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord()
-        && studentBelongsToClass(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && studentBelongsToClass(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /konular/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'konular') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord()
-        && studentBelongsToClass(request.resource.data)
-        && assignedBookBelongsToStudent(request.resource.data);
-      allow update: if ownsRecord()
-        && keepsOwner()
-        && studentBelongsToClass(request.resource.data)
-        && assignedBookBelongsToStudent(request.resource.data);
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Kitap kütüphanesi şu an ortak değil, öğretmen hesabına özeldir.
@@ -283,16 +286,16 @@ service cloud.firestore {
     // Takvimdeki bireysel ders / etüt / soru çözümü kayıtları öğretmen sahibine aittir.
     match /bireyselEtkinlikler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord() && studentBelongsToClass(request.resource.data);
-      allow update: if ownsRecord() && keepsOwner();
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /bireyselDersOturumlari/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
-      allow create: if createsOwnRecord() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
-      allow update: if ownsRecord() && keepsOwner();
-      allow delete: if ownsRecord();
+      allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Eşleştirme kodları yalnızca güvenilir Cloud Functions tarafından yönetilir.
@@ -325,6 +328,25 @@ service cloud.firestore {
         && (resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
       allow create, update, delete: if false;
+    }
+
+    // Öğrenciye atanan ödev bildirimlerini yalnızca ilgili öğrenci okuyabilir.
+    // Öğrenci yalnızca bildirimi okundu olarak işaretleyebilir.
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if isStudent()
+        && resource.data.ogrenciUid == request.auth.uid;
+      allow create, delete: if false;
+      allow update: if isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
     }
 
     // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.

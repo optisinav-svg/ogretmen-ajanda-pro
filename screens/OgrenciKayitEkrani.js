@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 
@@ -29,6 +29,12 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     }
     setYukleniyor(true);
     try {
+      await reload(auth.currentUser);
+      await auth.currentUser.getIdToken(true);
+      if (!auth.currentUser.emailVerified) {
+        Alert.alert('E-posta doğrulanmadı', 'Önce e-posta kutunuza gönderilen doğrulama bağlantısını açın. Ardından tekrar deneyin.');
+        return;
+      }
       await httpsCallable(functions, 'ogrenciEslesmeTalebiGonder')({
         kod: temizKod,
         adSoyad: adSoyad.trim(),
@@ -53,10 +59,11 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     try {
       const result = await createUserWithEmailAndPassword(auth, eposta.trim(), sifre);
       await updateProfile(result.user, { displayName: adSoyad.trim() });
+      await sendEmailVerification(result.user);
       setHesapHazir(true);
       setSifre('');
       setSifreTekrar('');
-      Alert.alert('Hesap oluşturuldu', 'Şimdi öğretmeninizin verdiği eşleştirme kodunu girin.');
+      Alert.alert('Doğrulama e-postası gönderildi', 'E-posta kutunuza gönderilen bağlantıyı açıp adresinizi doğrulayın. Doğrulama tamamlanmadan eşleştirme isteği gönderemezsiniz.');
     } catch (e) {
       const message = e?.code === 'auth/email-already-in-use'
         ? 'Bu e-posta ile bir hesap zaten var. Giriş ekranından giriş yapıp öğrenci kaydınızı kodla tamamlayabilirsiniz.'
@@ -104,6 +111,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
           <View style={s.card}>
             <Text style={s.label}>Hesap</Text>
             <Text style={s.account}>{auth.currentUser?.email || eposta}</Text>
+            <TouchableOpacity style={s.link} onPress={async () => { try { await sendEmailVerification(auth.currentUser); Alert.alert("E-posta gönderildi", "Doğrulama bağlantısını e-posta kutunuzdan açın."); } catch (e) { Alert.alert("Gönderilemedi", e?.message || "Doğrulama e-postası gönderilemedi."); } }}><Text style={s.linkText}>Doğrulama e-postasını yeniden gönder</Text></TouchableOpacity>
             <Text style={s.label}>Öğretmen Eşleştirme Kodu</Text>
             <TextInput style={s.input} value={kod} onChangeText={setKod} placeholder="16 karakterli kod" autoCapitalize="characters" autoCorrect={false} maxLength={16}/>
             <TouchableOpacity style={s.button} onPress={kodGonder} disabled={yukleniyor}>
@@ -112,6 +120,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
             <Text style={s.note}>Kod geçersiz veya süresi dolmuşsa öğretmeninizden yeni kod isteyin. Daha sonra da bu ekrandan yeni bir kod gönderebilirsiniz.</Text>
           </View>
         )}
+        <TouchableOpacity style={s.link} onPress={() => navigation.navigate('KVKKBilgilendirme')}><Text style={s.linkText}>KVKK Aydınlatma Bilgisi</Text></TouchableOpacity>
         <TouchableOpacity style={s.link} onPress={() => navigation.navigate('Giris')}><Text style={s.linkText}>Giriş ekranına dön</Text></TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -40,6 +40,56 @@ function assertStudentRecordAvailable(existing, studentUid) {
   }
 }
 
+function normalizeIdentityEmail(value) {
+  return typeof value === 'string' ? value.trim().toLocaleLowerCase('en-US') : '';
+}
+
+function normalizeIdentityName(value) {
+  return typeof value === 'string'
+    ? value.normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\p{L}\p{N}]/gu, '')
+    : '';
+}
+
+function istanbulDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function isAcademicPeriodEditable(period, date = new Date()) {
+  if (!Number.isInteger(period)) return false;
+  const today = istanbulDateString(date);
+  return today >= `${period}-06-01` && today <= `${period + 1}-06-30`;
+}
+
+function hasMatchingAcademicPeriod(student, classData) {
+  return Number.isInteger(student?.donemYili)
+    && Number.isInteger(classData?.donemYili)
+    && student.donemYili === classData.donemYili;
+}
+
+function assertStudentIdentityMatches(student, email, name, emailVerified) {
+  const registeredEmail = normalizeIdentityEmail(student?.eposta || student?.email);
+  const accountEmail = normalizeIdentityEmail(email);
+  const registeredName = normalizeIdentityName(student?.adSoyad || [student?.ad, student?.soyad].filter(Boolean).join(' '));
+  const accountName = normalizeIdentityName(name);
+  if (!emailVerified) {
+    throw new HttpsError('failed-precondition', 'Öğrenci hesabının e-posta adresi doğrulanmalıdır.');
+  }
+  if (!registeredEmail || !accountEmail || registeredEmail !== accountEmail) {
+    throw new HttpsError('permission-denied', 'Hesabın e-posta adresi öğrenci kaydındaki e-posta ile eşleşmiyor. Öğretmeninizden kaydı kontrol etmesini isteyin.');
+  }
+  if (!registeredName || !accountName || registeredName !== accountName) {
+    throw new HttpsError('permission-denied', 'Hesap adı öğrenci kaydındaki ad-soyad ile eşleşmiyor.');
+  }
+  return true;
+}
+
 function normalizePermissions(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new HttpsError('invalid-argument', 'Paylaşım izinleri belirtilmelidir.');
@@ -61,7 +111,7 @@ async function requireRole(uid, expectedRole) {
   if (!profile.exists) {
     throw new HttpsError('failed-precondition', 'Kullanıcı profili bulunamadı.');
   }
-  const role = profile.get('rol') || 'ogretmen'; // Eski rol alanı olmayan hesaplar öğretmendir.
+  const role = profile.get('rol');
   if (role !== expectedRole) {
     throw new HttpsError('permission-denied', 'Bu işlem için hesap rolünüz uygun değil.');
   }
@@ -74,24 +124,6 @@ function requireAuth(request) {
   }
   return request.auth.uid;
 }
-
-exports.eskiOgretmenRolunuTanimla = onCall({ region: REGION }, async (request) => {
-  const uid = requireAuth(request);
-  const ref = db.collection('kullanicilar').doc(uid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw new HttpsError('failed-precondition', 'Kullanıcı profili bulunamadı.');
-    const role = snap.get('rol');
-    if (role === 'ogrenci') {
-      throw new HttpsError('permission-denied', 'Öğrenci rolü öğretmen rolüne çevrilemez.');
-    }
-    if (role && role !== 'ogretmen') {
-      throw new HttpsError('permission-denied', 'Geçersiz hesap rolü.');
-    }
-    if (!role) tx.update(ref, { rol: 'ogretmen' });
-  });
-  return { rol: 'ogretmen' };
-});
 
 exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) => {
   const teacherUid = requireAuth(request);
@@ -107,12 +139,19 @@ exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) =
     throw new HttpsError('not-found', 'Öğrenci kaydı bulunamadı.');
   }
   const student = studentSnap.data();
+  if (!isAcademicPeriodEditable(student.donemYili)) {
+    throw new HttpsError('failed-precondition', 'Bu öğrenci kaydının dönemi yeni hesap bağlantısı için kapalı.');
+  }
+  if (typeof student.eposta !== 'string' || !student.eposta.trim()) {
+    throw new HttpsError('failed-precondition', 'Öğrenci kaydına hesapta kullanılacak e-posta adresi eklenmelidir.');
+  }
   if (typeof student.sinifId !== 'string' || !student.sinifId) {
     throw new HttpsError('failed-precondition', 'Öğrencinin geçerli bir sınıf kaydı bulunmuyor.');
   }
   const classSnap = await db.collection('siniflar').doc(student.sinifId).get();
-  if (!classSnap.exists || classSnap.get('uid') !== teacherUid) {
-    throw new HttpsError('failed-precondition', 'Öğrencinin sınıf sahipliği doğrulanamadı.');
+  if (!classSnap.exists || classSnap.get('uid') !== teacherUid
+    || !hasMatchingAcademicPeriod(student, classSnap.data())) {
+    throw new HttpsError('failed-precondition', 'Öğrencinin sınıf sahipliği veya akademik dönemi doğrulanamadı.');
   }
 
   if (!isAllowedStudentGrade(classSnap.get('kademe'))) {
@@ -153,11 +192,16 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       tx.get(db.collection('siniflar').doc(codeData.sinifId)),
       tx.get(db.collection('ogrenciler').doc(codeData.ogrenciKayitId)),
     ]);
-    if (!teacherProfileSnap.exists || (teacherProfileSnap.get('rol') && teacherProfileSnap.get('rol') !== 'ogretmen')
+    if (!teacherProfileSnap.exists || teacherProfileSnap.get('rol') !== 'ogretmen'
       || !classSnap.exists || classSnap.get('uid') !== codeData.ogretmenUid
       || !studentSnap.exists || studentSnap.get('uid') !== codeData.ogretmenUid
-      || studentSnap.get('sinifId') !== codeData.sinifId) {
+      || studentSnap.get('sinifId') !== codeData.sinifId
+      || !hasMatchingAcademicPeriod(studentSnap.data(), classSnap.data())
+      || codeData.donemYili !== studentSnap.get('donemYili')) {
       throw new HttpsError('failed-precondition', 'Öğretmen, sınıf veya öğrenci kaydı artık geçerli değil. Yeni kod isteyin.');
+    }
+    if (!isAcademicPeriodEditable(studentSnap.get('donemYili'))) {
+      throw new HttpsError('failed-precondition', 'Bu eğitim öğretim dönemi sona erdiği için yeni öğrenci bağlantısı kurulamaz.');
     }
     if (codeData.kullanildi || codeData.sonaErme.toMillis() <= Date.now()) {
       throw new HttpsError('deadline-exceeded', 'Eşleştirme kodunun süresi dolmuş veya kod daha önce kullanılmış.');
@@ -170,7 +214,8 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
     }
     const email = request.auth.token.email || '';
     const suppliedName = typeof request.data?.adSoyad === 'string' ? request.data.adSoyad.trim().slice(0, 80) : '';
-    const displayName = suppliedName || request.auth.token.name || email.split('@')[0] || 'Öğrenci';
+    const displayName = suppliedName || request.auth.token.name || '';
+    assertStudentIdentityMatches(studentSnap.data(), email, displayName, request.auth.token.email_verified === true);
     if (!profileSnap.exists) {
       tx.create(profileRef, {
         rol: 'ogrenci',
@@ -227,8 +272,10 @@ exports.ogrenciEslesmeTalebiniOnayla = onCall({ region: REGION }, async (request
       tx.get(db.collection('kullanicilar').doc(teacherUid)),
     ]);
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
+      || !isAcademicPeriodEditable(studentSnap.get('donemYili'))
       || studentSnap.get('sinifId') !== data.sinifId
       || !classSnap.exists || classSnap.get('uid') !== teacherUid
+      || !hasMatchingAcademicPeriod(studentSnap.data(), classSnap.data())
       || !profileSnap.exists || profileSnap.get('rol') !== 'ogrenci'
       || !teacherProfileSnap.exists) {
       throw new HttpsError('failed-precondition', 'Öğrenci kaydı veya hesap eşleşmesi doğrulanamadı.');
@@ -367,9 +414,16 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const link = linkSnap.data();
     const homeworkRef = db.collection('odevler').doc(odevId);
     const studentRef = db.collection('ogrenciler').doc(link.ogrenciKayitId);
-    const [homeworkSnap, studentSnap, notificationSnap] = await Promise.all([tx.get(homeworkRef), tx.get(studentRef), tx.get(notificationRef)]);
-    if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid) {
-      throw new HttpsError('permission-denied', 'Öğrenci kaydı artık etkin değil.');
+    const classRef = db.collection('siniflar').doc(link.sinifId);
+    const [homeworkSnap, studentSnap, classSnap, notificationSnap] = await Promise.all([
+      tx.get(homeworkRef), tx.get(studentRef), tx.get(classRef), tx.get(notificationRef),
+    ]);
+    if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid
+      || studentSnap.get('sinifId') !== link.sinifId
+      || studentSnap.get('donemYili') !== link.donemYili
+      || !classSnap.exists || classSnap.get('uid') !== link.ogretmenUid
+      || classSnap.get('donemYili') !== link.donemYili) {
+      throw new HttpsError('permission-denied', 'Öğrenci veya sınıf kaydı artık etkin değil ya da bağlantının dönemiyle eşleşmiyor.');
     }
     if (!homeworkSnap.exists || homeworkSnap.get('uid') !== link.ogretmenUid
       || homeworkSnap.get('sinifId') !== link.sinifId) {
@@ -378,6 +432,9 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const period = homeworkSnap.get('donemYili');
     if (!Number.isInteger(period)) {
       throw new HttpsError('failed-precondition', 'Ödevin akademik dönem bilgisi doğrulanamadı.');
+    }
+    if (!isAcademicPeriodEditable(period)) {
+      throw new HttpsError('failed-precondition', 'Bu eğitim öğretim dönemi sona erdi. Eski dönem ödevleri artık yalnızca görüntülenebilir.');
     }
     if (Number.isInteger(link.donemYili) && period !== link.donemYili) {
       throw new HttpsError('permission-denied', 'Bu ödev, öğrenci bağlantısının akademik dönemine ait değil.');
@@ -414,6 +471,12 @@ module.exports._test = {
   createLinkId,
   createRecordLinkIndexId,
   assertStudentRecordAvailable,
+  normalizeIdentityEmail,
+  normalizeIdentityName,
+  assertStudentIdentityMatches,
+  istanbulDateString,
+  isAcademicPeriodEditable,
+  hasMatchingAcademicPeriod,
   normalizePermissions,
   CODE_TTL_MS,
   PERMISSION_KEYS,

@@ -40,9 +40,11 @@ functions/.env*
 # generated native folders
 /ios
 /android
+
 # Project backups / temporary files
 *.yedek
 *_YEDEK.*
 *_ONCESI.*
+/firestore-backups/
 eas-inspect/
 firebase-debug.log

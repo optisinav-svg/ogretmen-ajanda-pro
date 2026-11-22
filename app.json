@@ -18,6 +18,14 @@
       "eas": {
         "projectId": "31baafe1-369c-4b64-b066-26b2de6ef837"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "homework"
+        }
+      ]
+    ]
   }
 }
