@@ -227,7 +227,7 @@ service cloud.firestore {
         && get(studentPath).data.uid == invite.ogretmenUid
         && get(studentPath).data.sinifId == invite.sinifId
         && get(studentPath).data.donemYili == invite.donemYili
-        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '')) == invite.ogrenciAdSoyad
+        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == invite.ogrenciAdSoyad
         && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == invite.eposta
         && exists(classPath)
         && get(classPath).data.uid == invite.ogretmenUid
@@ -300,7 +300,7 @@ service cloud.firestore {
         && get(studentPath).data.uid == request.auth.uid
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
-        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '')) == data.ogrenciAdSoyad
+        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == data.ogrenciAdSoyad
         && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
