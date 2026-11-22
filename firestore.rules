@@ -11,16 +11,12 @@ service cloud.firestore {
       return /databases/$(database)/documents/kullanicilar/$(userId);
     }
 
-    // Eski öğretmen profillerinde rol alanı bulunmadığı için
-    // geriye dönük uyumluluk korunur. Yeni öğrenci profilleri
-    // rol == 'ogrenci' olduğunda öğretmen koleksiyonlarına erişemez.
+    // Öğretmen yetkisi yalnızca açıkça tanımlanmış rol üzerinden verilir.
+    // Rolü olmayan hesaplar migration tamamlanana kadar erişim alamaz.
     function isTeacher() {
       return signedIn()
         && exists(profilePath(request.auth.uid))
-        && (
-          !get(profilePath(request.auth.uid)).data.keys().hasAny(['rol'])
-          || get(profilePath(request.auth.uid)).data.rol == 'ogretmen'
-        );
+        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen';
     }
 
     function isStudent() {
