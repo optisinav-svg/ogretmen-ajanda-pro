@@ -120,6 +120,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
             <Text style={s.note}>Kod geçersiz veya süresi dolmuşsa öğretmeninizden yeni kod isteyin. Daha sonra da bu ekrandan yeni bir kod gönderebilirsiniz.</Text>
           </View>
         )}
+        <TouchableOpacity style={s.link} onPress={() => navigation.navigate('KVKKBilgilendirme')}><Text style={s.linkText}>KVKK Aydınlatma Bilgisi</Text></TouchableOpacity>
         <TouchableOpacity style={s.link} onPress={() => navigation.navigate('Giris')}><Text style={s.linkText}>Giriş ekranına dön</Text></TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
