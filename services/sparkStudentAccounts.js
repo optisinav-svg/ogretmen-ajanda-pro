@@ -48,6 +48,10 @@ export async function createStudentPairingCode(studentRecord) {
   if (!['9', '10', '11', '12', 'TYT', 'AYT'].includes(String(classSnap.get('kademe') || '').trim().toUpperCase())) {
     throw new Error('Öğrenci hesabı yalnızca lise düzeyi sınıflar için açılabilir.');
   }
+  const normalizedStudentEmail = normalizeEmail(student.eposta);
+  if (student.epostaEslesme !== normalizedStudentEmail) {
+    await updateDoc(doc(db, 'ogrenciler', studentRecord.id), { epostaEslesme: normalizedStudentEmail });
+  }
   const code = await randomCode();
   const now = Date.now();
   const expiresAt = now + CODE_TTL_MS;
@@ -57,7 +61,7 @@ export async function createStudentPairingCode(studentRecord) {
     ogretmenHesapAdi: teacherSnap.get('kullaniciAdi') || '',
     ogrenciKayitId: studentRecord.id,
     ogrenciAdSoyad: recordName(student),
-    eposta: normalizeEmail(student.eposta),
+    eposta: normalizedStudentEmail,
     sinifId: student.sinifId,
     sinifAd: classSnap.get('ad') || '',
     okulAd: student.okulAd || classSnap.get('okulAd') || '',
