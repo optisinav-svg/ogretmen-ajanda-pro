@@ -109,6 +109,10 @@ exports.getUygulamaSahibiIstatistikleri = onCall(
     }
 
     const db = getFirestore();
+    const ownerProfile = await db.collection('kullanicilar').doc(request.auth.uid).get();
+    if (!ownerProfile.exists || ownerProfile.get('rol') !== 'ogretmen') {
+      throw new HttpsError('permission-denied', 'Uygulama sahibi hesabı aynı zamanda öğretmen olarak tanımlı olmalıdır.');
+    }
     const [teachers, studentCountSnapshot, links, requests] = await Promise.all([
       readCollection(db, 'kullanicilar', ['kullaniciAdi', 'brans'], [['rol', 'ogretmen']]),
       db.collection('kullanicilar').where('rol', '==', 'ogrenci').count().get(),
