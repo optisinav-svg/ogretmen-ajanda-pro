@@ -107,6 +107,13 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
     if (profileSnap.exists()) {
       if (profileSnap.get('rol') !== 'ogrenci') throw new Error('Bu hesap öğrenci hesabı olarak tanımlanmamış.');
       if (normalizeEmail(profileSnap.get('eposta')) !== email) throw new Error('Öğrenci profilinizin e-posta bilgisi hesapla eşleşmiyor.');
+      const existingName = profileSnap.get('kullaniciAdi') || user.displayName || '';
+      if (normalizeName(existingName) !== normalizeName(invite.ogrenciAdSoyad)) {
+        throw new Error('Öğrenci profilinizdeki ad-soyad öğretmeninizin kaydıyla eşleşmiyor.');
+      }
+      if (existingName !== invite.ogrenciAdSoyad) {
+        transaction.update(profileRef, { kullaniciAdi: invite.ogrenciAdSoyad });
+      }
     } else {
       transaction.set(profileRef, {
         rol: 'ogrenci',
