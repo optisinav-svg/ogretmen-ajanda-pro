@@ -53,8 +53,8 @@ Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı a
 
 - Firestore kuralları kaynak kodda Spark kayıt/eşleştirme ve bildirim işlemlerine göre yeniden yazıldı.
 - Canlı Firestore kuralları henüz dağıtılmadı. Canlı projedeki mevcut geniş kurallar, yeni sıkı kuralların yerine geçmiyor.
-- Öğrenci hesap akışı `ACCOUNT_LINKING_ENABLED` bayrağı kapalı tutulduğu sürece uygulama içinde kullanıma açılmaz.
-- Bayrak yalnızca Emulator testleri başarılı olduktan ve yeni kurallar canlıya dağıtıldıktan sonra açılmalıdır.
+- `ACCOUNT_LINKING_ENABLED` kaynak kodda açıldı; APK hazırlama betiği önce sıkı Firestore rules dağıtımını ve Android bundle doğrulamasını çalıştırır, sonra APK derlemesini başlatır. Betik canlı kurallar için ayrıca açık `DEPLOY` onayı ister.
+- Yeni APK, kurallar dağıtılmadan kullanılmamalıdır.
 - Bu dalda canlı veri silme, canlı dönem temizliği veya Firestore veri taşıması yapılmadı.
 
 ## Sıradaki teknik doğrulama sırası
