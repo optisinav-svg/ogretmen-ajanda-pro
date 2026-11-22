@@ -15,6 +15,165 @@ service cloud.firestore {
       return /databases/$(database)/documents/kullanicilar/$(userId);
     }
 
+    // Öğretmen yetkisi yalnızca açıkça tanımlanmış rol üzerinden verilir.
+    // Rolü olmayan hesaplar migration tamamlanana kadar erişim alamaz.
+    function isTeacher() {
+      return signedIn()
+        && exists(profilePath(request.auth.uid))
+        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen';
+    }
+
+    function isStudent() {
+      return signedIn()
+        && exists(profilePath(request.auth.uid))
+        && get(profilePath(request.auth.uid)).data.rol == 'ogrenci';
+    }
+
+    function studentLinkPath(teacherUid, classId) {
+      return /databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(teacherUid + '__' + request.auth.uid + '__' + classId);
+    }
+
+    function linkedStudentRecordExists(teacherUid, classId) {
+      let link = get(studentLinkPath(teacherUid, classId)).data;
+      let studentPath = /databases/$(database)/documents/ogrenciler/$(link.ogrenciKayitId);
+      let classPath = /databases/$(database)/documents/siniflar/$(classId);
+      return exists(studentPath)
+        && get(studentPath).data.uid == teacherUid
+        && get(studentPath).data.sinifId == classId
+        && get(studentPath).data.donemYili == link.donemYili
+        && exists(classPath)
+        && get(classPath).data.uid == teacherUid
+        && get(classPath).data.donemYili == link.donemYili;
+    }
+
+    function studentHasPermission(teacherUid, classId, permission) {
+      return isStudent()
+        && exists(studentLinkPath(teacherUid, classId))
+        && get(studentLinkPath(teacherUid, classId)).data.durum == 'active'
+        && linkedStudentRecordExists(teacherUid, classId)
+        && get(studentLinkPath(teacherUid, classId)).data.izinler.get(permission, false) == true;
+    }
+
+    function linkedStudentRecordId(teacherUid, classId) {
+      return get(studentLinkPath(teacherUid, classId)).data.ogrenciKayitId;
+    }
+
+    function ownsRecord() {
+      return isTeacher()
+        && resource.data.uid == request.auth.uid;
+    }
+
+    function createsOwnRecord() {
+      return isTeacher()
+        && request.resource.data.uid == request.auth.uid;
+    }
+
+    // request.time UTC'dir; +3 saat Europe/Istanbul yerel saatini verir.
+    // Haziran ayında biten eski dönem ve başlayan yeni dönem birlikte yazılabilir.
+    function isEditablePeriod(period) {
+      let localNow = request.time + duration.value(3, 'h');
+      let currentYear = localNow.year();
+      let currentMonth = localNow.month();
+      return period is int
+        && (
+          (period == currentYear && currentMonth >= 6)
+          || (period == currentYear - 1 && currentMonth <= 6)
+        );
+    }
+
+    function createsOwnPeriodRecord() {
+      return createsOwnRecord()
+        && request.resource.data.keys().hasAny(['donemYili'])
+        && isEditablePeriod(request.resource.data.donemYili);
+    }
+
+    function ownsEditablePeriodRecord() {
+      return ownsRecord()
+        && resource.data.keys().hasAny(['donemYili'])
+        && isEditablePeriod(resource.data.donemYili);
+    }
+
+    function keepsPeriod() {
+      return request.resource.data.donemYili == resource.data.donemYili;
+    }
+
+    function keepsOwner() {
+      return request.resource.data.uid == resource.data.uid
+        && resource.data.uid == request.auth.uid;
+    }
+
+    function ownsDocument(collectionName, documentId) {
+      return documentId is string
+        && exists(/databases/$(database)/documents/$(collectionName)/$(documentId))
+        && get(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
+    }
+
+    // Batch içinde aynı anda oluşturulan kitap + konu kayıtlarını
+    // doğrulayabilmek için getAfter / existsAfter kullanılır.
+    function ownsDocumentAfter(collectionName, documentId) {
+      return documentId is string
+        && existsAfter(/databases/$(database)/documents/$(collectionName)/$(documentId))
+        && getAfter(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
+    }
+
+    function classBelongsToTeacher(data) {
+      return data.sinifId is string
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+    }
+
+    function studentBelongsToClass(data) {
+      return data.ogrenciId is string
+        && data.sinifId is string
+        && ownsDocument('ogrenciler', data.ogrenciId)
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
+        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+    }
+
+    function schoolBelongsToTeacher(data) {
+      return !data.keys().hasAny(['okulId'])
+        || data.okulId == ''
+        || (data.okulId is string
+          && ownsDocument('okullar', data.okulId)
+          && get(/databases/$(database)/documents/okullar/$(data.okulId)).data.donemYili == data.donemYili);
+    }
+
+    function optionalLessonBelongsToTeacher(data) {
+      return !data.keys().hasAny(['dersId'])
+        || data.dersId == null
+        || data.dersId == ''
+        // Silinen gelecek ders programları geçmiş ödev/not kayıtlarını bozmaz.
+        || !exists(/databases/$(database)/documents/dersler/$(data.dersId))
+        || (
+          ownsDocument('dersler', data.dersId)
+          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
+          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.donemYili == data.donemYili
+        );
+    }
+
+    function libraryBookBelongsToTeacher(data) {
+      return data.kitapId is string
+        && ownsDocument('kitapKutuphanesi', data.kitapId);
+    }
+
+    function individualEventBelongsToTeacher(data) {
+      return data.bireyselEtkinlikId is string
+        && ownsDocument('bireyselEtkinlikler', data.bireyselEtkinlikId)
+        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.ogrenciId == data.ogrenciId
+        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.sinifId == data.sinifId;
+    }
+
+    function assignedBookBelongsToStudent(data) {
+      return data.kitapId is string
+        && ownsDocumentAfter('kitaplar', data.kitapId)
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.sinifId == data.sinifId
+        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.donemYili == data.donemYili;
+    }
+
+    // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
     function pairingCodePath(codeId) {
       return /databases/$(database)/documents/ogrenciEslesmeKodlari/$(codeId);
     }
@@ -278,165 +437,7 @@ service cloud.firestore {
         && homework.hedefOgrenciIds.hasAny([data.ogrenciKayitId]);
     }
 
-    // Öğretmen yetkisi yalnızca açıkça tanımlanmış rol üzerinden verilir.
-    // Rolü olmayan hesaplar migration tamamlanana kadar erişim alamaz.
-    function isTeacher() {
-      return signedIn()
-        && exists(profilePath(request.auth.uid))
-        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen';
-    }
 
-    function isStudent() {
-      return signedIn()
-        && exists(profilePath(request.auth.uid))
-        && get(profilePath(request.auth.uid)).data.rol == 'ogrenci';
-    }
-
-    function studentLinkPath(teacherUid, classId) {
-      return /databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(teacherUid + '__' + request.auth.uid + '__' + classId);
-    }
-
-    function linkedStudentRecordExists(teacherUid, classId) {
-      let link = get(studentLinkPath(teacherUid, classId)).data;
-      let studentPath = /databases/$(database)/documents/ogrenciler/$(link.ogrenciKayitId);
-      let classPath = /databases/$(database)/documents/siniflar/$(classId);
-      return exists(studentPath)
-        && get(studentPath).data.uid == teacherUid
-        && get(studentPath).data.sinifId == classId
-        && get(studentPath).data.donemYili == link.donemYili
-        && exists(classPath)
-        && get(classPath).data.uid == teacherUid
-        && get(classPath).data.donemYili == link.donemYili;
-    }
-
-    function studentHasPermission(teacherUid, classId, permission) {
-      return isStudent()
-        && exists(studentLinkPath(teacherUid, classId))
-        && get(studentLinkPath(teacherUid, classId)).data.durum == 'active'
-        && linkedStudentRecordExists(teacherUid, classId)
-        && get(studentLinkPath(teacherUid, classId)).data.izinler.get(permission, false) == true;
-    }
-
-    function linkedStudentRecordId(teacherUid, classId) {
-      return get(studentLinkPath(teacherUid, classId)).data.ogrenciKayitId;
-    }
-
-    function ownsRecord() {
-      return isTeacher()
-        && resource.data.uid == request.auth.uid;
-    }
-
-    function createsOwnRecord() {
-      return isTeacher()
-        && request.resource.data.uid == request.auth.uid;
-    }
-
-    // request.time UTC'dir; +3 saat Europe/Istanbul yerel saatini verir.
-    // Haziran ayında biten eski dönem ve başlayan yeni dönem birlikte yazılabilir.
-    function isEditablePeriod(period) {
-      let localNow = request.time + duration.value(3, 'h');
-      let currentYear = localNow.year();
-      let currentMonth = localNow.month();
-      return period is int
-        && (
-          (period == currentYear && currentMonth >= 6)
-          || (period == currentYear - 1 && currentMonth <= 6)
-        );
-    }
-
-    function createsOwnPeriodRecord() {
-      return createsOwnRecord()
-        && request.resource.data.keys().hasAny(['donemYili'])
-        && isEditablePeriod(request.resource.data.donemYili);
-    }
-
-    function ownsEditablePeriodRecord() {
-      return ownsRecord()
-        && resource.data.keys().hasAny(['donemYili'])
-        && isEditablePeriod(resource.data.donemYili);
-    }
-
-    function keepsPeriod() {
-      return request.resource.data.donemYili == resource.data.donemYili;
-    }
-
-    function keepsOwner() {
-      return request.resource.data.uid == resource.data.uid
-        && resource.data.uid == request.auth.uid;
-    }
-
-    function ownsDocument(collectionName, documentId) {
-      return documentId is string
-        && exists(/databases/$(database)/documents/$(collectionName)/$(documentId))
-        && get(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
-    }
-
-    // Batch içinde aynı anda oluşturulan kitap + konu kayıtlarını
-    // doğrulayabilmek için getAfter / existsAfter kullanılır.
-    function ownsDocumentAfter(collectionName, documentId) {
-      return documentId is string
-        && existsAfter(/databases/$(database)/documents/$(collectionName)/$(documentId))
-        && getAfter(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
-    }
-
-    function classBelongsToTeacher(data) {
-      return data.sinifId is string
-        && ownsDocument('siniflar', data.sinifId)
-        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
-    }
-
-    function studentBelongsToClass(data) {
-      return data.ogrenciId is string
-        && data.sinifId is string
-        && ownsDocument('ogrenciler', data.ogrenciId)
-        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
-        && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
-        && ownsDocument('siniflar', data.sinifId)
-        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
-    }
-
-    function schoolBelongsToTeacher(data) {
-      return !data.keys().hasAny(['okulId'])
-        || data.okulId == ''
-        || (data.okulId is string
-          && ownsDocument('okullar', data.okulId)
-          && get(/databases/$(database)/documents/okullar/$(data.okulId)).data.donemYili == data.donemYili);
-    }
-
-    function optionalLessonBelongsToTeacher(data) {
-      return !data.keys().hasAny(['dersId'])
-        || data.dersId == null
-        || data.dersId == ''
-        // Silinen gelecek ders programları geçmiş ödev/not kayıtlarını bozmaz.
-        || !exists(/databases/$(database)/documents/dersler/$(data.dersId))
-        || (
-          ownsDocument('dersler', data.dersId)
-          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.sinifId == data.sinifId
-          && get(/databases/$(database)/documents/dersler/$(data.dersId)).data.donemYili == data.donemYili
-        );
-    }
-
-    function libraryBookBelongsToTeacher(data) {
-      return data.kitapId is string
-        && ownsDocument('kitapKutuphanesi', data.kitapId);
-    }
-
-    function individualEventBelongsToTeacher(data) {
-      return data.bireyselEtkinlikId is string
-        && ownsDocument('bireyselEtkinlikler', data.bireyselEtkinlikId)
-        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.ogrenciId == data.ogrenciId
-        && get(/databases/$(database)/documents/bireyselEtkinlikler/$(data.bireyselEtkinlikId)).data.sinifId == data.sinifId;
-    }
-
-    function assignedBookBelongsToStudent(data) {
-      return data.kitapId is string
-        && ownsDocumentAfter('kitaplar', data.kitapId)
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.sinifId == data.sinifId
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.donemYili == data.donemYili;
-    }
-
-    // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
     match /kullanicilar/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isApplicationOwner());
       allow list: if isApplicationOwner();
