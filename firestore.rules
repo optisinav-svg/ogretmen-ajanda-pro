@@ -139,6 +139,33 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
     }
 
+    // Sınıf taşıma sırasında kitap/konu kayıtları, öğrenci kaydındaki açık
+    // ve öğretmen tarafından başlatılmış hedef sınıfa geçici olarak taşınabilir.
+    function studentBelongsToClassOrPendingTransfer(data) {
+      let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciId);
+      let student = get(studentPath).data;
+      let transfer = student.get('sinifTasiIslemi', null);
+      let sourceClassPath = /databases/$(database)/documents/siniflar/$(student.sinifId);
+      return data.ogrenciId is string
+        && data.sinifId is string
+        && exists(studentPath)
+        && student.uid == request.auth.uid
+        && student.donemYili == data.donemYili
+        && (
+          student.sinifId == data.sinifId
+          || (
+            transfer is map
+            && transfer.kaynakSinifId == student.sinifId
+            && transfer.hedefSinifId == data.sinifId
+            && transfer.donemYili == data.donemYili
+            && ownsDocument('siniflar', student.sinifId)
+            && get(sourceClassPath).data.donemYili == data.donemYili
+          )
+        )
+        && ownsDocument('siniflar', data.sinifId)
+        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+    }
+
     function schoolBelongsToTeacher(data) {
       return !data.keys().hasAny(['okulId'])
         || data.okulId == ''
@@ -332,6 +359,7 @@ service cloud.firestore {
         && resource.data.ogretmenUid == request.auth.uid
         && resource.data.durum == 'bekliyor'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'baglantiId', 'yanitTarihi'])
+        && request.resource.data.yanitTarihi == request.time
         && (
           (request.resource.data.durum == 'reddedildi' && linkId == '')
           ||
@@ -356,6 +384,7 @@ service cloud.firestore {
         && linkId == request.auth.uid + '__' + data.ogrenciUid + '__' + data.sinifId
         && existsAfter(requestPath)
         && requestData.durum == 'onaylandi'
+        && requestData.yanitTarihi == request.time
         && requestData.baglantiId == linkId
         && requestData.ogretmenUid == request.auth.uid
         && requestData.ogrenciUid == data.ogrenciUid
@@ -382,6 +411,27 @@ service cloud.firestore {
           || get(indexPath).data.ogrenciUid == data.ogrenciUid);
     }
 
+    // Yalnızca daha önce iptal edilmiş aynı bağlantı, yeni bir onaylı taleple
+    // yeniden etkinleştirilebilir. Öğrenci/sınıf/dönem kimliği değiştirilemez.
+    function reactivatesStudentLink(linkId) {
+      return isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && resource.data.durum == 'revoked'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'talepId', 'ogretmenHesapAdi', 'ogrenciAd', 'sinifAd', 'okulAd',
+          'kademe', 'ders', 'ogrenciHesapAdi', 'ogrenciEposta', 'izinler',
+          'durum', 'olusturulma', 'iptalTarihi'
+        ])
+        && request.resource.data.ogrenciUid == resource.data.ogrenciUid
+        && request.resource.data.ogrenciKayitId == resource.data.ogrenciKayitId
+        && request.resource.data.sinifId == resource.data.sinifId
+        && request.resource.data.donemYili == resource.data.donemYili
+        && request.resource.data.durum == 'active'
+        && request.resource.data.iptalTarihi == null
+        && request.resource.data.olusturulma == request.time
+        && createsApprovedStudentLink(linkId);
+    }
+
     function createsApprovedStudentIndex(indexId) {
       let data = request.resource.data;
       let linkPath = studentLinkDocPath(data.baglantiId);
@@ -395,6 +445,47 @@ service cloud.firestore {
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
         && data.durum == 'active';
+    }
+
+    // İptal edilmiş öğrenci kaydı bağlantı indeksi, yeni ve onaylı bir
+    // eşleştirme sonrasında aynı öğrenci kaydına yeniden bağlanabilir.
+    function reactivatesStudentIndex(indexId) {
+      let data = request.resource.data;
+      let linkPath = studentLinkDocPath(data.baglantiId);
+      let link = getAfter(linkPath).data;
+      let requestPath = pairingRequestPath(link.talepId);
+      let pairingRequest = getAfter(requestPath).data;
+      return isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && resource.data.uid == request.auth.uid
+        && resource.data.durum == 'revoked'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'ogrenciUid', 'sinifId', 'donemYili', 'baglantiId', 'durum', 'iptalTarihi', 'guncellenme'
+        ])
+        && indexId == request.auth.uid + '__' + data.ogrenciKayitId
+        && data.uid == request.auth.uid
+        && data.ogretmenUid == request.auth.uid
+        && data.ogrenciUid is string
+        && data.ogrenciKayitId == resource.data.ogrenciKayitId
+        && data.durum == 'active'
+        && data.guncellenme == request.time
+        && data.get('iptalTarihi', null) == null
+        && data.baglantiId == request.auth.uid + '__' + data.ogrenciUid + '__' + data.sinifId
+        && existsAfter(linkPath)
+        && link.ogretmenUid == request.auth.uid
+        && link.ogrenciUid == data.ogrenciUid
+        && link.ogrenciKayitId == data.ogrenciKayitId
+        && link.sinifId == data.sinifId
+        && link.donemYili == data.donemYili
+        && link.durum == 'active'
+        && existsAfter(requestPath)
+        && pairingRequest.durum == 'onaylandi'
+        && pairingRequest.yanitTarihi == request.time
+        && pairingRequest.baglantiId == data.baglantiId
+        && pairingRequest.ogretmenUid == request.auth.uid
+        && pairingRequest.ogrenciUid == data.ogrenciUid
+        && pairingRequest.ogrenciKayitId == data.ogrenciKayitId
+        && pairingRequest.sinifId == data.sinifId;
     }
 
     function studentCanCreateHomeworkCompletion(data, notificationId) {
@@ -520,14 +611,14 @@ service cloud.firestore {
     match /kitaplar/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'kitaplar') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId)) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClassOrPendingTransfer(request.resource.data);
       allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
     }
 
     match /konular/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'konular') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId)) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClassOrPendingTransfer(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
       allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
     }
 
@@ -595,6 +686,7 @@ service cloud.firestore {
           ||
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
             && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
         );
       allow delete: if false;
     }
@@ -602,10 +694,12 @@ service cloud.firestore {
     match /ogrenciKayitEslesmeleri/{indexId} {
       allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
       allow create: if createsApprovedStudentIndex(indexId);
-      allow update: if isTeacher()
+      allow update: if (
+        isTeacher()
         && resource.data.ogretmenUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
-        && request.resource.data.durum == 'revoked';
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
       allow delete: if false;
     }
 

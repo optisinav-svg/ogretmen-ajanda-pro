@@ -19,6 +19,7 @@ const {
   deleteDoc,
   writeBatch,
   serverTimestamp,
+  deleteField,
 } = require('firebase/firestore');
 
 // These tests run only against the local Firestore Emulator.
@@ -91,6 +92,13 @@ before(async () => {
       ad: '9-B',
       donemYili: 2026,
     });
+    await setDoc(doc(db, 'siniflar', 'class-c'), {
+      uid: 'teacher-a',
+      okulId: 'school-a',
+      ad: '9-C',
+      kademe: '9',
+      donemYili: 2026,
+    });
     await setDoc(doc(db, 'ogrenciler', 'student-a'), {
       uid: 'teacher-a',
       sinifId: 'class-a',
@@ -131,9 +139,37 @@ before(async () => {
       izinler: { dersProgrami: true, dersNotlari: false, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-3__class-a'), {
-      ogretmenUid: 'teacher-a', ogrenciUid: 'student-3', ogrenciKayitId: 'student-a',
-      sinifId: 'class-a', donemYili: 2026, durum: 'revoked',
+      talepId: 'old-relink-request',
+      uid: 'teacher-a',
+      ogretmenUid: 'teacher-a',
+      ogretmenHesapAdi: 'Öğretmen A',
+      ogrenciAd: 'Test Öğrencisi',
+      sinifAd: '9-A',
+      okulAd: 'A Okulu',
+      donemYili: 2026,
+      kademe: '9',
+      ders: 'Coğrafya',
+      ogrenciUid: 'student-3',
+      ogrenciKayitId: 'student-a',
+      ogrenciHesapAdi: 'Öğrenci 3',
+      ogrenciEposta: 'student3@example.com',
+      sinifId: 'class-a',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
+      durum: 'revoked',
+      olusturulma: new Date('2026-10-01T10:00:00.000Z'),
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+    });
+    await setDoc(doc(db, 'ogrenciKayitEslesmeleri', 'teacher-a__student-a'), {
+      uid: 'teacher-a',
+      donemYili: 2026,
+      ogretmenUid: 'teacher-a',
+      ogrenciKayitId: 'student-a',
+      ogrenciUid: 'student-3',
+      sinifId: 'class-a',
+      baglantiId: 'teacher-a__student-3__class-a',
+      durum: 'revoked',
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+      guncellenme: new Date('2026-10-02T10:00:00.000Z'),
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-4__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-4', ogrenciKayitId: 'deleted-student',
@@ -519,6 +555,41 @@ test('Öğretmen eşleştirme talebini bağlantı oluşturmadan reddedebilir', a
   }));
 });
 
+test('Sınıf taşıma işaretli öğrencinin kitap ve konu kayıtları hedef sınıfa güvenli biçimde aktarılabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const studentRef = doc(db, 'ogrenciler', 'student-a');
+  const bookRef = doc(db, 'kitaplar', 'book-a');
+  const topicRef = doc(db, 'konular', 'topic-a');
+
+  await assertFails(updateDoc(bookRef, { sinifId: 'class-c' }));
+
+  await assertSucceeds(updateDoc(studentRef, {
+    sinifTasiIslemi: {
+      kaynakSinifId: 'class-a',
+      hedefSinifId: 'class-c',
+      donemYili: 2026,
+      tarih: '2026-11-22T12:00:00.000Z',
+    },
+  }));
+  await assertFails(updateDoc(bookRef, { sinifId: 'class-b' }));
+  await assertSucceeds(updateDoc(bookRef, { sinifId: 'class-c' }));
+  await assertSucceeds(updateDoc(topicRef, { sinifId: 'class-c' }));
+  await assertSucceeds(updateDoc(studentRef, {
+    sinifId: 'class-c',
+    sinifTasiIslemi: deleteField(),
+  }));
+
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await updateDoc(doc(adminDb, 'ogrenciler', 'student-a'), {
+      sinifId: 'class-a',
+      sinifTasiIslemi: deleteField(),
+    });
+    await updateDoc(doc(adminDb, 'kitaplar', 'book-a'), { sinifId: 'class-a' });
+    await updateDoc(doc(adminDb, 'konular', 'topic-a'), { sinifId: 'class-a' });
+  });
+});
+
 test('Öğrenci yalnızca eşleştirildiği kendi öğrenci kaydını okuyabilir', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDoc(doc(db, 'ogrenciler', 'student-a')));
@@ -618,11 +689,108 @@ test('Öğretmen öğrenci kaydını silmişse etkin bağlantı öğrenci erişi
 });
 
 
+test('İptal edilen öğrenci bağlantısı aynı hesap için yeni öğretmen onayıyla yeniden etkinleştirilebilir', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const requestId = 'relink-request-student-3';
+  const linkId = 'teacher-a__student-3__class-a';
+  const indexId = 'teacher-a__student-a';
+  const requestRef = doc(teacherDb, 'ogrenciEslesmeTalepleri', requestId);
+  const linkRef = doc(teacherDb, 'ogretmenOgrenciBaglantilari', linkId);
+  const indexRef = doc(teacherDb, 'ogrenciKayitEslesmeleri', indexId);
+
+  // Önce, yeni ve onaylanmış bir talep olmadan yeniden etkinleştirme reddedilmeli.
+  await assertFails(updateDoc(linkRef, {
+    durum: 'active',
+    iptalTarihi: null,
+    olusturulma: serverTimestamp(),
+  }));
+
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'ogrenciEslesmeTalepleri', requestId), {
+      uid: 'teacher-a',
+      ogretmenUid: 'teacher-a',
+      ogrenciUid: 'student-3',
+      ogrenciKayitId: 'student-a',
+      sinifId: 'class-a',
+      donemYili: 2026,
+      ogrenciHesapAdi: 'Öğrenci 3',
+      durum: 'bekliyor',
+    });
+  });
+
+  const permissions = {
+    dersProgrami: true, dersNotlari: true, konular: true,
+    yoklama: true, odevler: true, kitaplar: true,
+  };
+  const batch = writeBatch(teacherDb);
+  batch.update(linkRef, {
+    talepId: requestId,
+    ogretmenHesapAdi: 'Öğretmen A',
+    ogrenciAd: 'Test Öğrencisi',
+    sinifAd: '9-A',
+    okulAd: 'A Okulu',
+    kademe: '9',
+    ders: 'Coğrafya',
+    ogrenciHesapAdi: 'Öğrenci 3',
+    ogrenciEposta: 'student3@example.com',
+    izinler: permissions,
+    durum: 'active',
+    olusturulma: serverTimestamp(),
+    iptalTarihi: null,
+  });
+  batch.update(indexRef, {
+    ogrenciUid: 'student-3',
+    sinifId: 'class-a',
+    donemYili: 2026,
+    baglantiId: linkId,
+    durum: 'active',
+    iptalTarihi: null,
+    guncellenme: serverTimestamp(),
+  });
+  batch.update(requestRef, {
+    durum: 'onaylandi',
+    baglantiId: linkId,
+    yanitTarihi: serverTimestamp(),
+  });
+  await assertSucceeds(batch.commit());
+
+  const [linkSnap, indexSnap, requestSnap] = await Promise.all([
+    getDoc(linkRef), getDoc(indexRef), getDoc(requestRef),
+  ]);
+  assert.equal(linkSnap.data().durum, 'active');
+  assert.equal(indexSnap.data().durum, 'active');
+  assert.equal(requestSnap.data().durum, 'onaylandi');
+
+  // Sonraki eşleştirme testleri aynı öğrenci kaydı indeksini kullanır.
+  // Testler birbirini etkilemesin diye başlangıçtaki iptal durumunu geri yükle.
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await updateDoc(doc(adminDb, 'ogretmenOgrenciBaglantilari', linkId), {
+      durum: 'revoked',
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+    });
+    await updateDoc(doc(adminDb, 'ogrenciKayitEslesmeleri', indexId), {
+      durum: 'revoked',
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+    });
+  });
+});
+
 test('Öğrenci yalnızca kendisine atanmış ödev için tamamlandı bildirimi oluşturabilir', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a')));
   const linkId = 'teacher-a__student-1__class-a';
   const ownId = ['student-1', linkId, 'homework-a'].join('__');
+  await assertFails(setDoc(doc(db, 'ogrenciOdevBildirimleri', 'missing-class-id'), {
+    uid: 'teacher-a',
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-1',
+    ogrenciKayitId: 'student-a',
+    baglantiId: linkId,
+    odevId: 'homework-a',
+    donemYili: 2026,
+    durum: 'tamamlandi_bildirildi',
+  }));
   await assertSucceeds(setDoc(doc(db, 'ogrenciOdevBildirimleri', ownId), {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
