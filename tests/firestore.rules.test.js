@@ -447,14 +447,14 @@ test('Kullanıcı oluşturduğu rolü öğretmen veya öğrenci olarak değişti
 
 test('Uygulama sahibi özel claim tek başına öğretmen yetkisi vermez', async () => {
   const db = testEnv.authenticatedContext('student-1', {
-    token: { uygulamaSahibi: true },
+    uygulamaSahibi: true,
   }).firestore();
   await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
 });
 
 test('Uygulama sahibi claim yalnızca toplu hesap ve bağlantı istatistiklerini okuyabilir', async () => {
   const ownerDb = testEnv.authenticatedContext('owner-account', {
-    token: { uygulamaSahibi: true },
+    uygulamaSahibi: true,
   }).firestore();
   await assertSucceeds(getDocs(query(
     collection(ownerDb, 'kullanicilar'),
@@ -467,7 +467,7 @@ test('Uygulama sahibi claim yalnızca toplu hesap ve bağlantı istatistiklerini
 
 test('Uygulama sahibi Temmuz 2028 gelmeden dönem kayıtlarını okuyamaz veya silemez', async () => {
   const ownerDb = testEnv.authenticatedContext('owner-account', {
-    token: { uygulamaSahibi: true },
+    uygulamaSahibi: true,
   }).firestore();
   await assertFails(getDoc(doc(ownerDb, 'dersler', 'lesson-a')));
   await assertFails(deleteDoc(doc(ownerDb, 'dersler', 'lesson-a')));
