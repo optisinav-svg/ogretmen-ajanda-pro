@@ -217,6 +217,10 @@ export default function KayitEkrani({ navigation }) {
             </TouchableOpacity>
           )}
 
+          <TouchableOpacity style={styles.girisLink} onPress={() => navigation.navigate('KVKKBilgilendirme')}>
+            <Text style={styles.girisVurgu}>KVKK Aydınlatma Bilgisi</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.girisLink}
             onPress={() => navigation.navigate('Giris')}
