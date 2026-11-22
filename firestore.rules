@@ -326,13 +326,14 @@ service cloud.firestore {
     }
 
     function updatesPairingRequest(requestId) {
-      let linkId = request.resource.data.baglantiId;
+      // Reddedilen taleplerde baglantiId alanı bulunmaz; get() eksik alanı güvenli karşılar.
+      let linkId = request.resource.data.get('baglantiId', '');
       return isTeacher()
         && resource.data.ogretmenUid == request.auth.uid
         && resource.data.durum == 'bekliyor'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'baglantiId', 'yanitTarihi'])
         && (
-          request.resource.data.durum == 'reddedildi'
+          (request.resource.data.durum == 'reddedildi' && linkId == '')
           ||
           (request.resource.data.durum == 'onaylandi'
             && linkId == request.auth.uid + '__' + resource.data.ogrenciUid + '__' + resource.data.sinifId
