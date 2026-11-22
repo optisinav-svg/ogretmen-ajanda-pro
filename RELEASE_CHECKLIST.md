@@ -7,7 +7,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Mevcut telefon uygulaması, imza anahtarı ve Firebase verileri korunur. İmza eşleşmesi doğrulanmadan telefondaki uygulama güncellenmez veya kaldırılmaz.
 - Canlı veriye yönelik silme, toplu taşıma, geri yükleme veya başka yıkıcı işlem öncesinde yedek ve geri dönüş yöntemi doğrulanır; gerçek öğrenci kayıtları izinsiz test verisi olarak kullanılmaz.
 - Firestore yedeği, öğrenci/öğretmen kişisel verisi içerdiğinden gizli tutulur; GitHub'a, sohbete veya herkese açık depoya konulmaz.
-- Öğrenci hesap bağlantısı `ACCOUNT_LINKING_ENABLED=false` kalır. Spark uyumlu doğrudan Firestore akışı kaynak koda alındı; özellik yalnızca güncel Firestore rules canlıya dağıtılıp erişim sınırları doğrulandıktan sonra açılır. Cloud Functions/Blaze şartı yoktur.
+- `ACCOUNT_LINKING_ENABLED=true` kaynak koda alındı. APK betiği önce güncel Firestore rules dağıtımını ve Android bundle kontrolünü çalıştırır; canlı rules dağıtımı için kullanıcıdan açık `DEPLOY` onayı ister. Yeni APK kurallar dağıtılmadan kullanılmamalıdır.
 - Ortaokul öğrenci hesapları, veli/vasi ve hukuki süreç netleşene kadar kapalı kalır.
 - Paylaşım izinleri varsayılan kapalıdır; öğrenci yalnızca öğretmenin açıkça verdiği izin kapsamındaki verileri okuyabilir.
 - Google Drive yedeklemesi kullanıcı isteğiyle bu sürüm kapsamından çıkarılmıştır; ertelenmiştir ve tablet APK / ilk kullanım testlerinin engeli değildir. Bu aşamada Drive bağlantısı, OAuth, otomatik yedek ve geri yükleme geliştirmesi yapılmayacaktır.
