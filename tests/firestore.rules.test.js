@@ -452,6 +452,26 @@ test('Uygulama sahibi özel claim tek başına öğretmen yetkisi vermez', async
   await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
 });
 
+test('Uygulama sahibi claim yalnızca toplu hesap ve bağlantı istatistiklerini okuyabilir', async () => {
+  const ownerDb = testEnv.authenticatedContext('owner-account', {
+    token: { uygulamaSahibi: true },
+  }).firestore();
+  await assertSucceeds(getDocs(query(
+    collection(ownerDb, 'kullanicilar'),
+    where('rol', '==', 'ogretmen'),
+  )));
+  await assertSucceeds(getDocs(collection(ownerDb, 'ogretmenOgrenciBaglantilari')));
+  await assertSucceeds(getDocs(collection(ownerDb, 'ogrenciEslesmeTalepleri')));
+  await assertFails(getDoc(doc(ownerDb, 'ogrenciler', 'student-a')));
+});
+
+test('Uygulama sahibi claim olmadan kullanıcı ve bağlantı koleksiyonları toplu okunamaz', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDocs(collection(teacherDb, 'kullanicilar')));
+  await assertFails(getDocs(collection(teacherDb, 'ogretmenOgrenciBaglantilari')));
+  await assertFails(getDocs(collection(teacherDb, 'ogrenciEslesmeTalepleri')));
+});
+
 test('Rol alanı olmayan hesap öğretmen yetkisi alamaz', async () => {
   const db = testEnv.authenticatedContext('teacher-legacy').firestore();
   await assertFails(getDoc(doc(db, 'okullar', 'school-legacy')));
