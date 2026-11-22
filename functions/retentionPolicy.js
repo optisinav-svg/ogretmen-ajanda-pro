@@ -40,8 +40,7 @@ function isEligiblePeriodRecord(data, targetYear) {
   return Boolean(data && Number.isInteger(targetYear)
     && typeof data.donemYili === 'number'
     && Number.isInteger(data.donemYili)
-    && data.donemYili === targetYear
-    && typeof data.uid === 'string' && data.uid.trim().length > 0);
+    && data.donemYili === targetYear);
 }
 module.exports = {
   FIRST_CLEANUP_YEAR, RETENTION_COLLECTIONS, istanbulDateParts,
