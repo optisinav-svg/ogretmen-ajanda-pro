@@ -27,6 +27,7 @@ test('retention deletion fails closed for missing period, invalid period or miss
 });
 
 test('retention policy excludes user profiles and shared library definitions', () => {
+  assert.equal(RETENTION_COLLECTIONS.includes('ogrenciYeniOdevBildirimleri'), true);
   assert.equal(RETENTION_COLLECTIONS.includes('kullanicilar'), false);
   assert.equal(RETENTION_COLLECTIONS.includes('kitapKutuphanesi'), false);
   assert.equal(RETENTION_COLLECTIONS.includes('kitapKutuphanesiKonulari'), false);
