@@ -282,6 +282,7 @@ export async function notifyHomeworkCompleted(linkItem, homeworkItem) {
       ogretmenUid: link.ogretmenUid,
       donemYili: link.donemYili,
       ogrenciKayitId: link.ogrenciKayitId,
+      sinifId: link.sinifId,
       baglantiId: linkItem.id,
       odevId: homeworkItem.id,
       odevAciklama: homeworkSnap.get('aciklama') || homeworkSnap.get('baslik') || 'Ödev',
