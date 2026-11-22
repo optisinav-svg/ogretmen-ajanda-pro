@@ -177,7 +177,7 @@ export default function RaporEkrani({navigation,route}){
       (item.hedefOgrenciIds||[]).includes(student.id)
     );
     const attendanceCounts={geldi:0,gecikti:0,gelmedi:0};
-    attendance.forEach(item=>{if(Object.prototype.hasOwnProperty.call(attendanceCounts,item.durum))attendanceCounts[item.durum]+=1});
+    attendance.forEach(item=>{const status=item.yoklamaDurumu||item.durum;if(Object.prototype.hasOwnProperty.call(attendanceCounts,status))attendanceCounts[status]+=1});
     const homeworkCounts={yapildi:0,gec:0,yapilmadi:0,bekliyor:0};
     homework.forEach(item=>{
       const status=(item.ogrenciDurumlari||{})[student.id]||item.durum||'bekliyor';
@@ -216,7 +216,7 @@ export default function RaporEkrani({navigation,route}){
    }));
    const events=bireyselOturumlar.filter(item=>ogrenciler.some(student=>student.id===item.ogrenciId)).map(item=>({
     student:ogrenciler.find(student=>student.id===item.ogrenciId)?.adSoyad||'Öğrenci',
-    type:item.tur||'Bireysel etkinlik',
+    type:({ozelDers:'Özel Ders',etut:'Etüt',soruCozumu:'Soru Çözümü'}[item.tur]||item.tur||'Bireysel etkinlik'),
     date:item.tarihGosterim||item.tarih,
     start:item.baslangicSaat,
     end:item.bitisSaat,
