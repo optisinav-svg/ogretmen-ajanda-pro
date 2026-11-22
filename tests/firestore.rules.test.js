@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const assert = require('node:assert/strict');
 const { test, before, after } = require('node:test');
 const {
   initializeTestEnvironment,
