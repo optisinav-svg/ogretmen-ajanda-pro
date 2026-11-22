@@ -7,6 +7,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isApplicationOwner() {
+      return signedIn() && request.auth.token.uygulamaSahibi == true;
+    }
+
     function profilePath(userId) {
       return /databases/$(database)/documents/kullanicilar/$(userId);
     }
@@ -272,8 +276,8 @@ service cloud.firestore {
 
     // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
     match /kullanicilar/{userId} {
-      allow get: if signedIn() && request.auth.uid == userId;
-      allow list: if false;
+      allow get: if signedIn() && (request.auth.uid == userId || isApplicationOwner());
+      allow list: if isApplicationOwner();
 
       // Teacher profiles are self-created for Spark compatibility. Student profiles
       // are created only in the same transaction as a verified, code-backed request.
@@ -417,7 +421,8 @@ service cloud.firestore {
     // Bağlantı ve öğrenci talebi yalnızca ilgili öğretmen/öğrenci tarafından okunur.
     match /ogretmenOgrenciBaglantilari/{linkId} {
       allow get, list: if signedIn()
-        && (resource.data.ogretmenUid == request.auth.uid
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
       allow create: if createsApprovedStudentLink(linkId);
       allow update: if isTeacher()
