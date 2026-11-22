@@ -36,7 +36,7 @@ Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı a
 | Yeni ödev bildirimi | Öğretmen ödev oluşturduğunda veya yeni öğrenci hedeflediğinde uygulama içi bildirim yazılır; hedef kaldırılırsa mevcut bildirim iptal edilir. | Kaynak kodda uygulandı |
 | Telefon push bildirimi | Spark'ta güvenli sunucu gönderimi yoktur. Expo/FCM gizli anahtarı APK'ya konulmaz. Öğrenci ekranı uygulama içi bildirimleri kullanır. | Push devre dışı; uygulama içi bildirim var |
 | Uygulama sahibi istatistikleri | Custom claim kontrolüyle öğretmen, öğrenci, bağlantı ve bekleyen talep sayıları Firestore'dan hesaplanır; öğrenci kimliği ekranda gösterilmez. | Kaynak kodda uygulandı |
-| Dönem temizliği | Yalnızca Temmuz ayında uygulama sahibi tarafından önizleme ve açık onayla başlatılan işlem kullanılabilir. | Politika/test hazır; uygulama içi temizlik ekranı henüz tamamlanmadı |
+| Dönem temizliği | Uygulama sahibi Temmuz ayında altı koleksiyonu önizler; açık onayla yalnızca iki yıl önceki dönemi 400 kayıtlık batch'lerle siler ve yıllık kilit yazar. Firestore rules Temmuz dışı okumayı/silmeyi reddeder. | Kaynak kodda uygulandı; Emulator doğrulaması bekliyor |
 
 ## Yıllık arşiv ve silme kararı
 
@@ -47,7 +47,7 @@ Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı a
 - Okul, sınıf, öğrenci, kullanıcı profili, ortak kitap kütüphanesi, öğretmen-öğrenci bağlantısı ve Firebase Auth hesabı silinmez.
 - Eski dönemler görüntülenebilir/arşiv olarak kalır; düzenlenmez.
 - `utils/donem.js` mevcut çalışma mantığı korunur.
-- Spark'ta zamanlayıcı yoktur; Temmuz ayında uygulama sahibi uygulamayı açtığında önizleme ve onay akışı çalışacaktır. Bu akış henüz kullanıcıya açılmamıştır; hiçbir veri silinmemiştir.
+- Spark'ta zamanlayıcı yoktur; Temmuz ayında uygulama sahibi paneli açıp önizleme ve açık onayla temizliği başlatır. Yıllık kilit ikinci çalıştırmayı engeller. Bu dalda hiçbir veri silinmemiştir.
 
 ## Canlıya alma güvenliği
 
