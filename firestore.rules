@@ -141,7 +141,7 @@ service cloud.firestore {
         && get(classPath).data.donemYili == data.donemYili
         && data.kademe == get(classPath).data.kademe
         && isEditablePeriod(data.donemYili)
-        && data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT'];
+        && data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12];
     }
 
     function consumesPairingCode(codeId) {
