@@ -37,7 +37,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Öğretmen yalnızca kendi UID'si altında öğretmen profili oluşturabilir; öğrenci profili yalnızca doğrulanmış, tek kullanımlık kod talebiyle oluşur; uygulama sahibi claim'i istemciden atanamaz.
 - [ ] Firestore rules: kullanıcı/veri sahipliği, sınıf-öğrenci-ders-kitap ilişkileri, dönem tutarlılığı ve varsayılan reddetme denetlendi.
 - [ ] Spark eşleştirme akışı: SHA-256 belge kimlikli 16 karakter kod, 12 saat süre, tek kullanımlılık, doğrulanmış e-posta/ad/sınıf/dönem eşleşmesi ve öğretmen onayı Emulator'da denetlendi.
-- [ ] Veri saklama/temizleme işlevi güvenli varsayılanla (dry-run) çalışır; silme modu ayrıca yetkilendirilmeden açılmaz.
+- [ ] Uygulama sahibi dönem temizliği: yalnızca Temmuz 2028'den itibaren, önizleme + açık onay + altı koleksiyon allowlist'i + yıllık kilit; Temmuz dışında Firestore rules okuma/silmeyi reddeder.
 - [ ] Canlı Firestore yedeği ve geri yükleme tatbikatı; Auth, Storage, rules, indexes ve Functions kapsamındaki ek yedek ihtiyaçları belirlendi.
 - [ ] Gerekli Firestore indeksleri gerçek sorgulara göre belirlendi ve canlı yapılandırmayla karşılaştırıldı.
 - [ ] Canlı Firestore rules ve Cloud Functions dağıtımı öncesi proje, yedek, test ve geri dönüş planı doğrulandı.
