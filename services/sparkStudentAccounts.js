@@ -162,6 +162,7 @@ export async function approveStudentPairingRequest(requestItem, permissionValues
       throw new Error('Bu öğrenci kaydı başka bir öğrenci hesabına bağlı.');
     }
     transaction.set(linkRef, {
+      talepId: requestItem.id,
       uid: teacherUid,
       ogretmenUid: teacherUid,
       ogretmenHesapAdi: data.ogretmenHesapAdi || '',
@@ -218,7 +219,6 @@ export async function updateStudentLinkPermissions(linkId, permissionValues) {
   await updateDoc(doc(db, 'ogretmenOgrenciBaglantilari', linkId), {
     izinler: validatePermissions(permissionValues),
     izinGuncelleme: serverTimestamp(),
-    uid: teacherUid,
   });
 }
 
