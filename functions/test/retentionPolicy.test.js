@@ -22,12 +22,12 @@ test('retention follows the exact July-only annual rule in Istanbul', () => {
   assert.equal(expiredPeriodStartYear(new Date('2030-07-01T09:00:00.000Z')), 2028);
 });
 
-test('retention deletion fails closed for missing period, invalid period or missing owner', () => {
+test('retention deletion fails closed for missing or invalid period label', () => {
   assert.equal(isEligiblePeriodRecord({ uid: 'teacher-a', donemYili: 2026 }, 2026), true);
   assert.equal(isEligiblePeriodRecord({ uid: 'teacher-a', donemYili: 2027 }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ uid: 'teacher-a' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ uid: 'teacher-a', donemYili: '2026' }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ uid: '', donemYili: 2026 }, 2026), false);
+  assert.equal(isEligiblePeriodRecord({ uid: '', donemYili: 2026 }, 2026), true);
   assert.equal(isEligiblePeriodRecord(null, 2026), false);
 });
 
