@@ -41,8 +41,21 @@ foreach ($tool in @('git', 'npm', 'firebase', 'npx')) {
 
 Write-Host '1/5 — Firebase ve EAS hesap erişimi kontrol ediliyor...' -ForegroundColor Cyan
 firebase projects:list
+if ($LASTEXITCODE -ne 0) {
+  Write-Host 'Firebase oturumu açılıyor...' -ForegroundColor Yellow
+  firebase login
+  Assert-LastExitCode 'Firebase giriş'
+  firebase projects:list
+}
 Assert-LastExitCode 'Firebase proje erişimi'
+
 npx eas-cli@latest whoami
+if ($LASTEXITCODE -ne 0) {
+  Write-Host 'Expo/EAS oturumu açılıyor...' -ForegroundColor Yellow
+  npx eas-cli@latest login
+  Assert-LastExitCode 'EAS giriş'
+  npx eas-cli@latest whoami
+}
 Assert-LastExitCode 'EAS hesap erişimi'
 
 Write-Host '2/5 — Kilit dosyasına göre bağımlılıklar kuruluyor...' -ForegroundColor Cyan
