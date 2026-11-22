@@ -4,6 +4,7 @@ $ErrorActionPreference = 'Stop'
 
 $expectedBranch = 'release/pre-apk-2026-11-22'
 $projectId = 'ogretmen-takip'
+$firebaseAlias = 'production'
 $backupRelativePath = 'firestore-backups/ogretmen-takip-firestore-2026-11-22T12-24-57-871Z.jsonl.gz'
 $expectedBackupSha256 = '2716E9109096D6D5E4096DF92F4392A3914E44964B624829AE9980375399703D'
 
@@ -14,6 +15,20 @@ function Assert-LastExitCode([string]$Step) {
 }
 
 $repoRoot = (Get-Location).Path
+$firebasercPath = Join-Path $repoRoot '.firebaserc'
+if (-not (Test-Path $firebasercPath)) {
+  throw "Firebase proje takma adı dosyası bulunamadı: $firebasercPath"
+}
+try {
+  $firebaseRc = Get-Content -Path $firebasercPath -Raw | ConvertFrom-Json
+  $aliasProjectId = $firebaseRc.projects.$firebaseAlias
+} catch {
+  throw ".firebaserc okunamadı veya geçerli JSON değil."
+}
+if ($aliasProjectId -ne $projectId) {
+  throw "Firebase '$firebaseAlias' takma adı beklenen '$projectId' projesine bağlı değil. Bulunan: $aliasProjectId"
+}
+
 $branch = (git branch --show-current).Trim()
 if ($branch -ne $expectedBranch) {
   throw "Önce $expectedBranch dalına geçin. Şu anki dal: $branch"
@@ -80,7 +95,7 @@ if ($approval -cne 'DEPLOY') {
 }
 
 Write-Host '4/5 — Yalnızca Firestore rules canlı projeye dağıtılıyor...' -ForegroundColor Cyan
-firebase deploy --only firestore:rules --project $projectId
+firebase deploy --only firestore:rules --project $firebaseAlias
 Assert-LastExitCode 'Firestore rules dağıtımı'
 
 Write-Host '5/5 — Android APK EAS üzerinde derleniyor...' -ForegroundColor Cyan
