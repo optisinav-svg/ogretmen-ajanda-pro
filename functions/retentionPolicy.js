@@ -8,6 +8,7 @@ const RETENTION_COLLECTIONS = Object.freeze([
   // Ana kayıtlar (okullar/sınıflar/öğrenciler), kullanıcı profilleri,
   // bağlantı metadata'sı ve ortak kitap kütüphanesi burada bulunmaz.
   'dersNotlari',
+  'dersler',
   'yoklamalar',
   'odevler',
   'kitaplar',
