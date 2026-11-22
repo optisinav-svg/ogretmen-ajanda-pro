@@ -28,3 +28,7 @@ Bu belge, Öğretmen Ajanda Pro üzerinde sonraki geliştirme oturumlarında uyg
 ## Uygulama ilkesi
 
 Her oturumda önce bu belge ve en güncel proje durumu dikkate alınır. Kullanıcı tarafından tamamlandığı belirtilen özelliklere dokunulmaz; açık kalan işler en güncel karar sırasıyla ele alınır.
+
+## Proaktif ilerleme kuralı
+
+Kullanıcı "devam" demeyi beklemez. Güvenli ve belirli bir sonraki iş varsa asistan kendisi başlatır; kullanıcıdan yalnızca kendi cihazında/hesabında yapılması zorunlu adımlar istenir. Asistan boşta beklemez: ilerlemeyi, bulunan sorunları ve sıradaki somut adımı bildirir; gerçek engel yoksa işi sürdürür.
