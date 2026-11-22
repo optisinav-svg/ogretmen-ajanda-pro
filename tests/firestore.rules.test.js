@@ -849,6 +849,12 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
   }));
 
+  const unrelatedStudentDb = testEnv.authenticatedContext('unrelated-student', {
+    email: 'someone-else@example.com',
+    email_verified: true,
+  }).firestore();
+  await assertFails(getDoc(doc(unrelatedStudentDb, 'ogrenciEslesmeKodlari', codeId)));
+
   const studentDb = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
     email_verified: true,

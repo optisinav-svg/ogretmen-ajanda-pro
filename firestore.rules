@@ -571,6 +571,7 @@ service cloud.firestore {
       allow get: if signedIn()
         && (resource.data.ogretmenUid == request.auth.uid
           || (request.auth.token.email_verified == true
+            && resource.data.eposta == request.auth.token.email
             && resource.data.kullanildi == false
             && resource.data.sonaErme > request.time));
       allow list: if false;
