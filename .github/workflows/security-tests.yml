@@ -5,6 +5,7 @@ on:
     branches:
       - feature/group2-ders-konu-takvim
       - feature/group3-firestore-security-hardening
+      - feature/group4-student-app
       - integration/pre-apk-2026-11-21
   pull_request:
     branches:
