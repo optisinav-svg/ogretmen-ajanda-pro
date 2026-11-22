@@ -65,7 +65,7 @@ export async function createStudentPairingCode(studentRecord) {
     kademe: classSnap.get('kademe') || '',
     ders: classSnap.get('ders') || student.brans || '',
     kullanildi: false,
-    olusturulma: Timestamp.fromMillis(now),
+    olusturulma: serverTimestamp(),
     sonaErme: Timestamp.fromMillis(expiresAt),
   });
   return { kod: code, sonaErme: new Date(expiresAt).toISOString() };
