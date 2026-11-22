@@ -577,6 +577,16 @@ test('Sınıf taşıma işaretli öğrencinin kitap ve konu kayıtları hedef s�
     sinifId: 'class-c',
     sinifTasiIslemi: deleteField(),
   }));
+
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await updateDoc(doc(adminDb, 'ogrenciler', 'student-a'), {
+      sinifId: 'class-a',
+      sinifTasiIslemi: deleteField(),
+    });
+    await updateDoc(doc(adminDb, 'kitaplar', 'book-a'), { sinifId: 'class-a' });
+    await updateDoc(doc(adminDb, 'konular', 'topic-a'), { sinifId: 'class-a' });
+  });
 });
 
 test('Öğrenci yalnızca eşleştirildiği kendi öğrenci kaydını okuyabilir', async () => {
