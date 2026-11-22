@@ -19,12 +19,12 @@ test('existing academic period calculation remains aligned with June 1 start', (
   assert.equal(activePeriodStartYear(d('2026-06-01T00:00:00+03:00')), 2026);
   assert.equal(archivedPeriodStartYear(d('2026-07-01T00:00:00+03:00')), 2025);
 });
-test('only exact target year and owned records qualify', () => {
+test('only the exact numeric target period year qualifies, regardless of uid', () => {
   assert.equal(isEligiblePeriodRecord({ donemYili: 2026, uid: 'teacher-1' }, 2026), true);
   assert.equal(isEligiblePeriodRecord({ donemYili: 2025, uid: 'teacher-1' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ donemYili: 2027, uid: 'teacher-1' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ donemYili: '2026', uid: 'teacher-1' }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), false);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), true);
 });
 test('only agreed activity collections are in the cleanup allowlist', () => {
   assert.deepEqual([...RETENTION_COLLECTIONS], [
