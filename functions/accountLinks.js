@@ -105,7 +105,7 @@ async function requireRole(uid, expectedRole) {
   if (!profile.exists) {
     throw new HttpsError('failed-precondition', 'Kullanıcı profili bulunamadı.');
   }
-  const role = profile.get('rol') || 'ogretmen'; // Eski rol alanı olmayan hesaplar öğretmendir.
+  const role = profile.get('rol');
   if (role !== expectedRole) {
     throw new HttpsError('permission-denied', 'Bu işlem için hesap rolünüz uygun değil.');
   }
@@ -118,24 +118,6 @@ function requireAuth(request) {
   }
   return request.auth.uid;
 }
-
-exports.eskiOgretmenRolunuTanimla = onCall({ region: REGION }, async (request) => {
-  const uid = requireAuth(request);
-  const ref = db.collection('kullanicilar').doc(uid);
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists) throw new HttpsError('failed-precondition', 'Kullanıcı profili bulunamadı.');
-    const role = snap.get('rol');
-    if (role === 'ogrenci') {
-      throw new HttpsError('permission-denied', 'Öğrenci rolü öğretmen rolüne çevrilemez.');
-    }
-    if (role && role !== 'ogretmen') {
-      throw new HttpsError('permission-denied', 'Geçersiz hesap rolü.');
-    }
-    if (!role) tx.update(ref, { rol: 'ogretmen' });
-  });
-  return { rol: 'ogretmen' };
-});
 
 exports.ogrenciEslesmeKoduOlustur = onCall({ region: REGION }, async (request) => {
   const teacherUid = requireAuth(request);
@@ -203,7 +185,7 @@ exports.ogrenciEslesmeTalebiGonder = onCall({ region: REGION }, async (request) 
       tx.get(db.collection('siniflar').doc(codeData.sinifId)),
       tx.get(db.collection('ogrenciler').doc(codeData.ogrenciKayitId)),
     ]);
-    if (!teacherProfileSnap.exists || (teacherProfileSnap.get('rol') && teacherProfileSnap.get('rol') !== 'ogretmen')
+    if (!teacherProfileSnap.exists || teacherProfileSnap.get('rol') !== 'ogretmen'
       || !classSnap.exists || classSnap.get('uid') !== codeData.ogretmenUid
       || !studentSnap.exists || studentSnap.get('uid') !== codeData.ogretmenUid
       || studentSnap.get('sinifId') !== codeData.sinifId) {
