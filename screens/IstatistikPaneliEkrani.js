@@ -3,8 +3,9 @@ import {
   ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebaseConfig';
+import { getIdTokenResult } from 'firebase/auth';
+import { collection, getDocs, getCountFromServer, query, where } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 
 const number = value => Number(value || 0).toLocaleString('tr-TR');
 
@@ -19,11 +20,81 @@ export default function IstatistikPaneliEkrani({ navigation }) {
     else setLoading(true);
     setError('');
     try {
-      const result = await httpsCallable(functions, 'getUygulamaSahibiIstatistikleri')();
-      setData(result.data);
+      if (!auth.currentUser) throw new Error('Önce uygulama sahibi hesabıyla giriş yapın.');
+      const token = await getIdTokenResult(auth.currentUser, true);
+      if (token.claims.uygulamaSahibi !== true) {
+        throw new Error('Bu ekran yalnızca uygulama sahibi yetkisine sahip hesaba açıktır.');
+      }
+      const [teacherSnapshot, studentCountSnapshot, linkSnapshot, requestSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'kullanicilar'), where('rol', '==', 'ogretmen'))),
+        getCountFromServer(query(collection(db, 'kullanicilar'), where('rol', '==', 'ogrenci'))),
+        getDocs(collection(db, 'ogretmenOgrenciBaglantilari')),
+        getDocs(collection(db, 'ogrenciEslesmeTalepleri')),
+      ]);
+      const teachers = new Map(teacherSnapshot.docs.map(item => [item.id, {
+        displayName: String(item.get('kullaniciAdi') || 'Öğretmen hesabı').slice(0, 80),
+        branch: String(item.get('brans') || 'Branş belirtilmemiş').slice(0, 60),
+        activeLinkCount: 0,
+        linkedStudentIds: new Set(),
+        pendingRequestCount: 0,
+      }]));
+      let activeLinkCount = 0;
+      let revokedLinkCount = 0;
+      const allLinkedStudentIds = new Set();
+      linkSnapshot.docs.forEach(snapshot => {
+        const link = snapshot.data();
+        if (link.durum === 'revoked') revokedLinkCount += 1;
+        if (link.durum !== 'active' || !teachers.has(link.ogretmenUid)) return;
+        activeLinkCount += 1;
+        const teacher = teachers.get(link.ogretmenUid);
+        if (typeof link.ogrenciUid === 'string' && link.ogrenciUid) {
+          teacher.linkedStudentIds.add(link.ogrenciUid);
+          allLinkedStudentIds.add(link.ogrenciUid);
+        }
+        teacher.activeLinkCount += 1;
+      });
+      let pendingRequestCount = 0;
+      requestSnapshot.docs.forEach(snapshot => {
+        const item = snapshot.data();
+        if (item.durum !== 'bekliyor' || !teachers.has(item.ogretmenUid)) return;
+        pendingRequestCount += 1;
+        teachers.get(item.ogretmenUid).pendingRequestCount += 1;
+      });
+      const teacherRows = [...teachers.values()].map(teacher => ({
+        displayName: teacher.displayName,
+        branch: teacher.branch,
+        activeLinkCount: teacher.activeLinkCount,
+        linkedStudentAccounts: teacher.linkedStudentIds.size,
+        pendingRequestCount: teacher.pendingRequestCount,
+      })).sort((a, b) => a.branch.localeCompare(b.branch, 'tr') || a.displayName.localeCompare(b.displayName, 'tr'));
+      const branchMap = new Map();
+      for (const teacher of teachers.values()) {
+        if (!branchMap.has(teacher.branch)) branchMap.set(teacher.branch, {
+          branch: teacher.branch, teacherCount: 0, linkedStudentIds: new Set(),
+        });
+        const branch = branchMap.get(teacher.branch);
+        branch.teacherCount += 1;
+        for (const studentId of teacher.linkedStudentIds) branch.linkedStudentIds.add(studentId);
+      }
+      const branches = [...branchMap.values()].map(branch => ({
+        branch: branch.branch,
+        teacherCount: branch.teacherCount,
+        linkedStudentAccounts: branch.linkedStudentIds.size,
+      })).sort((a, b) => a.branch.localeCompare(b.branch, 'tr'));
+      setData({
+        teacherAccountCount: teachers.size,
+        studentAccountCount: studentCountSnapshot.data().count,
+        activeLinkCount,
+        uniqueLinkedStudentAccountCount: allLinkedStudentIds.size,
+        pendingRequestCount,
+        revokedLinkCount,
+        branches,
+        teachers: teacherRows,
+        generatedAt: new Date().toISOString(),
+      });
     } catch (e) {
-      setError(e?.code === 'functions/permission-denied'
-        ? 'Bu ekran için uygulama sahibi yetkisi doğrulanamadı.'
+      setError(e?.code === 'permission-denied'
+        ? 'Bu panel için uygulama sahibi yetkisi veya Firestore erişimi doğrulanamadı.'
         : (e?.message || 'İstatistikler yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.'));
     } finally {
       setLoading(false);
