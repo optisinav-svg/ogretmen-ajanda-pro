@@ -28,5 +28,6 @@ export const auth = authInstance;
 export const db = getFirestore(app);
 export const functions = getFunctions(app, 'europe-west1');
 
-// Enable only after the matching Firestore rules and Cloud Functions are deployed and verified.
-export const ACCOUNT_LINKING_ENABLED = false;
+// Spark-compatible account linking uses Firestore transactions and the strict rules in firestore.rules.
+// The APK build script deploys those rules before building the student-enabled app.
+export const ACCOUNT_LINKING_ENABLED = true;
