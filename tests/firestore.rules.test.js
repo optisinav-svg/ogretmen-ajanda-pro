@@ -15,6 +15,7 @@ const {
   setDoc,
   updateDoc,
   addDoc,
+  deleteDoc,
   writeBatch,
 } = require('firebase/firestore');
 
@@ -59,6 +60,11 @@ before(async () => {
       uid: 'teacher-b',
       ad: 'B Okulu',
       donemYili: 2026,
+    });
+    await setDoc(doc(db, 'okullar', 'school-old'), {
+      uid: 'teacher-a',
+      ad: 'Eski dönem okulu',
+      donemYili: 2025,
     });
     await setDoc(doc(db, 'siniflar', 'class-a'), {
       uid: 'teacher-a',
@@ -571,4 +577,32 @@ test('Öğrenci paneli yalnızca kendi ödevlerini ve bildirimlerini sorgulayabi
     collection(db, 'ogrenciOdevBildirimleri'),
     where('ogrenciUid', '==', 'student-1'),
   )));
+});
+
+
+test('Firestore açık olan mevcut dönem kayıtlarına yazmayı kabul eder', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(addDoc(collection(db, 'okullar'), {
+    uid: 'teacher-a', ad: 'Yeni dönem okulu', donemYili: 2026,
+  }));
+});
+
+test('Firestore eski, gelecekteki veya dönem alanı eksik kayıt oluşturulmasını engeller', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'okullar'), {
+    uid: 'teacher-a', ad: 'Eski dönem', donemYili: 2025,
+  }));
+  await assertFails(addDoc(collection(db, 'okullar'), {
+    uid: 'teacher-a', ad: 'Gelecek dönem', donemYili: 2027,
+  }));
+  await assertFails(addDoc(collection(db, 'okullar'), {
+    uid: 'teacher-a', ad: 'Dönem alanı yok',
+  }));
+});
+
+test('Firestore eski dönem kayıtlarının düzenlenmesini ve silinmesini engeller', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(getDoc(doc(db, 'okullar', 'school-old')));
+  await assertFails(updateDoc(doc(db, 'okullar', 'school-old'), { ad: 'Eski dönem düzenlendi' }));
+  await assertFails(deleteDoc(doc(db, 'okullar', 'school-old')));
 });
