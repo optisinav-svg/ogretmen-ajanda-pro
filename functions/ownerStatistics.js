@@ -1,7 +1,6 @@
 const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 
-const db = getFirestore();
 const REGION = 'europe-west1';
 const PAGE_SIZE = 500;
 
@@ -109,6 +108,7 @@ exports.getUygulamaSahibiIstatistikleri = onCall(
       throw new HttpsError('permission-denied', 'Bu panel yalnızca uygulama sahibine açıktır.');
     }
 
+    const db = getFirestore();
     const [teachers, studentCountSnapshot, links, requests] = await Promise.all([
       readCollection('kullanicilar', ['kullaniciAdi', 'brans'], [['rol', 'ogretmen']]),
       db.collection('kullanicilar').where('rol', '==', 'ogrenci').count().get(),
