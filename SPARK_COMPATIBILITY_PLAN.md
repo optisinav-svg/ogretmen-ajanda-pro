@@ -12,61 +12,62 @@
 
 ## Spark sınırı
 
-Firebase Spark'ta Cloud Functions dağıtımı ve dolayısıyla şu mevcut sunucu işlevleri çalıştırılamaz:
+Firebase Spark'ta Cloud Functions dağıtımı ve dolayısıyla şu sunucu işlevleri canlıya alınamaz:
 - Auth kullanıcı oluşturma tetikleyicisi / profil oluşturma callable'ı
 - Öğretmen-öğrenci eşleştirme callable'ları
 - Ödev tamamlama callable bildirimi
 - Push token callable'ları
-- Firestore tetikleyicileriyle yeni ödev bildirimleri
+- Firestore tetikleyicileriyle yeni ödev bildirimi
 - Uygulama sahibi istatistik callable'ı
 - Zamanlanmış dönem temizliği
 
-Kaynak depodaki Functions kodunun bulunması, canlı Firebase'de çalıştığı anlamına gelmez. Bu projede daha önce canlı Functions envanteri boş bulunmuştur.
+Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı anlamına gelmez. Canlı Functions envanteri boş bulunmuştur. Bu nedenle APK'nın kullanıcı akışlarında Cloud Functions çağrısı bırakılmamalıdır.
 
-## Spark içinde önerilen uygulama karşılıkları
+## Spark karşılıkları — kaynak kodda yapılanlar
 
-| Mevcut özellik | Spark içinde yapılabilecek karşılık | Sınır / kontrol |
+| Özellik | Spark uygulaması | Durum |
 |---|---|---|
-| Öğretmen profili oluşturma | Kayıt ekranından Firestore profili oluşturma | İstemci uygulama sahibi rolünü atayamaz; rol yükseltme engellenmeli |
-| Öğrenci profili | Öğrenci kayıt/eşleştirme akışında kontrollü Firestore yazımı | Sadece izin verilen rol alanları; e-posta doğrulama ve kayıt eşleşmesi kontrolü |
-| Eşleştirme kodu | Kriptografik rastgele kod + hash belge kimliği; istemci transaction | Kurallar kodun okunmasını/yakılmasını, süreyi, tek kullanımı ve sahipliği doğrulamalı; enumeration/rate-limit riski ayrıca değerlendirilir |
-| Talep gönderme | Öğrencinin Firestore'a talep yazması | Öğrenci kimliği, kayıt e-postası, sınıf, dönem ve kod ilişkisi kurallarda doğrulanmalı |
-| Onay/reddetme/izin/iptal | Öğretmenin sahip olduğu kayıt ve bağlantı belgelerinde sınırlı yazım | İzin anahtarları allowlist; bağlantı başka öğretmene taşınamaz |
-| Ödev tamamlandı bildirimi | Öğrenci tarafından ayrı bildirim belgesi yazılması | Kurallar yalnızca kendi etkin bağlantısı ve hedef ödev için yazmaya izin vermeli |
-| Yeni ödev uygulama içi bildirimi | Ödev oluşturma/düzenleme akışında aynı batch/transaction içinde bildirim belgeleri üretme | Tüm ödev yazma yolları güncellenmeli; mükerrer bildirim ve iptal senaryoları test edilmeli |
-| Telefon push bildirimi | Güvenli otomatik gönderim Spark'ta mevcut kodla yapılamaz | FCM/Expo gönderici kimliği istemciye konulamaz. Bu özellik mevcut haliyle devre dışı kalmalı; uygulama içi bildirim kullanılabilir |
-| Uygulama sahibi istatistikleri | Custom claim kontrolü ve yalnızca özet alanlara izin veren Firestore sorguları | Kurallar global okumayı sadece uygulama sahibi claim'ine açmalı; öğrenci kişisel kayıtları gösterilmemeli |
-| Dönem temizliği | Temmuz ayında uygulama sahibi ekranından önizleme + açık onay + küçük partiler | Arka plan zamanlayıcısı yok; Temmuz dışında işlem kapalı; yalnızca açık dönem alanı ve allowlist |
+| Öğretmen profili | Kayıt ekranı, kendi UID'si altında Firestore profili oluşturur. Rol ve uygulama sahibi yetkisi sonradan değiştirilemez. | Kaynak kodda uygulandı |
+| Öğrenci hesabı | E-posta doğrulaması korunur. Öğretmenin 16 karakterlik rastgele kodu SHA-256 belge kimliğiyle saklanır; 12 saat geçerli ve tek kullanımlıdır. | Kaynak kodda uygulandı |
+| Öğrenci kimliği | Kod, kayıtlı e-posta ve ad-soyad eşleşmesi kontrol edilir. E-posta karşılaştırması için öğrenci kaydında normalize edilmiş ek alan tutulur. | Kaynak kodda uygulandı |
+| Öğretmen onayı | Öğretmen talebi onaylar/reddeder; onayda bağlantı ve kayıt indeksi aynı Firestore transaction içinde oluşturulur. İzinler allowlist ile sınırlıdır. | Kaynak kodda uygulandı |
+| Öğrenci erişimi | Yalnızca aktif bağlantı ve öğretmenin verdiği izinler kadar veri görünür. Öğrenci başka öğretmenin verisini okuyamaz. | Kurallar ve testler güncellendi |
+| Ödev tamamlandı bildirimi | Öğrenci yalnızca kendisine atanmış ödev için ayrı Firestore bildirimi oluşturur. | Kaynak kodda uygulandı |
+| Yeni ödev bildirimi | Öğretmen ödev oluşturduğunda veya yeni öğrenci hedeflediğinde uygulama içi bildirim yazılır; hedef kaldırılırsa mevcut bildirim iptal edilir. | Kaynak kodda uygulandı |
+| Telefon push bildirimi | Spark'ta güvenli sunucu gönderimi yoktur. Expo/FCM gizli anahtarı APK'ya konulmaz. Öğrenci ekranı uygulama içi bildirimleri kullanır. | Push devre dışı; uygulama içi bildirim var |
+| Uygulama sahibi istatistikleri | Custom claim kontrolüyle öğretmen, öğrenci, bağlantı ve bekleyen talep sayıları Firestore'dan hesaplanır; öğrenci kimliği ekranda gösterilmez. | Kaynak kodda uygulandı |
+| Dönem temizliği | Yalnızca Temmuz ayında uygulama sahibi tarafından önizleme ve açık onayla başlatılan işlem kullanılabilir. | Politika/test hazır; uygulama içi temizlik ekranı henüz tamamlanmadı |
 
-## Kritik teknik gerçekler
+## Yıllık arşiv ve silme kararı
 
-1. Firestore istemci SDK'sı güvenlik kurallarına tabidir. Bu yüzden tüm yazma yollarının kurallarla uyumlu olması gerekir.
-2. Admin SDK / Cloud Functions olmadan istemciden güvenilir sunucu rolü veya gizli anahtar üretilemez.
-3. Öğrenciye push mesajı göndermek için Expo/FCM sunucu kimlik bilgilerini APK içine koymak güvenli değildir. Böyle yapılmayacak.
-4. Firestore rules tek başına genel amaçlı zamanlayıcı değildir. Spark'ta dönem temizliği uygulama içinde başlatılmalıdır.
-5. Güvenlik kuralları canlı projeye dağıtılmadan önce Emulator testleri, mevcut iki öğretmen profili ve eski kayıt uyumluluğu doğrulanmalıdır.
+- 2026 kayıtları Temmuz 2028'e kadar korunur.
+- Temmuz 2028'de yalnızca `donemYili == 2026` olan kayıtlar silinir.
+- Temmuz 2029'da yalnızca 2027; Temmuz 2030'da yalnızca 2028 silinir.
+- Silme kapsamı yalnızca `dersler`, `dersNotlari`, `yoklamalar`, `odevler`, `kitaplar`, `konular` koleksiyonlarıdır.
+- Okul, sınıf, öğrenci, kullanıcı profili, ortak kitap kütüphanesi, öğretmen-öğrenci bağlantısı ve Firebase Auth hesabı silinmez.
+- Eski dönemler görüntülenebilir/arşiv olarak kalır; düzenlenmez.
+- `utils/donem.js` mevcut çalışma mantığı korunur.
+- Spark'ta zamanlayıcı yoktur; Temmuz ayında uygulama sahibi uygulamayı açtığında önizleme ve onay akışı çalışacaktır. Bu akış henüz kullanıcıya açılmamıştır; hiçbir veri silinmemiştir.
 
-## Uygulama sırası
+## Canlıya alma güvenliği
 
-1. Kaynak kodda tüm Functions çağrılarını ve tetikleyicilerini envanterle.
-2. Her çağrıyı yukarıdaki Spark karşılığına göre dönüştür.
-3. Firestore rules'u aynı anda yeniden tasarla; istemciye güvenip sadece ekranı gizleme.
-4. Emulator testleri: normal kullanıcı, öğrenci, başka öğretmen, yetkisiz rol, eski dönem ve dönem sınırı.
-5. Öğretmen temel akışlarında regresyon testi.
-6. Expo export/bundle ve CI.
-7. EAS preview APK.
-8. Tablet testleri kullanıcı tarafından yapılır.
-9. Push bildirimi, arka plan temizliği ve server-only işler için mevcut Spark kapsamındaki sınır açıkça korunur.
+- Firestore kuralları kaynak kodda Spark kayıt/eşleştirme ve bildirim işlemlerine göre yeniden yazıldı.
+- Canlı Firestore kuralları henüz dağıtılmadı. Canlı projedeki mevcut geniş kurallar, yeni sıkı kuralların yerine geçmiyor.
+- Öğrenci hesap akışı `ACCOUNT_LINKING_ENABLED` bayrağı kapalı tutulduğu sürece uygulama içinde kullanıma açılmaz.
+- Bayrak yalnızca Emulator testleri başarılı olduktan ve yeni kurallar canlıya dağıtıldıktan sonra açılmalıdır.
+- Bu dalda canlı veri silme, canlı dönem temizliği veya Firestore veri taşıması yapılmadı.
 
-## İstek-kod denetim standardı
+## Sıradaki teknik doğrulama sırası
 
-Her yeni otomasyon veya veri işlemi için aşağıdakiler zorunludur:
-- Kullanıcının açık talep maddesi ve kapsamı
-- Etkilenen dosyalar, koleksiyonlar ve alanlar
-- Otomatik tetikleyici / zamanlama bilgisi
-- Okuma-yazma-silme etkisi
-- Yetki modeli
-- Test kanıtı
-- Canlı dağıtım durumu
+1. Firestore Emulator testleri: öğretmen profil kaydı, doğrulanmış öğrenci kod talebi, tek kullanımlılık, öğretmen onayı, izinler, bildirimler, başka öğretmene erişim engeli.
+2. Functions politika testleri ve Android JS bundle/export.
+3. Çalışan özelliklere dokunmadan sınıf raporu eksikliği ve diğer kullanıcı tarafından henüz test edilmemiş ekranların APK öncesi kod kontrolü.
+4. Güvenlik kurallarını canlıya alma ve öğrenci özelliğini açma.
+5. EAS preview APK.
+6. Kullanıcı APK'yı tablette test eder; öğretmen telefonu ve mevcut imza kimliği korunur.
 
-Kullanıcı talebinde bulunmayan zamanlanmış görev, toplu silme, harici servis veya rol yükseltme eklenmez.
+## Açık teknik sınırlar
+
+- Push bildirimi Spark'ta sunucu tarafı güvenli biçimde gönderilemez; uygulama içi bildirim kullanılacaktır.
+- Arka plan zamanlayıcısı yoktur; dönem temizliği uygulama sahibi tarafından Temmuz'da başlatılır.
+- Gerçek öğrenci verisiyle test yapılmaz; APK sonrası kullanıcı kendi test hesabıyla tablette test eder.
