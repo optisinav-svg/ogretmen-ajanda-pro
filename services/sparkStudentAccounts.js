@@ -288,21 +288,25 @@ export async function syncNewHomeworkNotifications(homeworkId, homework, previou
   const linkSnap = await getDocs(query(
     collection(db, 'ogretmenOgrenciBaglantilari'),
     where('ogretmenUid', '==', teacherUid),
-    where('sinifId', '==', homework.sinifId),
   ));
-  const links = linkSnap.docs.map(item => ({ id: item.id, ...item.data() }));
-  const batch = writeBatch(db);
-  let writes = 0;
+  const links = linkSnap.docs.map(item => ({ id: item.id, ...item.data() }))
+    .filter(link => link.sinifId === homework.sinifId && link.durum === 'active' && link.izinler?.odevler === true);
+  const operations = [];
   for (const link of links) {
-    if (link.durum !== 'active' || link.izinler?.odevler !== true) continue;
-    const notificationRef = doc(db, 'ogrenciYeniOdevBildirimleri', [homeworkId, link.ogrenciUid, link.id].join('__'));
     const wasTargeted = previousTargetIds.includes(link.ogrenciKayitId);
     const isTargeted = targets.includes(link.ogrenciKayitId);
+    if (wasTargeted === isTargeted) continue;
+    const notificationRef = doc(db, 'ogrenciYeniOdevBildirimleri', [homeworkId, link.ogrenciUid, link.id].join('__'));
+    const existing = await getDoc(notificationRef);
     if (wasTargeted && !isTargeted) {
-      batch.set(notificationRef, { durum: 'iptal', iptalTarihi: serverTimestamp() }, { merge: true });
-      writes += 1;
-    } else if (!wasTargeted && isTargeted) {
-      batch.set(notificationRef, {
+      if (existing.exists()) operations.push({ type: 'update', ref: notificationRef, data: {
+        durum: 'iptal',
+        iptalTarihi: serverTimestamp(),
+      }});
+      continue;
+    }
+    if (isTargeted && !existing.exists()) {
+      operations.push({ type: 'set', ref: notificationRef, data: {
         uid: teacherUid,
         ogrenciUid: link.ogrenciUid,
         ogretmenUid: teacherUid,
@@ -317,11 +321,15 @@ export async function syncNewHomeworkNotifications(homeworkId, homework, previou
         durum: 'aktif',
         okundu: false,
         bildirimTarihi: serverTimestamp(),
-      }, { merge: true });
-      writes += 1;
+      }});
     }
   }
-  if (writes) await batch.commit();
+  for (let offset = 0; offset < operations.length; offset += 450) {
+    const batch = writeBatch(db);
+    operations.slice(offset, offset + 450).forEach(operation => {
+      if (operation.type === 'update') batch.update(operation.ref, operation.data);
+      else batch.set(operation.ref, operation.data);
+    });
+    await batch.commit();
+  }
 }
-
-export { EMPTY_PERMISSIONS, PERMISSION_KEYS };
