@@ -4,8 +4,8 @@ import {
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { auth, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { submitStudentPairingRequest } from '../services/sparkStudentAccounts';
 
 export default function OgrenciKayitEkrani({ navigation, route }) {
   const devamEt = !!route?.params?.devamEt || !!auth.currentUser;
@@ -35,10 +35,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
         Alert.alert('E-posta doğrulanmadı', 'Önce e-posta kutunuza gönderilen doğrulama bağlantısını açın. Ardından tekrar deneyin.');
         return;
       }
-      await httpsCallable(functions, 'ogrenciEslesmeTalebiGonder')({
-        kod: temizKod,
-        adSoyad: adSoyad.trim(),
-      });
+      await submitStudentPairingRequest(temizKod, adSoyad.trim());
       navigation.replace('OgrenciAnaSayfa');
     } catch (e) {
       Alert.alert(
@@ -81,7 +78,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
       <View style={s.center}>
         <Text style={s.icon}>🎓</Text>
         <Text style={s.title}>Öğrenci kaydı henüz açılmadı</Text>
-        <Text style={s.info}>Öğrenci kayıt ve eşleştirme ekranları hazırlandı. Güvenlik kuralları ve sunucu işlevleri canlı Firebase'e dağıtılıp doğrulanana kadar hesap oluşturma kapalı tutuluyor.</Text>
+        <Text style={s.info}>Öğrenci hesabı, doğrulanmış e-posta ve öğretmeninizin tek kullanımlık koduyla eşleştirilir. Öğretmen onay verene kadar hiçbir öğrenci verisi açılmaz.</Text>
         <TouchableOpacity style={s.button} onPress={() => navigation.goBack()}><Text style={s.buttonText}>Geri dön</Text></TouchableOpacity>
       </View>
     );

@@ -1,54 +1,33 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {
-  RETENTION_COLLECTIONS,
-  expiredPeriodStartYear,
-  isEligiblePeriodRecord,
-} = require('./retentionPolicy');
-
-const istanbulDate = value => new Date(value);
-
-test('keeps the expiring period throughout June', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-06-01T12:00:00+03:00')), null);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-06-30T23:59:59+03:00')), null);
+const { FIRST_CLEANUP_YEAR, RETENTION_COLLECTIONS, activePeriodStartYear,
+  archivedPeriodStartYear, expiredPeriodStartYear, isEligiblePeriodRecord } = require('./retentionPolicy');
+const d = value => new Date(value);
+test('2026 is the first data year and no cleanup happens before July 2028', () => {
+  assert.equal(FIRST_CLEANUP_YEAR, 2028);
+  assert.equal(expiredPeriodStartYear(d('2026-07-01T03:20:00+03:00')), null);
+  assert.equal(expiredPeriodStartYear(d('2027-07-01T03:20:00+03:00')), null);
+  assert.equal(expiredPeriodStartYear(d('2028-06-30T23:59:59+03:00')), null);
 });
-
-test('expires 2026/27 from July 1, 2029', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2029-07-01T00:00:00+03:00')), 2026);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-05-31T12:00:00+03:00')), 2026);
+test('July 2028 deletes only 2026; July 2029 deletes only 2027', () => {
+  assert.equal(expiredPeriodStartYear(d('2028-07-01T03:20:00+03:00')), 2026);
+  assert.equal(expiredPeriodStartYear(d('2029-07-01T03:20:00+03:00')), 2027);
+  assert.equal(expiredPeriodStartYear(d('2030-07-01T03:20:00+03:00')), 2028);
 });
-
-test('expires the next period only after its third year ends', () => {
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-06-30T23:59:59+03:00')), null);
-  assert.equal(expiredPeriodStartYear(istanbulDate('2030-07-01T00:00:00+03:00')), 2027);
+test('existing academic period calculation remains aligned with June 1 start', () => {
+  assert.equal(activePeriodStartYear(d('2026-05-31T12:00:00+03:00')), 2025);
+  assert.equal(activePeriodStartYear(d('2026-06-01T00:00:00+03:00')), 2026);
+  assert.equal(archivedPeriodStartYear(d('2026-07-01T00:00:00+03:00')), 2025);
 });
-
-test('only explicitly period-tagged, owned records are eligible', () => {
+test('only the exact numeric target period year qualifies, regardless of uid', () => {
   assert.equal(isEligiblePeriodRecord({ donemYili: 2026, uid: 'teacher-1' }, 2026), true);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2025, uid: 'teacher-1' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ donemYili: 2027, uid: 'teacher-1' }, 2026), false);
   assert.equal(isEligiblePeriodRecord({ donemYili: '2026', uid: 'teacher-1' }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), false);
-  assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1' }, 2026), false);
+  assert.equal(isEligiblePeriodRecord({ donemYili: 2026 }, 2026), true);
 });
-
-
-test('student homework notifications are included in three-year retention', () => {
-  assert.ok(RETENTION_COLLECTIONS.includes('ogrenciOdevBildirimleri'));
-  assert.equal(isEligiblePeriodRecord({
-    uid: 'teacher-1',
-    donemYili: 2026,
-    ogrenciUid: 'student-1',
-    durum: 'tamamlandi_bildirildi',
-  }, 2026), true);
-});
-
-
-test('student account metadata collections are covered by three-year retention', () => {
-  for (const name of [
-    'ogrenciEslesmeTalepleri',
-    'ogrenciEslesmeKodlari',
-    'ogretmenOgrenciBaglantilari',
-    'ogrenciKayitEslesmeleri',
-  ]) assert.ok(RETENTION_COLLECTIONS.includes(name), name);
-  assert.equal(isEligiblePeriodRecord({ uid: 'teacher-1', donemYili: 2026, ogrenciUid: 'student-1' }, 2026), true);
+test('only agreed activity collections are in the cleanup allowlist', () => {
+  assert.deepEqual([...RETENTION_COLLECTIONS], [
+    'dersNotlari', 'dersler', 'yoklamalar', 'odevler', 'kitaplar', 'konular',
+  ]);
 });

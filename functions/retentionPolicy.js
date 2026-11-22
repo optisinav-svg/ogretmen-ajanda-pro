@@ -1,77 +1,49 @@
+// Yıllık dönem arşiv politikası — Spark uyumlu saf yardımcılar.
+// Firestore kayıtları fiziksel dosyalara taşınmaz; donemYili alanı aynı işi
+// mantıksal yıl arşivi olarak görür. Bu modül kendiliğinden silme yapmaz.
+const FIRST_CLEANUP_YEAR = 2028;
 const RETENTION_COLLECTIONS = Object.freeze([
-  // Period-owned records. Shared book-library definitions and user profiles
-  // are intentionally excluded because they are not owned by one school year.
-  'bireyselDersOturumlari',
-  'ogrenciOdevBildirimleri',
-  'ogrenciYeniOdevBildirimleri',
-  'ogrenciEslesmeTalepleri',
-  'ogrenciEslesmeKodlari',
-  'ogretmenOgrenciBaglantilari',
-  'ogrenciKayitEslesmeleri',
-  'bireyselEtkinlikler',
   'dersNotlari',
+  'dersler',
   'yoklamalar',
   'odevler',
-  'konular',
   'kitaplar',
-  'dersler',
-  'ogrenciler',
-  'siniflar',
-  'okullar',
+  'konular',
 ]);
-
 function istanbulDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
+    timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric', day: 'numeric',
   }).formatToParts(date);
-
-  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return {
-    year: Number(values.year),
-    month: Number(values.month),
-    day: Number(values.day),
-  };
+  const values = Object.fromEntries(parts.map(p => [p.type, p.value]));
+  return { year: Number(values.year), month: Number(values.month), day: Number(values.day) };
 }
-
+// Mevcut uygulamanın utils/donem.js dönem başlangıç mantığı korunur:
+// 1 Haziran'da yeni dönem yılı başlar. Bu yardımcıya dokunulmaz.
+function activePeriodStartYear(date = new Date()) {
+  const { year, month } = istanbulDateParts(date);
+  return month >= 6 ? year : year - 1;
+}
+function archivedPeriodStartYear(date = new Date()) {
+  return activePeriodStartYear(date) - 1;
+}
 /**
- * Returns the academic-period start year that has completed its third
- * academic year, or null throughout June.
- *
- * Example: 2029-07-01 in Europe/Istanbul => 2026 (2026/27 is now expired).
- * June is deliberately skipped so the period ending on June 30 is retained
- * through its final day.
+ * İlk temizlik Temmuz 2028'de 2026 dönemini siler.
+ * Temmuz 2029'da 2027, Temmuz 2030'da 2028 silinir.
+ * Yalnızca Temmuz ve 2028+ yıllarında tek bir dönem adayı döndürür.
  */
 function expiredPeriodStartYear(date = new Date()) {
   const { year, month } = istanbulDateParts(date);
-
-  if (month === 6) return null;
-
-  const activePeriodStartYear = month >= 7 ? year : year - 1;
-  return activePeriodStartYear - 3;
+  if (month !== 7 || year < FIRST_CLEANUP_YEAR) return null;
+  return year - 2;
 }
-
-/**
- * Fail closed: only records with an explicit numeric period and a non-empty
- * owner UID can be deleted. Legacy records without donemYili are not inferred
- * from timestamps because June overlap makes that inference unsafe.
- */
-function isEligiblePeriodRecord(data, cutoffYear) {
-  return Boolean(
-    data &&
-    typeof data.donemYili === 'number' &&
-    Number.isInteger(data.donemYili) &&
-    data.donemYili <= cutoffYear &&
-    typeof data.uid === 'string' &&
-    data.uid.trim().length > 0
-  );
+function isEligiblePeriodRecord(data, targetYear) {
+  return Boolean(data && Number.isInteger(targetYear)
+    && typeof data.donemYili === 'number'
+    && Number.isInteger(data.donemYili)
+    && data.donemYili === targetYear);
 }
-
 module.exports = {
-  RETENTION_COLLECTIONS,
-  istanbulDateParts,
-  expiredPeriodStartYear,
+  FIRST_CLEANUP_YEAR, RETENTION_COLLECTIONS, istanbulDateParts,
+  activePeriodStartYear, archivedPeriodStartYear, expiredPeriodStartYear,
   isEligiblePeriodRecord,
 };

@@ -5,8 +5,8 @@ import {
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { auth, functions } from '../firebaseConfig';
+import { doc, runTransaction } from 'firebase/firestore';
+import { auth, db } from '../firebaseConfig';
 
 const buYil = new Date().getFullYear();
 const SEZONLAR = [
@@ -58,10 +58,18 @@ export default function KayitEkrani({ navigation }) {
         user = sonuc.user;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
-      await httpsCallable(functions, 'ogretmenProfiliOlustur')({
-        kullaniciAdi: kullaniciAdi.trim(),
-        brans,
-        sezon,
+      const profileRef = doc(db, 'kullanicilar', user.uid);
+      await runTransaction(db, async transaction => {
+        const existing = await transaction.get(profileRef);
+        if (existing.exists()) throw new Error('Bu hesap için kullanıcı profili zaten oluşturulmuş. Giriş ekranına dönün.');
+        transaction.set(profileRef, {
+          kullaniciAdi: kullaniciAdi.trim(),
+          brans,
+          sezon,
+          rol: 'ogretmen',
+          eposta: normalizedEmail,
+          olusturulmaTarihi: new Date().toISOString(),
+        });
       });
       navigation.replace('AnaSayfa');
     } catch (hata) {
@@ -105,13 +113,14 @@ export default function KayitEkrani({ navigation }) {
           <View style={styles.rolSatir}>
             <View style={[styles.rolSecim, styles.rolAktif]}>
               <Text style={styles.rolMetinAktif}>👨‍🏫 Öğretmen</Text>
+              <Text style={styles.rolAlt}>Seçili hesap türü</Text>
             </View>
-            <View style={[styles.rolSecim, styles.rolKapali]}>
+            <TouchableOpacity style={[styles.rolSecim, styles.rolKapali]} onPress={() => navigation.navigate('OgrenciKayit')}>
               <Text style={styles.rolMetinKapali}>🎓 Öğrenci</Text>
-              <Text style={styles.rolAlt}>Henüz kapalı</Text>
-            </View>
+              <Text style={styles.rolAlt}>Öğrenci kaydına geç</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.rolBilgi}>Öğrenci hesabı, öğrenci kayıt ve giriş ekranı hazır olduğunda açılacaktır.</Text>
+          <Text style={styles.rolBilgi}>Öğrenci hesabı için öğrenci seçeneğine geçin. E-posta doğrulaması ve öğretmen onayı öğrenci hesabı akışında korunur.</Text>
           {adim === 1 && (
             <>
               <Text style={styles.soru}>Eğitim-öğretim sezonunu seçin:</Text>

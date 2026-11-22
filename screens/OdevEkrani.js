@@ -4,6 +4,7 @@ import {collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where}from'fireb
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
+import { syncNewHomeworkNotifications } from '../services/sparkStudentAccounts';
 const renk={yapildi:'#2E7D32',yapilmadi:'#C62828',gec:'#F57F17',bekliyor:'#1565C0'},ikon={yapildi:'✅',yapilmadi:'❌',gec:'⏰',bekliyor:'📋'};
 const sayfaAdedi=k=>Math.max(0,(parseInt(k?.bitisSayfa,10)||0)-(parseInt(k?.baslangicSayfa,10)||0)+1);
 const odevKontrolEdildiMi=o=>{const ids=o.hedefOgrenciIds||[];if(!ids.length)return false;return ids.every(id=>['yapildi','yapilmadi','gec'].includes((o.ogrenciDurumlari||{})[id]))};const odevBekliyorMu=o=>!odevKontrolEdildiMi(o);const teslimTarihiGectiMi=o=>!!o?.teslimTarihi&&o.teslimTarihi<bugun();
@@ -21,7 +22,58 @@ export default function OdevEkrani({route}){
  const konuZatenOdev=(k,studentId)=>odev.some(o=>o.konuId===k.id&&((o.hedef==='sinif'&&o.sinifId===secili?.id)||(o.hedefOgrenciIds||[]).includes(studentId)));
  const ogrenciKonulari=o=>kitaplar.filter(k=>k.ogrenciId===o.id).flatMap(kitap=>konular.filter(k=>k.kitapId===kitap.id&&!konuZatenOdev(k,o.id)).sort((a,b)=>(parseInt(a.baslangicSayfa,10)||0)-(parseInt(b.baslangicSayfa,10)||0)).slice(0,2));
  const konuSec=(o,k)=>{setSeciliKonu(k);setKitapSecili(kitaplar.find(x=>x.id===k.kitapId)||null);setEdit(null);setAciklama(`${k.kitapAd||'Kitap'} - ${k.ad}`);setTeslim(bugun());setHedef('bireysel');setIds([o.id]);setModal(true)};
- const kaydet=async()=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev kayıtları yalnızca görüntülenebilir.');if(!secili||!aciklama.trim()||!teslim)return Alert.alert('Eksik bilgi','Ödev açıklaması ve teslim tarihi zorunludur.');const hedefler=hedef==='sinif'?ogr:ogr.filter(x=>ids.includes(x.id));if(!hedefler.length)return Alert.alert('Eksik bilgi','En az bir öğrenci seçin.');try{const now=new Date().toISOString();const konuAlan=seciliKonu?{konuId:seciliKonu.id,kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)}:kitapSecili?{kitapId:kitapSecili.id,kitapAd:kitapSecili.ad}:{};if(edit)await updateDoc(doc(db,'odevler',edit.id),{aciklama:aciklama.trim(),teslimTarihi:teslim,hedef,hedefOgrenciIds:hedefler.map(x=>x.id),hedefOgrenciAdlari:hedefler.map(x=>x.adSoyad),...konuAlan});else{const durumlar={},gecmis={};hedefler.forEach(x=>{durumlar[x.id]='bekliyor';gecmis[x.id]=[{durum:'bekliyor',tarih:now,tarihGosterim:displayDate(tarih)}]});await addDoc(collection(db,'odevler'),{aciklama:aciklama.trim(),teslimTarihi:teslim,hedef,sinifId:secili.id,sinifAd:secili.ad,okulId:secili.okulId||ders?.okulId||'',okulAd:secili.okulAd||ders?.okulAd||'',hedefOgrenciIds:hedefler.map(x=>x.id),hedefOgrenciAdlari:hedefler.map(x=>x.adSoyad),ogrenciDurumlari:durumlar,durumGecmisi:gecmis,dersId:ders?.id||null,oturumId:oturumId||null,tarih,gun:ders?.gun||'',baslangicSaat:ders?.baslangicSaat||'',bitisSaat:ders?.bitisSaat||'',uid,donemYili,olusturulma:now,...konuAlan})}temiz();yukle(secili)}catch(e){Alert.alert('Hata','Ödev kaydedilemedi.')}};
+ const kaydet=async()=>{
+  if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev kayıtları yalnızca görüntülenebilir.');
+  if(!secili||!aciklama.trim()||!teslim)return Alert.alert('Eksik bilgi','Ödev açıklaması ve teslim tarihi zorunludur.');
+  const hedefler=hedef==='sinif'?ogr:ogr.filter(x=>ids.includes(x.id));
+  if(!hedefler.length)return Alert.alert('Eksik bilgi','En az bir öğrenci seçin.');
+  try{
+    const now=new Date().toISOString();
+    const konuAlan=seciliKonu?{konuId:seciliKonu.id,kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)}:kitapSecili?{kitapId:kitapSecili.id,kitapAd:kitapSecili.ad}:{};
+    const targetIds=hedefler.map(x=>x.id);
+    const homeworkData={
+      aciklama:aciklama.trim(),
+      teslimTarihi:teslim,
+      hedef,
+      sinifId:secili.id,
+      sinifAd:secili.ad,
+      okulId:secili.okulId||ders?.okulId||'',
+      okulAd:secili.okulAd||ders?.okulAd||'',
+      hedefOgrenciIds:targetIds,
+      hedefOgrenciAdlari:hedefler.map(x=>x.adSoyad),
+      dersId:ders?.id||null,
+      oturumId:oturumId||null,
+      tarih,
+      gun:ders?.gun||'',
+      baslangicSaat:ders?.baslangicSaat||'',
+      bitisSaat:ders?.bitisSaat||'',
+      uid,
+      donemYili,
+      ...konuAlan,
+    };
+    let homeworkId;
+    const previousTargetIds=edit?.hedefOgrenciIds||[];
+    if(edit){
+      await updateDoc(doc(db,'odevler',edit.id),homeworkData);
+      homeworkId=edit.id;
+    }else{
+      const durumlar={},gecmis={};
+      hedefler.forEach(x=>{durumlar[x.id]='bekliyor';gecmis[x.id]=[{durum:'bekliyor',tarih:now,tarihGosterim:displayDate(tarih)}]});
+      const created=await addDoc(collection(db,'odevler'),{
+        ...homeworkData,
+        ogrenciDurumlari:durumlar,
+        durumGecmisi:gecmis,
+        olusturulma:now,
+      });
+      homeworkId=created.id;
+    }
+    await syncNewHomeworkNotifications(homeworkId,{...homeworkData,hedefOgrenciIds:targetIds},previousTargetIds);
+    temiz();
+    yukle(secili);
+  }catch(e){
+    Alert.alert('Hata','Ödev kaydedilemedi. '+(e?.message||''));
+  }
+ };
  const durumGuncelle=async(o,id,d)=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev durumları değiştirilemez.');if(d==='yapildi'&&teslimTarihiGectiMi(o)){Alert.alert('Teslim tarihi geçti','Bu ödev artık Yapıldı olarak işaretlenemez. Geç getirdi veya Yapılmadı seçebilirsiniz.');return;}try{const durumlar={...(o.ogrenciDurumlari||{})},gecmis={...(o.durumGecmisi||{})};durumlar[id]=d;gecmis[id]=[...(gecmis[id]||[]),{durum:d,tarih:new Date().toISOString(),tarihGosterim:displayDate(bugun())}];await updateDoc(doc(db,'odevler',o.id),{ogrenciDurumlari:durumlar,durumGecmisi:gecmis,durum:d});setDurum(null);yukle(secili)}catch(e){Alert.alert('Hata','Durum güncellenemedi.')}};
  const okulGruplari=()=>{const m={};siniflar.forEach(x=>{const k=x.okulId||x.okulAd||'okulsuz';if(!m[k])m[k]={okulId:x.okulId,okulAd:x.okulAd||'Okul belirtilmemiş',siniflar:[]};m[k].siniflar.push(x)});return Object.values(m).sort((a,b)=>String(a.okulAd).localeCompare(String(b.okulAd),'tr'))};const uygunKitaplar=hedef==='bireysel'?kitaplar.filter(k=>ids.includes(k.ogrenciId)):kitaplar;const odevSil=async o=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev kayıtları silinemez.');Alert.alert('Ödevi Sil','Bu ödevi silmek istediğinize emin misiniz?', [{text:'Vazgeç',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,'odevler',o.id));yukle(secili)}catch(e){Alert.alert('Hata','Ödev silinemedi.')}}}]);};
  const duzenle=o=>{setEdit(o);setKitapSecili(o.kitapId?kitaplar.find(k=>k.id===o.kitapId)||{id:o.kitapId,ad:o.kitapAd}:null);setSeciliKonu(o.konuId?{id:o.konuId,kitapId:o.kitapId,kitapAd:o.kitapAd,ad:(o.aciklama||'').split(' - ').slice(1).join(' - '),baslangicSayfa:o.baslangicSayfa,bitisSayfa:o.bitisSayfa}:null);setAciklama(o.aciklama||'');setTeslim(o.teslimTarihi||'');setHedef(o.hedef||'sinif');setIds(o.hedefOgrenciIds||[]);setModal(true)};

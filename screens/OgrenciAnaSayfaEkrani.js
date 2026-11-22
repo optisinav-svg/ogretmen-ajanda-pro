@@ -3,30 +3,14 @@ import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
   ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import {
   collection, doc, getDoc, getDocs, query, where, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { auth, db, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { notifyHomeworkCompleted } from '../services/sparkStudentAccounts';
 import { donemUygun, donemYiliBugun } from '../utils/donem';
 import { donemHatirlatmaGosterilebilir, donemHatirlatmaKaydet } from '../utils/donemHatirlatici';
-
-const PUSH_TOKEN_KEY = '@ogretmenAjandaPro_ogrenciPushToken';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 const PERMISSIONS = [
   ['dersProgrami', 'Ders programı'],
@@ -58,7 +42,6 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const [talepler, setTalepler] = useState([]);
   const [bildirimler, setBildirimler] = useState([]);
   const [yeniOdevBildirimleri, setYeniOdevBildirimleri] = useState([]);
-  const [pushToken, setPushToken] = useState(null);
   const [gruplar, setGruplar] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [yenileniyor, setYenileniyor] = useState(false);
@@ -164,69 +147,6 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
 
   useEffect(() => { yukle(); }, [yukle]);
 
-  useEffect(() => {
-    AsyncStorage.getItem(PUSH_TOKEN_KEY).then(value => {
-      if (value) setPushToken(value);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    const received = Notifications.addNotificationReceivedListener(() => yukle(true));
-    const response = Notifications.addNotificationResponseReceivedListener(() => yukle(true));
-    return () => {
-      received.remove();
-      response.remove();
-    };
-  }, [yukle]);
-
-  const bildirimleriAc = async () => {
-    if (!Device.isDevice) {
-      Alert.alert('Gerçek cihaz gerekli', 'Telefon bildirimleri emülatör yerine gerçek Android veya iOS cihazında etkinleştirilmelidir.');
-      return;
-    }
-    if (!['android', 'ios'].includes(Platform.OS)) return;
-    try {
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('homework', {
-          name: 'Ödev Bildirimleri',
-          importance: Notifications.AndroidImportance.HIGH,
-          sound: 'default',
-          vibrationPattern: [0, 250, 250, 250],
-        });
-      }
-      const current = await Notifications.getPermissionsAsync();
-      let status = current.status;
-      if (status !== 'granted') {
-        const requested = await Notifications.requestPermissionsAsync();
-        status = requested.status;
-      }
-      if (status !== 'granted') {
-        Alert.alert('Bildirim izni kapalı', 'Telefon ayarlarından Öğretmen AjandaPro bildirimlerine izin verirseniz yeni ödevler geldiğinde haber alabilirsiniz.');
-        return;
-      }
-      const projectId = Constants.easConfig?.projectId || Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) throw new Error('Expo proje kimliği bulunamadı. APK yapılandırmasını kontrol edin.');
-      const tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
-      const token = tokenResult.data;
-      const previousToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-      if (previousToken && previousToken !== token) {
-        try {
-          await httpsCallable(functions, 'ogrenciPushTokenSil')({ token: previousToken });
-        } catch (_) {}
-      }
-      await httpsCallable(functions, 'ogrenciPushTokenKaydet')({
-        token,
-        platform: Platform.OS,
-        deviceId: Device.modelId || Device.modelName || '',
-      });
-      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
-      setPushToken(token);
-      Alert.alert('Bildirimler etkin', 'Bu cihaz artık öğretmeninizin size verdiği yeni ödevler için bildirim alabilir.');
-    } catch (e) {
-      Alert.alert('Bildirimler açılamadı', e?.message || 'Bildirim ayarları kaydedilemedi. Daha sonra tekrar deneyin.');
-    }
-  };
-
   const bildirimOkundu = async item => {
     if (!item || item.okundu) return;
     try {
@@ -242,10 +162,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
 
   const tamamlandiBildir = async (link, homework) => {
     try {
-      await httpsCallable(functions, 'ogrenciOdevTamamlandiBildir')({
-        baglantiId: link.id,
-        odevId: homework.id,
-      });
+      await notifyHomeworkCompleted(link, homework);
       Alert.alert('Bildirim gönderildi', 'Ödevi tamamladığınızı öğretmeninize bildirdiniz. Son değerlendirme öğretmeninize aittir.');
       await yukle(true);
     } catch (e) {
@@ -256,19 +173,11 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const cikis = () => Alert.alert('Çıkış yap', 'Hesabınızdan çıkış yapmak istiyor musunuz?', [
     { text: 'Vazgeç', style: 'cancel' },
     { text: 'Çıkış yap', style: 'destructive', onPress: async () => {
-      try {
-        const savedToken = pushToken || await AsyncStorage.getItem(PUSH_TOKEN_KEY);
-        if (savedToken) await httpsCallable(functions, 'ogrenciPushTokenSil')({ token: savedToken });
-        await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
-      } catch (_) {}
       await signOut(auth);
       navigation.replace('Giris');
     }},
   ]);
 
-  if (!ACCOUNT_LINKING_ENABLED) {
-    return <View style={s.center}><Text style={s.title}>Öğrenci alanı henüz etkin değil</Text><Text style={s.muted}>Öğrenci ekranları hazırlandı. Canlı Firebase güvenlik ve sunucu dağıtımı tamamlanana kadar erişim kapalıdır.</Text></View>;
-  }
   if (yukleniyor) return <View style={s.center}><ActivityIndicator size="large" color="#2E7D32"/><Text style={s.muted}>Öğrenci bilgileriniz yükleniyor…</Text></View>;
 
   const aktifSayisi = baglantilar.filter(x => x.durum === 'active').length;
@@ -285,11 +194,8 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         </View>
 
         <View style={s.actionCard}>
-          <Text style={s.cardTitle}>Telefon bildirimleri</Text>
-          <Text style={s.muted}>Öğretmeniniz yeni ödev verdiğinde bu cihaza bildirim gelsin.</Text>
-          <TouchableOpacity style={s.secondary} onPress={bildirimleriAc}>
-            <Text style={s.secondaryText}>{pushToken ? 'Bildirimleri yenile / bu cihazı eşitle' : 'Telefon bildirimlerini aç'}</Text>
-          </TouchableOpacity>
+          <Text style={s.cardTitle}>Uygulama içi bildirimler</Text>
+          <Text style={s.muted}>Yeni ödevler ve öğretmeninizin duyuruları burada görünür. Firebase Spark ücretsiz planında sunucu üzerinden anlık telefon bildirimi gönderimi kullanılmaz.</Text>
         </View>
 
         <View style={s.actionCard}>
