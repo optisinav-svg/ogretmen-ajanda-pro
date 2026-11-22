@@ -8,6 +8,7 @@ const {
   makePushTokenId,
   makeHomeworkNotificationId,
   isHomeworkTargeted,
+  isEligibleHomeworkLink,
   buildHomeworkPushMessage,
 } = require('../studentNotifications')._test;
 
@@ -57,4 +58,24 @@ test('push payload includes assignment and due date without exposing student ide
     notificationId: 'notification-a',
   });
   assert.equal(Object.hasOwn(message.data, 'ogrenciUid'), false);
+});
+
+
+test('only active, permissioned links with matching owner, class and period receive homework notices', () => {
+  const link = {
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-a',
+    ogrenciKayitId: 'record-a',
+    sinifId: 'class-a',
+    donemYili: 2026,
+    durum: 'active',
+    izinler: { odevler: true },
+  };
+  const student = { uid: 'teacher-a', sinifId: 'class-a', donemYili: 2026 };
+  assert.equal(isEligibleHomeworkLink(link, student, 'teacher-a', 'class-a', 2026, ['record-a']), true);
+  assert.equal(isEligibleHomeworkLink({ ...link, durum: 'revoked' }, student, 'teacher-a', 'class-a', 2026, ['record-a']), false);
+  assert.equal(isEligibleHomeworkLink({ ...link, izinler: { odevler: false } }, student, 'teacher-a', 'class-a', 2026, ['record-a']), false);
+  assert.equal(isEligibleHomeworkLink({ ...link, donemYili: 2025 }, student, 'teacher-a', 'class-a', 2026, ['record-a']), false);
+  assert.equal(isEligibleHomeworkLink(link, { ...student, uid: 'teacher-b' }, 'teacher-a', 'class-a', 2026, ['record-a']), false);
+  assert.equal(isEligibleHomeworkLink(link, student, 'teacher-a', 'class-a', 2026, ['record-b']), false);
 });
