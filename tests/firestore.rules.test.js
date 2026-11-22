@@ -497,6 +497,28 @@ test('Rol alanı olmayan hesap öğretmen yetkisi alamaz', async () => {
 });
 
 
+test('Öğretmen eşleştirme talebini bağlantı oluşturmadan reddedebilir', async () => {
+  const requestId = 'pending-rejection-test';
+
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'ogrenciEslesmeTalepleri', requestId), {
+      uid: 'teacher-a',
+      ogretmenUid: 'teacher-a',
+      ogrenciUid: 'student-1',
+      ogrenciKayitId: 'student-a',
+      sinifId: 'class-a',
+      donemYili: 2026,
+      durum: 'bekliyor',
+    });
+  });
+
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(updateDoc(doc(teacherDb, 'ogrenciEslesmeTalepleri', requestId), {
+    durum: 'reddedildi',
+    yanitTarihi: serverTimestamp(),
+  }));
+});
+
 test('Öğrenci yalnızca eşleştirildiği kendi öğrenci kaydını okuyabilir', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDoc(doc(db, 'ogrenciler', 'student-a')));
