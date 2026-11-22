@@ -387,11 +387,14 @@ test('Silinmiş ders programına bağlı tarihsel not düzenlenebilir', async ()
 });
 
 
-test('Yeni kullanıcı kendi öğretmen profilini oluşturabilir', async () => {
+test('Yeni kullanıcı istemciden öğretmen profili veya rolü oluşturamaz', async () => {
   const db = testEnv.authenticatedContext('teacher-new').firestore();
-  await assertSucceeds(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
     kullaniciAdi: 'Yeni Öğretmen',
     rol: 'ogretmen',
+  }));
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
+    kullaniciAdi: 'Yeni Öğretmen',
   }));
 });
 
@@ -480,6 +483,23 @@ test('Bireysel etkinlik yalnızca öğretmenin kendi sınıfındaki öğrenci i�
   await assertFails(addDoc(collection(db, 'bireyselEtkinlikler'), {
     uid: 'teacher-a', ogrenciId: 'student-b', sinifId: 'class-b',
     tur: 'Özel Ders', donemYili: 2026,
+  }));
+});
+
+test('Öğretmen bireysel etkinliği başka öğretmenin öğrencisine taşıyamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(updateDoc(doc(db, 'bireyselEtkinlikler', 'event-a'), {
+    ogrenciId: 'student-b',
+    sinifId: 'class-b',
+  }));
+});
+
+test('Öğretmen bireysel ders oturumunu başka öğrencinin etkinliğine taşıyamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(updateDoc(doc(db, 'bireyselDersOturumlari', 'event-a_2026-11-20'), {
+    bireyselEtkinlikId: 'event-b',
+    ogrenciId: 'student-b',
+    sinifId: 'class-b',
   }));
 });
 
