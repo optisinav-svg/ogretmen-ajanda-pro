@@ -96,7 +96,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Gerekli indeks ve sorgu testleri.
 - [ ] Öğretmen temel iş akışları için regresyon kontrolü.
 - [ ] Kullanıcının çalıştığını doğruladığı okul/sınıf/öğrenci, ders programı/notu, kazanım arama, yoklama, ödev, ortak kitap kütüphanesi, çoklu öğrenci kitap atama, öğrenci ilerleme ve öğrenci PDF raporları korunarak regresyon kontrolü.
-- [ ] Eksik sınıf raporu ekranı geliştirilmeli.
+- [x] Sınıf gelişim raporu PDF'i eklendi: öğrenci bazında yoklama/ödev özeti, işlenen ders notları, ödevlerin sınıf geneli durumu, kitap sayfa ilerlemesi ve bireysel etkinlikler.
 - [ ] Özel ders, etüt ve soru çözümü etkinlikleri kullanıcı tarafından APK sonrası test edilmeli; mevcut takvim kapsamı değiştirilmemeli.
 - [ ] Öğrenci izin sınırları ve veri ayrımı için güvenlik kontrolü.
 - [ ] KVKK bilgilendirme ekranının cihaz üzerinde görüntülenmesi ve nihai metnin hukuki onayı. (Taslak ekran, nihai yasal uygunluk onayı değildir.)
