@@ -7,7 +7,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { applicationDefault, initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 
 const PROJECT_ID = 'ogretmen-takip';
 const TARGET_PERIOD = 2026;
@@ -63,7 +63,7 @@ async function scanCollection(db, name, apply) {
   let updated = 0;
   const batchSamples = [];
   while (true) {
-    let query = collection.orderBy('__name__').limit(PAGE_SIZE);
+    let query = collection.orderBy(FieldPath.documentId()).limit(PAGE_SIZE);
     if (cursor) query = query.startAfter(cursor);
     const page = await query.get();
     if (page.empty) break;
