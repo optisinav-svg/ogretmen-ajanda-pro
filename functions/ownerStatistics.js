@@ -9,12 +9,14 @@ function isApplicationOwner(request) {
   return request?.auth?.token?.uygulamaSahibi === true;
 }
 
-async function readCollection(collectionName) {
+async function readCollection(collectionName, selectedFields, filters = []) {
   const records = [];
   let cursor = null;
   while (true) {
-    let page = db.collection(collectionName)
-      .orderBy(FieldPath.documentId())
+    let page = db.collection(collectionName);
+    for (const [field, value] of filters) page = page.where(field, '==', value);
+    if (selectedFields?.length) page = page.select(...selectedFields);
+    page = page.orderBy(FieldPath.documentId())
       .limit(PAGE_SIZE);
     if (cursor) page = page.startAfter(cursor);
     const snapshot = await page.get();
@@ -26,9 +28,7 @@ async function readCollection(collectionName) {
   return records;
 }
 
-function buildStatistics(profiles, links, requests) {
-  const teacherProfiles = profiles.filter(profile => profile.rol === 'ogretmen');
-  const studentProfiles = profiles.filter(profile => profile.rol === 'ogrenci');
+function buildStatistics(teacherProfiles, links, requests, studentAccountCount) {
   const teachers = new Map();
   for (const profile of teacherProfiles) {
     teachers.set(profile.id, {
@@ -91,7 +91,7 @@ function buildStatistics(profiles, links, requests) {
 
   return {
     teacherAccountCount: teacherProfiles.length,
-    studentAccountCount: studentProfiles.length,
+    studentAccountCount,
     activeLinkCount,
     uniqueLinkedStudentAccountCount: allLinkedStudentIds.size,
     pendingRequestCount,
@@ -109,14 +109,15 @@ exports.getUygulamaSahibiIstatistikleri = onCall(
       throw new HttpsError('permission-denied', 'Bu panel yalnızca uygulama sahibine açıktır.');
     }
 
-    const [profiles, links, requests] = await Promise.all([
-      readCollection('kullanicilar'),
-      readCollection('ogretmenOgrenciBaglantilari'),
-      readCollection('ogrenciEslesmeTalepleri'),
+    const [teachers, studentCountSnapshot, links, requests] = await Promise.all([
+      readCollection('kullanicilar', ['kullaniciAdi', 'brans'], [['rol', 'ogretmen']]),
+      db.collection('kullanicilar').where('rol', '==', 'ogrenci').count().get(),
+      readCollection('ogretmenOgrenciBaglantilari', ['ogretmenUid', 'ogrenciUid', 'durum']),
+      readCollection('ogrenciEslesmeTalepleri', ['ogretmenUid', 'durum']),
     ]);
 
     return {
-      ...buildStatistics(profiles, links, requests),
+      ...buildStatistics(teachers, links, requests, studentCountSnapshot.data().count),
       generatedAt: new Date().toISOString(),
     };
   },
