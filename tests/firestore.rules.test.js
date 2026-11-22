@@ -623,6 +623,16 @@ test('Öğrenci yalnızca kendisine atanmış ödev için tamamlandı bildirimi 
   await assertSucceeds(getDoc(doc(db, 'ogrenciOdevBildirimleri', 'notification-a')));
   const linkId = 'teacher-a__student-1__class-a';
   const ownId = ['student-1', linkId, 'homework-a'].join('__');
+  await assertFails(setDoc(doc(db, 'ogrenciOdevBildirimleri', 'missing-class-id'), {
+    uid: 'teacher-a',
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-1',
+    ogrenciKayitId: 'student-a',
+    baglantiId: linkId,
+    odevId: 'homework-a',
+    donemYili: 2026,
+    durum: 'tamamlandi_bildirildi',
+  }));
   await assertSucceeds(setDoc(doc(db, 'ogrenciOdevBildirimleri', ownId), {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
