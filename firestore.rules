@@ -144,6 +144,7 @@ service cloud.firestore {
     function studentBelongsToClassOrPendingTransfer(data) {
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciId);
       let student = get(studentPath).data;
+      let transfer = student.get('sinifTasiIslemi', null);
       let sourceClassPath = /databases/$(database)/documents/siniflar/$(student.sinifId);
       return data.ogrenciId is string
         && data.sinifId is string
@@ -153,10 +154,10 @@ service cloud.firestore {
         && (
           student.sinifId == data.sinifId
           || (
-            student.sinifTasiIslemi is map
-            && student.sinifTasiIslemi.kaynakSinifId == student.sinifId
-            && student.sinifTasiIslemi.hedefSinifId == data.sinifId
-            && student.sinifTasiIslemi.donemYili == data.donemYili
+            transfer is map
+            && transfer.kaynakSinifId == student.sinifId
+            && transfer.hedefSinifId == data.sinifId
+            && transfer.donemYili == data.donemYili
             && ownsDocument('siniflar', student.sinifId)
             && get(sourceClassPath).data.donemYili == data.donemYili
           )
