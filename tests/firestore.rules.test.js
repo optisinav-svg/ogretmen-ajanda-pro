@@ -571,6 +571,7 @@ test('Sınıf taşıma işaretli öğrencinin kitap ve konu kayıtları hedef s�
       tarih: '2026-11-22T12:00:00.000Z',
     },
   }));
+  await assertFails(updateDoc(bookRef, { sinifId: 'class-b' }));
   await assertSucceeds(updateDoc(bookRef, { sinifId: 'class-c' }));
   await assertSucceeds(updateDoc(topicRef, { sinifId: 'class-c' }));
   await assertSucceeds(updateDoc(studentRef, {
