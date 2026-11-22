@@ -465,6 +465,24 @@ test('Uygulama sahibi claim yalnızca toplu hesap ve bağlantı istatistiklerini
   await assertFails(getDoc(doc(ownerDb, 'ogrenciler', 'student-a')));
 });
 
+test('Uygulama sahibi Temmuz 2028 gelmeden dönem kayıtlarını okuyamaz veya silemez', async () => {
+  const ownerDb = testEnv.authenticatedContext('owner-account', {
+    token: { uygulamaSahibi: true },
+  }).firestore();
+  await assertFails(getDoc(doc(ownerDb, 'dersler', 'lesson-a')));
+  await assertFails(deleteDoc(doc(ownerDb, 'dersler', 'lesson-a')));
+  await assertFails(setDoc(doc(ownerDb, 'donemTemizlikKayitlari', '2026'), {
+    cleanupId: '2026',
+    currentYear: 2026,
+    targetYear: 2024,
+    completedBy: 'owner-account',
+    completedAt: serverTimestamp(),
+    counts: { dersler: 0, dersNotlari: 0, yoklamalar: 0, odevler: 0, kitaplar: 0, konular: 0 },
+    totalDeleted: 0,
+    policyVersion: 1,
+  }));
+});
+
 test('Uygulama sahibi claim olmadan kullanıcı ve bağlantı koleksiyonları toplu okunamaz', async () => {
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   await assertFails(getDocs(collection(teacherDb, 'kullanicilar')));
