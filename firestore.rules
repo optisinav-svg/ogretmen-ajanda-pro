@@ -358,6 +358,7 @@ service cloud.firestore {
         && resource.data.ogretmenUid == request.auth.uid
         && resource.data.durum == 'bekliyor'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'baglantiId', 'yanitTarihi'])
+        && request.resource.data.yanitTarihi == request.time
         && (
           (request.resource.data.durum == 'reddedildi' && linkId == '')
           ||
