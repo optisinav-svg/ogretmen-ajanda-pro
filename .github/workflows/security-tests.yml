@@ -36,7 +36,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Install Firestore test dependencies
-        run: npm install --no-save firebase@11 @firebase/rules-unit-testing@4
+        run: |
+          npm ci
+          npm install --no-save firebase@11 @firebase/rules-unit-testing@4
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
       - name: Run Firestore Emulator rules tests
