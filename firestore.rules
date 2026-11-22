@@ -99,7 +99,8 @@ service cloud.firestore {
             && existsAfter(pairingRequestPath(data.ilkEslesmeTalepId))
             && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciUid == userId
             && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.durum == 'bekliyor'
-            && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciEposta == request.auth.token.email)
+            && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciEposta == request.auth.token.email
+            && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciHesapAdi == data.kullaniciAdi)
         );
     }
 
@@ -507,6 +508,7 @@ service cloud.firestore {
         && get(studentPath).data.uid == request.auth.uid
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
+        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '')) == data.ogrenciAdSoyad
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
         && get(classPath).data.donemYili == data.donemYili
