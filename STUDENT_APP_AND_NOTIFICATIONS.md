@@ -34,7 +34,7 @@ Ortaokul hesap eşleştirmesi veli/vasi süreci netleşene kadar kapalıdır.
 - Sunucu `ogrenciYeniOdevBildirimleri` koleksiyonuna uygulama içi bildirim yazar.
 - Öğrenci bu bildirimi uygulamada görebilir ve yalnızca okundu olarak işaretleyebilir.
 - Öğrenci telefonunda bildirim iznini kendisi açarsa Expo Push belirteci sunucuya kaydedilir ve yeni ödevlerde telefon bildirimi gönderilir.
-- Öğretmen ödev hedefinden öğrenciyi çıkarırsa ilgili uygulama içi bildirim iptal durumuna alınır.
+- Öğretmen ödev hedefinden öğrenciyi çıkarırsa veya ödevi silerse ilgili uygulama içi bildirim iptal durumuna alınır.
 - Öğretmen bağlantıyı iptal ettiğinde sonraki ödev bildirimleri gönderilmez.
 
 Push belirteçleri `ogrenciPushTokenlari` koleksiyonunda yalnızca Admin SDK tarafından yönetilir. İstemci bu koleksiyonu okuyamaz veya yazamaz. Push mesajında öğrenci adı/e-posta gibi kişisel bilgiler bulunmaz.
