@@ -450,7 +450,8 @@ service cloud.firestore {
 
     match /ogrenciEslesmeTalepleri/{requestId} {
       allow get, list: if signedIn()
-        && (resource.data.ogretmenUid == request.auth.uid
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
       allow create: if validStudentPairingRequest(request.resource.data);
       allow update: if updatesPairingRequest(requestId);
