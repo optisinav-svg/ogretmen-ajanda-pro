@@ -1,65 +1,31 @@
-# Three-year academic-period retention
+# Akademik dönem saklama politikası
 
-The scheduled function `donemSonuVeriTemizligi` runs daily at 03:20
-(`Europe/Istanbul`). It removes only explicitly period-tagged records whose
-academic-period start year has completed three academic years.
+Bu modül, akademik dönem saklama politikasının test edilebilir kurallarını içerir. **Spark planında zamanlanmış Cloud Functions dağıtılamadığı için otomatik arka plan temizliği yoktur.** Kod, kendi başına silme yapmaz.
 
-## Retention boundary
+## Dönem davranışı
 
-- A period such as 2026/2027 starts on June 1, 2026.
-- It remains available through June 30, 2029 (the end of its third academic year).
-- The cleanup may first remove it on July 1, 2029.
-- Cleanup is skipped throughout June so the period ending on June 30 is never
-  removed early.
+- Aktif dönem hiçbir şekilde temizleme kapsamına girmez.
+- Bir önceki tamamlanmış dönem arşivdir: okunabilir, fakat dönem düzenlemeye kapalıdır.
+- Aktif dönemden iki yıl önce başlayan dönem, yalnızca Temmuz ayında temizleme adayı olur.
+- Örnek: Temmuz 2026'da 2026/27 aktif dönemdir, 2025/26 arşivdir, yalnızca 2024/25 temizleme adayıdır.
+- Temmuz dışındaki tarihlerde hedef dönem yoktur.
+- Yalnızca tam olarak hedef donemYili ve dolu uid alanı bulunan belgeler adaydır. Daha eski yıllar <= ile topluca kapsama alınmaz.
 
-## Included period-owned collections
+## Dönemsel veri koleksiyonları
 
-`bireyselDersOturumlari`, `bireyselEtkinlikler`, `ogrenciOdevBildirimleri`, `ogrenciEslesmeTalepleri`, `ogrenciEslesmeKodlari`, `ogretmenOgrenciBaglantilari`, `ogrenciKayitEslesmeleri`, `dersNotlari`,
-`yoklamalar`, `odevler`, `konular`, `kitaplar`, `dersler`,
-`ogrenciler`, `siniflar`, and `okullar`.
+ dersNotlari, dersler, yoklamalar, odevler, kitaplar, konular.
 
-Shared book-library definitions (`kitapKutuphanesi`,
-`kitapKutuphanesiKonulari`) and user profiles are deliberately excluded.
+Okul, sınıf, öğrenci ve kullanıcı profilleri; öğretmen-öğrenci bağlantı kayıtları; öğrenci hesapları; ortak kitap kütüphanesi ve ortak kitap konuları bu listenin dışındadır.
 
-The Firebase inventory previously supplied also listed `Dersler` (uppercase D),
-while the current app code writes to `dersler` (lowercase d). The uppercase
-collection is intentionally not included until its ownership and legacy data
-are reviewed; Firestore collection names are case-sensitive.
+## Spark uygulama sınırı
 
-The function deletes child/activity records before student, class, and school
-records. Student history embedded in an expired student document expires with
-that document.
+Spark'ta bu işlem kendiliğinden arka planda veya belirli bir saatte çalıştırılamaz. Uygulama içinde yalnızca yetkili uygulama sahibi tarafından başlatılan bir işlem olmalıdır:
 
-## Safety behavior
+1. Temmuz ayında hedef dönem ve koleksiyonlar belirlenir.
+2. Önce salt okunur önizleme ve belge sayıları gösterilir.
+3. Ana kayıtlar ve paylaşılan kütüphane kapsam dışı tutulur.
+4. Kullanıcı açıkça onaylamadan hiçbir belge silinmez.
+5. Silme, Firestore güvenlik kurallarının izin verdiği küçük partilerde yapılır; işlem sonucu raporlanır.
+6. Canlı veride bu ekran ve kurallar doğrulanmadan silme akışı açılmaz.
 
-- Only records with a numeric `donemYili` at or before the cutoff are eligible.
-- A non-empty `uid` is also required.
-- Records without an explicit `donemYili` are skipped. Their period is not
-  guessed from timestamps because a June date alone cannot reliably identify
-  the selected period. These legacy records need a separate reviewed migration.
-- The function does not touch Firestore until
-  `RETENTION_DELETE_ENABLED=true` is configured.
-- With the variable unset or set to any other value, it performs a dry run and
-  logs per-collection counts.
-- Processing is paginated and uses batches of at most 400 documents. If a run
-  fails partway through, a later run can safely continue.
-
-## Local verification
-
-From the repository root:
-
-```sh
-cd functions
-npm install
-npm test
-```
-
-## Deployment notes
-
-Deploying scheduled Functions requires the Firebase project to have the
-required Cloud Functions / Cloud Scheduler APIs and billing configuration.
-This repository change does not deploy anything or change live Firestore data.
-
-First deploy with `RETENTION_DELETE_ENABLED=false` (dry-run), review Cloud
-Logging counts, and confirm the collection inventory and legacy-record plan.
-Only then set the variable to `true` and redeploy to enable deletion.
+Bu doküman ve saf politika fonksiyonları canlı Firebase verisini değiştirmez.
