@@ -760,6 +760,20 @@ test('İptal edilen öğrenci bağlantısı aynı hesap için yeni öğretmen on
   assert.equal(linkSnap.data().durum, 'active');
   assert.equal(indexSnap.data().durum, 'active');
   assert.equal(requestSnap.data().durum, 'onaylandi');
+
+  // Sonraki eşleştirme testleri aynı öğrenci kaydı indeksini kullanır.
+  // Testler birbirini etkilemesin diye başlangıçtaki iptal durumunu geri yükle.
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await updateDoc(doc(adminDb, 'ogretmenOgrenciBaglantilari', linkId), {
+      durum: 'revoked',
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+    });
+    await updateDoc(doc(adminDb, 'ogrenciKayitEslesmeleri', indexId), {
+      durum: 'revoked',
+      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
+    });
+  });
 });
 
 test('Öğrenci yalnızca kendisine atanmış ödev için tamamlandı bildirimi oluşturabilir', async () => {
