@@ -15,6 +15,7 @@ const normalizeName = value => String(value || '').normalize('NFKC').toLocaleLow
 const recordName = record => record?.adSoyad || [record?.ad, record?.soyad].filter(Boolean).join(' ') || record?.ad || '';
 const randomCode = async () => Array.from(await Crypto.getRandomBytesAsync(8))
   .map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase();
+const hashCode = async value => (await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, value)).toUpperCase();
 
 function currentUid() {
   const uid = auth.currentUser?.uid;
@@ -53,9 +54,10 @@ export async function createStudentPairingCode(studentRecord) {
     await updateDoc(doc(db, 'ogrenciler', studentRecord.id), { epostaEslesme: normalizedStudentEmail });
   }
   const code = await randomCode();
+  const codeHash = await hashCode(code);
   const now = Date.now();
   const expiresAt = now + CODE_TTL_MS;
-  await setDoc(doc(db, 'ogrenciEslesmeKodlari', code), {
+  await setDoc(doc(db, 'ogrenciEslesmeKodlari', codeHash), {
     uid: teacherUid,
     ogretmenUid: teacherUid,
     ogretmenHesapAdi: teacherSnap.get('kullaniciAdi') || '',
@@ -84,7 +86,8 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
   const displayName = String(displayNameValue || user.displayName || '').normalize('NFKC').trim();
   if (displayName.length < 2) throw new Error('Ad ve soyad bilgisi gereklidir.');
   const email = normalizeEmail(user.email);
-  const codeRef = doc(db, 'ogrenciEslesmeKodlari', code);
+  const codeHash = await hashCode(code);
+  const codeRef = doc(db, 'ogrenciEslesmeKodlari', codeHash);
   const profileRef = doc(db, 'kullanicilar', studentUid);
   const requestRef = doc(collection(db, 'ogrenciEslesmeTalepleri'));
 
@@ -138,7 +141,7 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
       ogrenciAdSoyad: invite.ogrenciAdSoyad || displayName,
       ogrenciHesapAdi: invite.ogrenciAdSoyad || displayName,
       ogrenciEposta: email,
-      kodId: code,
+      kodId: codeHash,
       durum: 'bekliyor',
       olusturulma: serverTimestamp(),
     });
