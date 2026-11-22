@@ -107,7 +107,8 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
       transaction.set(profileRef, {
         rol: 'ogrenci',
         eposta: email,
-        kullaniciAdi: displayName,
+        kullaniciAdi: invite.ogrenciAdSoyad || displayName,
+        ilkEslesmeTalepId: requestRef.id,
         olusturulmaTarihi: new Date().toISOString(),
       });
     }
@@ -124,7 +125,7 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
       ders: invite.ders || '',
       ogretmenHesapAdi: invite.ogretmenHesapAdi || '',
       ogrenciAdSoyad: invite.ogrenciAdSoyad || displayName,
-      ogrenciHesapAdi: displayName,
+      ogrenciHesapAdi: invite.ogrenciAdSoyad || displayName,
       ogrenciEposta: email,
       kodId: code,
       durum: 'bekliyor',
