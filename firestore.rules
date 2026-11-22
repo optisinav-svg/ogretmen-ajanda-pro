@@ -517,6 +517,7 @@ service cloud.firestore {
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
         && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '')) == data.ogrenciAdSoyad
+        && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
         && get(classPath).data.donemYili == data.donemYili
