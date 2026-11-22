@@ -113,6 +113,9 @@ exports.donemSonuVeriTemizligi = onSchedule(
 );
 
 
+const profileRegistration = require('./profileRegistration');
+exports.ogretmenProfiliOlustur = profileRegistration.ogretmenProfiliOlustur;
+
 const accountLinks = require('./accountLinks');
 
 exports.ogrenciEslesmeKoduOlustur = accountLinks.ogrenciEslesmeKoduOlustur;
