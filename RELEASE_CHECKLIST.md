@@ -81,7 +81,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 
 ## Aşama 3 — KVKK kayıt akışı ve ertelenen işler
 - [x] Google Drive yedeklemesi bu sürümden ertelendi; mevcut iş akışında yapılmayacak.
-- [ ] KVKK aydınlatma metni: veri sorumlusu, amaçlar, veri kategorileri, alıcılar/aktarim, hukuki sebep, saklama, ilgili kişi hakları ve iletişim kanalı.
+- [x] KVKK çalışma taslağı ve uygulama içi bilgilendirme ekranı eklendi; veri sorumlusu adı-soyadı `.......` olarak bırakıldı. Nihai metin ve hukuki inceleme mağaza yayını öncesine bırakıldı.
 - [ ] Açık rıza, aydınlatma metninden ayrıldı ve yalnızca gerekli işlem için alındı.
 - [ ] Bildirim izni ayrı, isteğe bağlı ve geri alınabilir olarak kaydedildi.
 - [ ] Metin sürümü, zaman damgası, kapsam ve geri çekme kaydı tutuldu.
@@ -96,7 +96,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Gerekli indeks ve sorgu testleri.
 - [ ] Öğretmen temel iş akışları için regresyon kontrolü.
 - [ ] Öğrenci izin sınırları ve veri ayrımı için güvenlik kontrolü.
-- [ ] KVKK kayıt/onay akışı testleri.
+- [ ] KVKK bilgilendirme ekranının cihaz üzerinde görüntülenmesi ve nihai metnin hukuki onayı. (Taslak ekran, nihai yasal uygunluk onayı değildir.)
 - [ ] Sürüm, paket kimliği, EAS projesi, build profili ve imza kontrolü.
 
 ## Aşama 5 — Kontrollü canlı dağıtım
@@ -143,10 +143,12 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Grup 4 commit'i `676266565d995e6042c7e99c1348f57882b18ba6` için GitHub Actions güvenlik iş akışı başarılı.
 - `firebaseConfig.js` içinde `ACCOUNT_LINKING_ENABLED=false`.
 - `screens/OgrenciKayitEkrani.js` bu bayrak kapalıyken öğrenci hesap oluşturma akışını açıkça engelliyor.
-- Depo ağacında KVKK aydınlatma/onay ekranı veya metni henüz bulunmuyor; kayıt ekranlarına eklenmesi gerekiyor. Veri sorumlusu adı-soyadı şimdilik `.......` olarak bırakılacak.
+- KVKK taslak metni `docs/KVKK_AYDINLATMA_TASLAGI.md` ve kayıt ekranlarından erişilen bilgilendirme sayfası eklendi. Bu hukuki nihai onay değildir; veri sorumlusu adı-soyadı `.......` bırakıldı.
 - Google Drive yedeklemesi kullanıcı talimatıyla ertelendi; APK hazırlığına engel değil.
-- PR #12 (Grup 3 + Grup 4) 22.11.2026 tarihinde entegrasyon dalına birleştirildi; PR #11 yinelenen değişiklik olduğu için kapatıldı.
-- Entegrasyon dalı son commit `591c4a2f7a5a34aff032eef5c5bef87e06cf0bcc`; Firestore ve hesap güvenliği CI çalışması `45018645836` başarıyla tamamlandı.
+- PR #12 (Grup 3 + Grup 4) entegrasyon dalına birleştirildi; PR #11 yinelenen değişiklik olduğu için kapatıldı.
+- PR #10 (Grup 3 + 4'ün Grup 1 + 2 tabanına entegrasyonu) 22.11.2026 tarihinde başarıyla birleştirildi; merge commit `97cd404a22de7203fd33ace9d9873971bc1ece5c`.
+- Tablet APK hazırlığı için sabit kaynak dalı `release/pre-apk-2026-11-22` oluşturuldu.
+- Entegrasyonun son doğrulanmış kodu `ddb76dd44058b68d96f284b8475644ae81f2ee97`; Firestore Emulator, Functions politika/sözdizimi ve Android bundle CI çalışması `45019591649` başarıyla tamamlandı.
 - `firebase.json` artık `firestore.indexes.json` dosyasını deploy yapılandırmasına bağlıyor.
 - Canlı rules/Functions/indexes dağıtımı, FCM V1 ve gerçek cihaz push testi henüz kanıtlanmış değil.
 - EAS/telefon imza sertifikası karşılaştırması henüz yapılmadı.
