@@ -17,6 +17,7 @@ const {
   addDoc,
   deleteDoc,
   writeBatch,
+  serverTimestamp,
 } = require('firebase/firestore');
 
 // These tests run only against the local Firestore Emulator.
