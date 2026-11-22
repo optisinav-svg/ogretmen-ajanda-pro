@@ -7,7 +7,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { applicationDefault, initializeApp } = require('firebase-admin/app');
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore } = require('firebase-admin/firestore');
 
 const PROJECT_ID = 'ogretmen-takip';
 const TARGET_PERIOD = 2026;
@@ -79,7 +79,7 @@ async function scanCollection(db, name, apply) {
       const batch = db.batch();
       for (const doc of missingDocs) {
         // Field-only update preserves every other field and all subcollections.
-        batch.update(doc.ref, { donemYili: TARGET_PERIOD, donemMigrasyonZamani: FieldValue.serverTimestamp() });
+        batch.update(doc.ref, { donemYili: TARGET_PERIOD });
       }
       await batch.commit();
       updated += missingDocs.length;
