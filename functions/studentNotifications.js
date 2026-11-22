@@ -35,7 +35,7 @@ function isHomeworkTargeted(homework, studentRecordId) {
     && homework.hedefOgrenciIds.includes(studentRecordId);
 }
 
-function buildHomeworkPushMessage(token, homework, homeworkId, notificationId, linkId) {
+function buildHomeworkPushMessage(token, homework, homeworkId, notificationId) {
   const title = 'Yeni ödeviniz var';
   const description = String(homework?.aciklama || homework?.baslik || 'Öğretmeniniz yeni bir ödev verdi.')
     .replace(/\\s+/g, ' ')
@@ -55,7 +55,6 @@ function buildHomeworkPushMessage(token, homework, homeworkId, notificationId, l
       type: 'homework_assigned',
       homeworkId,
       notificationId,
-      linkId,
     },
   };
 }
@@ -232,7 +231,7 @@ async function processHomeworkChange(homeworkId, homework, newlyTargetedIds, rem
     }
 
     const messages = activeTokens.map(tokenDoc => buildHomeworkPushMessage(
-      tokenDoc.get('token'), homework, homeworkId, notificationId, link.id,
+      tokenDoc.get('token'), homework, homeworkId, notificationId,
     ));
     try {
       let sent = 0;
