@@ -35,6 +35,21 @@ function isHomeworkTargeted(homework, studentRecordId) {
     && homework.hedefOgrenciIds.includes(studentRecordId);
 }
 
+function isEligibleHomeworkLink(link, student, teacherUid, classId, period, targetIds) {
+  return Boolean(
+    link && student
+    && link.ogretmenUid === teacherUid
+    && link.sinifId === classId
+    && link.durum === 'active'
+    && link.izinler?.odevler === true
+    && link.donemYili === period
+    && targetIds.includes(link.ogrenciKayitId)
+    && student.uid === teacherUid
+    && student.sinifId === classId
+    && student.donemYili === period
+  );
+}
+
 function buildHomeworkPushMessage(token, homework, homeworkId, notificationId) {
   const title = 'Yeni ödeviniz var';
   const description = String(homework?.aciklama || homework?.baslik || 'Öğretmeniniz yeni bir ödev verdi.')
@@ -180,19 +195,15 @@ async function processHomeworkChange(homeworkId, homework, newlyTargetedIds, rem
     }
 
     if (!newlyTargetedIds.includes(link.ogrenciKayitId)
-      || !allTargets.includes(link.ogrenciKayitId)
-      || link.durum !== 'active'
-      || link.izinler?.odevler !== true) continue;
+      || !allTargets.includes(link.ogrenciKayitId)) continue;
 
     const [studentSnap, studentProfileSnap] = await Promise.all([
       db.collection('ogrenciler').doc(link.ogrenciKayitId).get(),
       db.collection('kullanicilar').doc(link.ogrenciUid).get(),
     ]);
-    if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
-      || studentSnap.get('sinifId') !== classId
-      || studentSnap.get('donemYili') !== period
-      || link.donemYili !== period
-      || !studentProfileSnap.exists || studentProfileSnap.get('rol') !== 'ogrenci') continue;
+    if (!studentSnap.exists || !studentProfileSnap.exists
+      || studentProfileSnap.get('rol') !== 'ogrenci'
+      || !isEligibleHomeworkLink(link, studentSnap.data(), teacherUid, classId, period, allTargets)) continue;
 
     const shouldSend = await db.runTransaction(async tx => {
       const current = await tx.get(notificationRef);
@@ -294,6 +305,7 @@ module.exports._test = {
   makePushTokenId,
   makeHomeworkNotificationId,
   isHomeworkTargeted,
+  isEligibleHomeworkLink,
   buildHomeworkPushMessage,
 };
 
