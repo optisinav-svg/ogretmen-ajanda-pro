@@ -1,31 +1,30 @@
-# Akademik dönem saklama politikası
+# Yıllık dönem arşivi ve saklama politikası
 
-Bu modül, akademik dönem saklama politikasının test edilebilir kurallarını içerir. **Spark planında zamanlanmış Cloud Functions dağıtılamadığı için otomatik arka plan temizliği yoktur.** Kod, kendi başına silme yapmaz.
+## Kesin kullanıcı kararı
+- İlk veri yılı: 2026.
+- 2026 dönemi, Temmuz 2028'e kadar saklanır; Temmuz 2028'de yalnızca 2026 silinir.
+- Temmuz 2029'da yalnızca 2027; Temmuz 2030'da yalnızca 2028 silinir.
+- Kural her yıl Temmuz ayında bir önceki iki yılın dönemini silerek devam eder.
+- 2026 ve 2027'de hiçbir dönem silinmez.
+- Bir önceki dönem arşiv olarak okunabilir kalır; değiştirilemez.
+- Aktif dönem ve mevcut uygulamanın dönem seçimi/hesaplaması korunur.
 
-## Dönem davranışı
+## Veri modeli
+Firestore'da gerçek tek parça yıllık dosyalar bulunmuyor. Uygulamanın mevcut `donemYili` alanı zaten her belgeyi dönemine göre ayırıyor. Dolayısıyla 2026/2027 "dosyası", ilgili koleksiyonlardaki `donemYili: 2026` veya `2027` belgelerinin mantıksal kümesidir. Fiziksel dosya oluşturmak veya mevcut kayıtları taşımak gerekmiyor.
 
-- Aktif dönem hiçbir şekilde temizleme kapsamına girmez.
-- Bir önceki tamamlanmış dönem arşivdir: okunabilir, fakat dönem düzenlemeye kapalıdır.
-- Aktif dönemden iki yıl önce başlayan dönem, yalnızca Temmuz ayında temizleme adayı olur.
-- Örnek: Temmuz 2026'da 2026/27 aktif dönemdir, 2025/26 arşivdir, yalnızca 2024/25 temizleme adayıdır.
-- Temmuz dışındaki tarihlerde hedef dönem yoktur.
-- Yalnızca tam olarak hedef donemYili ve dolu uid alanı bulunan belgeler adaydır. Daha eski yıllar <= ile topluca kapsama alınmaz.
+## Temizlik kapsamı
+Yalnızca şu dönemsel veriler:
+- `dersNotlari`
+- `dersler`
+- `yoklamalar`
+- `odevler`
+- `kitaplar`
+- `konular`
 
-## Dönemsel veri koleksiyonları
+Okullar, sınıflar, öğrenciler, kullanıcı profilleri, ortak kitap kütüphanesi ve kütüphane konu tanımları silinmez.
 
- dersNotlari, dersler, yoklamalar, odevler, kitaplar, konular.
+## Çalışma şekli
+Spark planında Cloud Functions Scheduler çalıştırılamaz. Bu nedenle görev, uygulama sahibi uygulamayı Temmuz ayında açtığında çalışan, yıl için bir kez kilitlenen/tekrarı engellenen uygulama içi bakım kontrolü olmalıdır. Önce salt okunur önizleme ve adetler gösterilir; kullanıcı onayı olmadan silme yapılmaz. İşlem küçük partilerde ilerler ve sonuç kaydı tutulur. Bu dosyadaki saf hesaplama yardımcıları hiçbir belge silmez.
 
-Okul, sınıf, öğrenci ve kullanıcı profilleri; öğretmen-öğrenci bağlantı kayıtları; öğrenci hesapları; ortak kitap kütüphanesi ve ortak kitap konuları bu listenin dışındadır.
-
-## Spark uygulama sınırı
-
-Spark'ta bu işlem kendiliğinden arka planda veya belirli bir saatte çalıştırılamaz. Uygulama içinde yalnızca yetkili uygulama sahibi tarafından başlatılan bir işlem olmalıdır:
-
-1. Temmuz ayında hedef dönem ve koleksiyonlar belirlenir.
-2. Önce salt okunur önizleme ve belge sayıları gösterilir.
-3. Ana kayıtlar ve paylaşılan kütüphane kapsam dışı tutulur.
-4. Kullanıcı açıkça onaylamadan hiçbir belge silinmez.
-5. Silme, Firestore güvenlik kurallarının izin verdiği küçük partilerde yapılır; işlem sonucu raporlanır.
-6. Canlı veride bu ekran ve kurallar doğrulanmadan silme akışı açılmaz.
-
-Bu doküman ve saf politika fonksiyonları canlı Firebase verisini değiştirmez.
+## Dönem uyumluluğu
+`utils/donem.js` içindeki mevcut dönem hesaplaması kullanıcı tarafından kullanılan dönem mekanizmasıdır ve değiştirilmemelidir. Temizlik politikası yalnızca `donemYili` değerini hedefler; aktif dönem seçimi ve kayıt oluşturma davranışını değiştirmez.
