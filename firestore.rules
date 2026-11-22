@@ -68,6 +68,8 @@ service cloud.firestore {
       return signedIn()
         && request.auth.token.email_verified == true
         && data.ogrenciUid == request.auth.uid
+        && data.uid == data.ogretmenUid
+        && isEditablePeriod(data.donemYili)
         && data.ogrenciEposta == request.auth.token.email
         && data.durum == 'bekliyor'
         && data.kodId is string
@@ -455,7 +457,7 @@ service cloud.firestore {
       allow get, list: if signedIn()
         && (resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
-      allow create: if studentCanCreateHomeworkCompletion(request.resource.data);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
       allow update, delete: if false;
     }
 
@@ -464,7 +466,7 @@ service cloud.firestore {
       allow get, list: if signedIn()
         && (resource.data.ogrenciUid == request.auth.uid
           || resource.data.ogretmenUid == request.auth.uid);
-      allow create: if teacherCanCreateHomeworkNotice(request.resource.data);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
       allow update: if (
         isStudent()
         && resource.data.ogrenciUid == request.auth.uid
@@ -602,12 +604,13 @@ service cloud.firestore {
         && data.durum == 'active';
     }
 
-    function studentCanCreateHomeworkCompletion(data) {
+    function studentCanCreateHomeworkCompletion(data, notificationId) {
       let linkPath = studentLinkDocPath(data.baglantiId);
       let link = get(linkPath).data;
       let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
       let homework = get(homeworkPath).data;
       return isStudent()
+        && notificationId == [request.auth.uid, data.baglantiId, data.odevId].join('__')
         && data.ogrenciUid == request.auth.uid
         && exists(linkPath)
         && link.ogrenciUid == request.auth.uid
@@ -626,12 +629,13 @@ service cloud.firestore {
         && data.durum == 'tamamlandi_bildirildi';
     }
 
-    function teacherCanCreateHomeworkNotice(data) {
+    function teacherCanCreateHomeworkNotice(data, notificationId) {
       let linkPath = studentLinkDocPath(data.baglantiId);
       let link = get(linkPath).data;
       let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
       let homework = get(homeworkPath).data;
       return isTeacher()
+        && notificationId == [data.odevId, data.ogrenciUid, data.baglantiId].join('__')
         && data.ogretmenUid == request.auth.uid
         && data.uid == request.auth.uid
         && exists(linkPath)
