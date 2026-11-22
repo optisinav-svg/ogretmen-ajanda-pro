@@ -46,7 +46,6 @@ test('push payload includes assignment and due date without exposing student ide
     { aciklama: 'Harita bilgisi testleri', teslimTarihi: '2026-11-30' },
     'homework-a',
     'notification-a',
-    'link-a',
   );
   assert.equal(message.to, 'ExponentPushToken[abc_123]');
   assert.equal(message.title, 'Yeni ödeviniz var');
@@ -56,7 +55,6 @@ test('push payload includes assignment and due date without exposing student ide
     type: 'homework_assigned',
     homeworkId: 'homework-a',
     notificationId: 'notification-a',
-    linkId: 'link-a',
   });
   assert.equal(Object.hasOwn(message.data, 'ogrenciUid'), false);
 });
