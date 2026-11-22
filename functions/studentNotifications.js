@@ -96,8 +96,14 @@ exports.ogrenciPushTokenKaydet = onCall({ region: REGION }, async (request) => {
   if (!['ios', 'android'].includes(platform)) {
     throw new HttpsError('invalid-argument', 'Desteklenmeyen cihaz platformu.');
   }
-  const ref = db.collection('ogrenciPushTokenlari').doc(makePushTokenId(uid, token));
-  await ref.set({
+  const tokenCollection = db.collection('ogrenciPushTokenlari');
+  const ref = tokenCollection.doc(makePushTokenId(uid, token));
+  const existingTokenDocs = await tokenCollection.where('token', '==', token).get();
+  const batch = db.batch();
+  existingTokenDocs.docs.forEach(existing => {
+    if (existing.id !== ref.id) batch.delete(existing.ref);
+  });
+  batch.set(ref, {
     ogrenciUid: uid,
     token,
     platform,
@@ -106,6 +112,7 @@ exports.ogrenciPushTokenKaydet = onCall({ region: REGION }, async (request) => {
     guncellenme: FieldValue.serverTimestamp(),
     olusturulma: FieldValue.serverTimestamp(),
   }, { merge: true });
+  await batch.commit();
   return { durum: 'kaydedildi' };
 });
 
