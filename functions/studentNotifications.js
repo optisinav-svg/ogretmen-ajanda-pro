@@ -199,6 +199,7 @@ async function processHomeworkChange(homeworkId, homework, newlyTargetedIds, rem
       if (current.exists && current.get('durum') !== 'iptal'
         && current.get('pushDurumu') === 'gonderildi') return false;
       const notificationData = {
+        uid: teacherUid,
         ogrenciUid: link.ogrenciUid,
         ogretmenUid: teacherUid,
         baglantiId: link.id,
