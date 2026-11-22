@@ -695,6 +695,16 @@ test('İptal edilen öğrenci bağlantısı aynı hesap için yeni öğretmen on
   const linkId = 'teacher-a__student-3__class-a';
   const indexId = 'teacher-a__student-a';
   const requestRef = doc(teacherDb, 'ogrenciEslesmeTalepleri', requestId);
+  const linkRef = doc(teacherDb, 'ogretmenOgrenciBaglantilari', linkId);
+  const indexRef = doc(teacherDb, 'ogrenciKayitEslesmeleri', indexId);
+
+  // Önce, yeni ve onaylanmış bir talep olmadan yeniden etkinleştirme reddedilmeli.
+  await assertFails(updateDoc(linkRef, {
+    durum: 'active',
+    iptalTarihi: null,
+    olusturulma: serverTimestamp(),
+  }));
+
   await testEnv.withSecurityRulesDisabled(async context => {
     await setDoc(doc(context.firestore(), 'ogrenciEslesmeTalepleri', requestId), {
       uid: 'teacher-a',
@@ -707,41 +717,34 @@ test('İptal edilen öğrenci bağlantısı aynı hesap için yeni öğretmen on
       durum: 'bekliyor',
     });
   });
+
   const permissions = {
     dersProgrami: true, dersNotlari: true, konular: true,
     yoklama: true, odevler: true, kitaplar: true,
   };
   const batch = writeBatch(teacherDb);
-  batch.set(doc(teacherDb, 'ogretmenOgrenciBaglantilari', linkId), {
+  batch.update(linkRef, {
     talepId: requestId,
-    uid: 'teacher-a',
-    ogretmenUid: 'teacher-a',
     ogretmenHesapAdi: 'Öğretmen A',
     ogrenciAd: 'Test Öğrencisi',
     sinifAd: '9-A',
     okulAd: 'A Okulu',
-    donemYili: 2026,
     kademe: '9',
     ders: 'Coğrafya',
-    ogrenciUid: 'student-3',
-    ogrenciKayitId: 'student-a',
     ogrenciHesapAdi: 'Öğrenci 3',
     ogrenciEposta: 'student3@example.com',
-    sinifId: 'class-a',
     izinler: permissions,
     durum: 'active',
     olusturulma: serverTimestamp(),
     iptalTarihi: null,
   });
-  batch.set(doc(teacherDb, 'ogrenciKayitEslesmeleri', indexId), {
-    uid: 'teacher-a',
-    donemYili: 2026,
-    ogretmenUid: 'teacher-a',
-    ogrenciKayitId: 'student-a',
+  batch.update(indexRef, {
     ogrenciUid: 'student-3',
     sinifId: 'class-a',
+    donemYili: 2026,
     baglantiId: linkId,
     durum: 'active',
+    iptalTarihi: null,
     guncellenme: serverTimestamp(),
   });
   batch.update(requestRef, {
@@ -751,17 +754,12 @@ test('İptal edilen öğrenci bağlantısı aynı hesap için yeni öğretmen on
   });
   await assertSucceeds(batch.commit());
 
-  await testEnv.withSecurityRulesDisabled(async context => {
-    const db = context.firestore();
-    await updateDoc(doc(db, 'ogretmenOgrenciBaglantilari', linkId), {
-      durum: 'revoked',
-      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
-    });
-    await updateDoc(doc(db, 'ogrenciKayitEslesmeleri', indexId), {
-      durum: 'revoked',
-      iptalTarihi: new Date('2026-10-02T10:00:00.000Z'),
-    });
-  });
+  const [linkSnap, indexSnap, requestSnap] = await Promise.all([
+    getDoc(linkRef), getDoc(indexRef), getDoc(requestRef),
+  ]);
+  assert.equal(linkSnap.data().durum, 'active');
+  assert.equal(indexSnap.data().durum, 'active');
+  assert.equal(requestSnap.data().durum, 'onaylandi');
 });
 
 test('Öğrenci yalnızca kendisine atanmış ödev için tamamlandı bildirimi oluşturabilir', async () => {
