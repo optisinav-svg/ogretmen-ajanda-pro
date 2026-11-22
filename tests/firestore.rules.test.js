@@ -410,6 +410,13 @@ test('Kullanıcı oluşturduğu rolü öğretmen veya öğrenci olarak değişti
   }));
 });
 
+test('Uygulama sahibi özel claim tek başına öğretmen yetkisi vermez', async () => {
+  const db = testEnv.authenticatedContext('student-1', {
+    token: { uygulamaSahibi: true },
+  }).firestore();
+  await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
+});
+
 test('Rol alanı olmayan hesap öğretmen yetkisi alamaz', async () => {
   const db = testEnv.authenticatedContext('teacher-legacy').firestore();
   await assertFails(getDoc(doc(db, 'okullar', 'school-legacy')));
