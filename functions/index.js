@@ -127,5 +127,11 @@ exports.ogrenciBaglantiIzinleriniGuncelle = accountLinks.ogrenciBaglantiIzinleri
 exports.ogrenciOdevTamamlandiBildir = accountLinks.ogrenciOdevTamamlandiBildir;
 
 
+const studentNotifications = require('./studentNotifications');
+exports.ogrenciPushTokenKaydet = studentNotifications.ogrenciPushTokenKaydet;
+exports.ogrenciPushTokenSil = studentNotifications.ogrenciPushTokenSil;
+exports.odevOlusturulduOgrenciBildirimleri = studentNotifications.odevOlusturulduOgrenciBildirimleri;
+exports.odeveOgrenciEklendiBildirimleri = studentNotifications.odeveOgrenciEklendiBildirimleri;
+
 const ownerStatistics = require('./ownerStatistics');
 exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
