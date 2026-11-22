@@ -19,7 +19,7 @@ function requireAuth(request) {
 function validateExpoPushToken(token) {
   return typeof token === 'string'
     && token.length <= 200
-    && /^(Exponent|Expo)PushToken\\[[A-Za-z0-9_-]+\\]$/.test(token);
+    && /^(Exponent|Expo)PushToken\[[A-Za-z0-9_-]+\]$/.test(token);
 }
 
 function makePushTokenId(uid, token) {
@@ -38,7 +38,7 @@ function isHomeworkTargeted(homework, studentRecordId) {
 function buildHomeworkPushMessage(token, homework, homeworkId, notificationId) {
   const title = 'Yeni ödeviniz var';
   const description = String(homework?.aciklama || homework?.baslik || 'Öğretmeniniz yeni bir ödev verdi.')
-    .replace(/\\s+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 110);
   const due = typeof homework?.teslimTarihi === 'string' && homework.teslimTarihi
