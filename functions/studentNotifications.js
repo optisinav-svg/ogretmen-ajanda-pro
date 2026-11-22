@@ -96,6 +96,7 @@ exports.ogrenciPushTokenKaydet = onCall({ region: REGION }, async (request) => {
 
 exports.ogrenciPushTokenSil = onCall({ region: REGION }, async (request) => {
   const uid = requireAuth(request);
+  await requireStudent(uid);
   const token = request.data?.token;
   if (!validateExpoPushToken(token)) {
     throw new HttpsError('invalid-argument', 'Geçerli bir Expo bildirim belirteci gönderilmelidir.');
