@@ -414,11 +414,16 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const link = linkSnap.data();
     const homeworkRef = db.collection('odevler').doc(odevId);
     const studentRef = db.collection('ogrenciler').doc(link.ogrenciKayitId);
-    const [homeworkSnap, studentSnap, notificationSnap] = await Promise.all([tx.get(homeworkRef), tx.get(studentRef), tx.get(notificationRef)]);
+    const classRef = db.collection('siniflar').doc(link.sinifId);
+    const [homeworkSnap, studentSnap, classSnap, notificationSnap] = await Promise.all([
+      tx.get(homeworkRef), tx.get(studentRef), tx.get(classRef), tx.get(notificationRef),
+    ]);
     if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid
       || studentSnap.get('sinifId') !== link.sinifId
-      || studentSnap.get('donemYili') !== link.donemYili) {
-      throw new HttpsError('permission-denied', 'Öğrenci kaydı artık etkin değil veya bağlantının dönemiyle eşleşmiyor.');
+      || studentSnap.get('donemYili') !== link.donemYili
+      || !classSnap.exists || classSnap.get('uid') !== link.ogretmenUid
+      || classSnap.get('donemYili') !== link.donemYili) {
+      throw new HttpsError('permission-denied', 'Öğrenci veya sınıf kaydı artık etkin değil ya da bağlantının dönemiyle eşleşmiyor.');
     }
     if (!homeworkSnap.exists || homeworkSnap.get('uid') !== link.ogretmenUid
       || homeworkSnap.get('sinifId') !== link.sinifId) {
