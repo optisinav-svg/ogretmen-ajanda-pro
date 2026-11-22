@@ -95,6 +95,8 @@ before(async () => {
       uid: 'teacher-a',
       sinifId: 'class-a',
       adSoyad: 'Test Öğrencisi',
+      eposta: 'student-new@example.com',
+      epostaEslesme: 'student-new@example.com',
       donemYili: 2026,
     });
     await setDoc(doc(db, 'ogrenciler', 'student-b'), {
