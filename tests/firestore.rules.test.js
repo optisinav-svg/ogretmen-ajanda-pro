@@ -184,6 +184,20 @@ before(async () => {
       donemYili: 2026,
       durum: 'tamamlandi_bildirildi',
     });
+    await setDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+      ogrenciUid: 'student-1',
+      ogretmenUid: 'teacher-a',
+      baglantiId: 'teacher-a__student-1__class-a',
+      ogrenciKayitId: 'student-a',
+      sinifId: 'class-a',
+      donemYili: 2026,
+      odevId: 'homework-a',
+      baslik: 'Yeni ödeviniz var',
+      aciklama: 'Harita bilgisi',
+      teslimTarihi: '2026-11-30',
+      durum: 'aktif',
+      okundu: false,
+    });
     await setDoc(doc(db, 'odevler', 'homework-a'), {
       uid: 'teacher-a',
       sinifId: 'class-a',
@@ -677,4 +691,41 @@ test('Firestore eski dönem kayıtlarının düzenlenmesini ve silinmesini engel
   await assertSucceeds(getDoc(doc(db, 'okullar', 'school-old')));
   await assertFails(updateDoc(doc(db, 'okullar', 'school-old'), { ad: 'Eski dönem düzenlendi' }));
   await assertFails(deleteDoc(doc(db, 'okullar', 'school-old')));
+});
+
+
+test('Öğrenci yalnızca kendi yeni ödev bildirimlerini okuyabilir', async () => {
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  const ownQuery = query(collection(studentDb, 'ogrenciYeniOdevBildirimleri'), where('ogrenciUid', '==', 'student-1'));
+  const own = await assertSucceeds(getDocs(ownQuery));
+  assert.equal(own.size, 1);
+
+  const otherDb = testEnv.authenticatedContext('student-2').firestore();
+  await assertFails(getDoc(doc(otherDb, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a')));
+});
+
+test('Öğrenci yeni ödev bildirimini yalnızca okundu olarak işaretleyebilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    okundu: true,
+    okunduTarihi: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    durum: 'iptal',
+  }));
+  await assertFails(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    aciklama: 'Başka bir içerik',
+  }));
+});
+
+test('Push token koleksiyonu istemci tarafından okunamaz veya yazılamaz', async () => {
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  await assertFails(getDoc(doc(studentDb, 'ogrenciPushTokenlari', 'token-a')));
+  await assertFails(setDoc(doc(studentDb, 'ogrenciPushTokenlari', 'token-a'), {
+    ogrenciUid: 'student-1',
+    token: 'ExponentPushToken[abc_123]',
+    aktif: true,
+  }));
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDocs(collection(teacherDb, 'ogrenciPushTokenlari')));
 });
