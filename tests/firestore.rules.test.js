@@ -1,4 +1,5 @@
 const fs = require('node:fs');
+const assert = require('node:assert/strict');
 const { test, before, after } = require('node:test');
 const {
   initializeTestEnvironment,
@@ -17,6 +18,7 @@ const {
   addDoc,
   deleteDoc,
   writeBatch,
+  serverTimestamp,
 } = require('firebase/firestore');
 
 // These tests run only against the local Firestore Emulator.
@@ -39,7 +41,12 @@ before(async () => {
     await setDoc(doc(db, 'kullanicilar', 'teacher-a'), {
       kullaniciAdi: 'Öğretmen A',
       brans: 'Coğrafya',
-    }); // Eski profil: rol alanı yok.
+      rol: 'ogretmen',
+    });
+
+    await setDoc(doc(db, 'kullanicilar', 'teacher-legacy'), {
+      kullaniciAdi: 'Rolü tanımsız hesap',
+    });
 
     await setDoc(doc(db, 'kullanicilar', 'teacher-b'), {
       kullaniciAdi: 'Öğretmen B',
@@ -59,6 +66,11 @@ before(async () => {
     await setDoc(doc(db, 'okullar', 'school-b'), {
       uid: 'teacher-b',
       ad: 'B Okulu',
+      donemYili: 2026,
+    });
+    await setDoc(doc(db, 'okullar', 'school-legacy'), {
+      uid: 'teacher-legacy',
+      ad: 'Rolü tanımsız hesabın okulu',
       donemYili: 2026,
     });
     await setDoc(doc(db, 'okullar', 'school-old'), {
@@ -111,17 +123,17 @@ before(async () => {
     await setDoc(doc(db, 'kullanicilar', 'student-4'), { kullaniciAdi: 'Öğrenci 4', rol: 'ogrenci' });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-2__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-2', ogrenciKayitId: 'student-a',
-      sinifId: 'class-a', durum: 'active',
+      sinifId: 'class-a', donemYili: 2026, durum: 'active',
       izinler: { dersProgrami: true, dersNotlari: false, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-3__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-3', ogrenciKayitId: 'student-a',
-      sinifId: 'class-a', durum: 'revoked',
+      sinifId: 'class-a', donemYili: 2026, durum: 'revoked',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-4__class-a'), {
       ogretmenUid: 'teacher-a', ogrenciUid: 'student-4', ogrenciKayitId: 'deleted-student',
-      sinifId: 'class-a', durum: 'active',
+      sinifId: 'class-a', donemYili: 2026, durum: 'active',
       izinler: { dersProgrami: true, dersNotlari: true, konular: true, yoklama: true, odevler: true, kitaplar: true },
     });
     await setDoc(doc(db, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-1__class-a'), {
@@ -129,6 +141,7 @@ before(async () => {
       ogrenciUid: 'student-1',
       ogrenciKayitId: 'student-a',
       sinifId: 'class-a',
+      donemYili: 2026,
       durum: 'active',
       izinler: {
         dersProgrami: true,
@@ -172,6 +185,20 @@ before(async () => {
       odevId: 'homework-a',
       donemYili: 2026,
       durum: 'tamamlandi_bildirildi',
+    });
+    await setDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+      ogrenciUid: 'student-1',
+      ogretmenUid: 'teacher-a',
+      baglantiId: 'teacher-a__student-1__class-a',
+      ogrenciKayitId: 'student-a',
+      sinifId: 'class-a',
+      donemYili: 2026,
+      odevId: 'homework-a',
+      baslik: 'Yeni ödeviniz var',
+      aciklama: 'Harita bilgisi',
+      teslimTarihi: '2026-11-30',
+      durum: 'aktif',
+      okundu: false,
     });
     await setDoc(doc(db, 'odevler', 'homework-a'), {
       uid: 'teacher-a',
@@ -377,11 +404,14 @@ test('Silinmiş ders programına bağlı tarihsel not düzenlenebilir', async ()
 });
 
 
-test('Yeni kullanıcı kendi öğretmen profilini oluşturabilir', async () => {
+test('Yeni kullanıcı istemciden öğretmen profili veya rolü oluşturamaz', async () => {
   const db = testEnv.authenticatedContext('teacher-new').firestore();
-  await assertSucceeds(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
     kullaniciAdi: 'Yeni Öğretmen',
     rol: 'ogretmen',
+  }));
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
+    kullaniciAdi: 'Yeni Öğretmen',
   }));
 });
 
@@ -400,9 +430,16 @@ test('Kullanıcı oluşturduğu rolü öğretmen veya öğrenci olarak değişti
   }));
 });
 
-test('Eski rol alanı olmayan öğretmen profili mevcut kayıtlarını kullanmaya devam eder', async () => {
-  const db = testEnv.authenticatedContext('teacher-a').firestore();
-  await assertSucceeds(getDoc(doc(db, 'okullar', 'school-a')));
+test('Uygulama sahibi özel claim tek başına öğretmen yetkisi vermez', async () => {
+  const db = testEnv.authenticatedContext('student-1', {
+    token: { uygulamaSahibi: true },
+  }).firestore();
+  await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
+});
+
+test('Rol alanı olmayan hesap öğretmen yetkisi alamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-legacy').firestore();
+  await assertFails(getDoc(doc(db, 'okullar', 'school-legacy')));
 });
 
 
@@ -463,6 +500,23 @@ test('Bireysel etkinlik yalnızca öğretmenin kendi sınıfındaki öğrenci i�
   await assertFails(addDoc(collection(db, 'bireyselEtkinlikler'), {
     uid: 'teacher-a', ogrenciId: 'student-b', sinifId: 'class-b',
     tur: 'Özel Ders', donemYili: 2026,
+  }));
+});
+
+test('Öğretmen bireysel etkinliği başka öğretmenin öğrencisine taşıyamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(updateDoc(doc(db, 'bireyselEtkinlikler', 'event-a'), {
+    ogrenciId: 'student-b',
+    sinifId: 'class-b',
+  }));
+});
+
+test('Öğretmen bireysel ders oturumunu başka öğrencinin etkinliğine taşıyamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(updateDoc(doc(db, 'bireyselDersOturumlari', 'event-a_2026-11-20'), {
+    bireyselEtkinlikId: 'event-b',
+    ogrenciId: 'student-b',
+    sinifId: 'class-b',
   }));
 });
 
@@ -600,9 +654,80 @@ test('Firestore eski, gelecekteki veya dönem alanı eksik kayıt oluşturulmas�
   }));
 });
 
+test('Sınıf ve bağlı kayıtlar farklı akademik dönemlere bağlanamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'dersler'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    donemYili: 2025,
+  }));
+  await assertFails(addDoc(collection(db, 'siniflar'), {
+    uid: 'teacher-a',
+    okulId: 'school-old',
+    ad: 'Dönem uyuşmazlığı',
+    donemYili: 2026,
+  }));
+});
+
+test('Öğrenci, sınıf ve öğrenciye atanan kitap aynı akademik dönemde olmalıdır', async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'ogrenciler', 'student-old-period'), {
+      uid: 'teacher-a',
+      sinifId: 'class-a',
+      adSoyad: 'Eski dönem öğrencisi',
+      donemYili: 2025,
+    });
+  });
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(addDoc(collection(db, 'kitaplar'), {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-old-period',
+    ad: 'Dönemi uyuşmayan kitap',
+    donemYili: 2026,
+  }));
+});
+
 test('Firestore eski dönem kayıtlarının düzenlenmesini ve silinmesini engeller', async () => {
   const db = testEnv.authenticatedContext('teacher-a').firestore();
   await assertSucceeds(getDoc(doc(db, 'okullar', 'school-old')));
   await assertFails(updateDoc(doc(db, 'okullar', 'school-old'), { ad: 'Eski dönem düzenlendi' }));
   await assertFails(deleteDoc(doc(db, 'okullar', 'school-old')));
+});
+
+
+test('Öğrenci yalnızca kendi yeni ödev bildirimlerini okuyabilir', async () => {
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  const ownQuery = query(collection(studentDb, 'ogrenciYeniOdevBildirimleri'), where('ogrenciUid', '==', 'student-1'));
+  const own = await assertSucceeds(getDocs(ownQuery));
+  assert.equal(own.size, 1);
+
+  const otherDb = testEnv.authenticatedContext('student-2').firestore();
+  await assertFails(getDoc(doc(otherDb, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a')));
+});
+
+test('Öğrenci yeni ödev bildirimini yalnızca okundu olarak işaretleyebilir', async () => {
+  const db = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    okundu: true,
+    okunduTarihi: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    durum: 'iptal',
+  }));
+  await assertFails(updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', 'new-homework-notification-a'), {
+    aciklama: 'Başka bir içerik',
+  }));
+});
+
+test('Push token koleksiyonu istemci tarafından okunamaz veya yazılamaz', async () => {
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  await assertFails(getDoc(doc(studentDb, 'ogrenciPushTokenlari', 'token-a')));
+  await assertFails(setDoc(doc(studentDb, 'ogrenciPushTokenlari', 'token-a'), {
+    ogrenciUid: 'student-1',
+    token: 'ExponentPushToken[abc_123]',
+    aktif: true,
+  }));
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDocs(collection(teacherDb, 'ogrenciPushTokenlari')));
 });

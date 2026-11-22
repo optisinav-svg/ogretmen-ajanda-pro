@@ -113,9 +113,11 @@ exports.donemSonuVeriTemizligi = onSchedule(
 );
 
 
+const profileRegistration = require('./profileRegistration');
+exports.ogretmenProfiliOlustur = profileRegistration.ogretmenProfiliOlustur;
+
 const accountLinks = require('./accountLinks');
 
-exports.eskiOgretmenRolunuTanimla = accountLinks.eskiOgretmenRolunuTanimla;
 exports.ogrenciEslesmeKoduOlustur = accountLinks.ogrenciEslesmeKoduOlustur;
 exports.ogrenciEslesmeTalebiGonder = accountLinks.ogrenciEslesmeTalebiGonder;
 exports.ogrenciEslesmeTalebiniOnayla = accountLinks.ogrenciEslesmeTalebiniOnayla;
@@ -123,3 +125,14 @@ exports.ogrenciEslesmeTalebiniReddet = accountLinks.ogrenciEslesmeTalebiniReddet
 exports.ogrenciBaglantisiniIptalEt = accountLinks.ogrenciBaglantisiniIptalEt;
 exports.ogrenciBaglantiIzinleriniGuncelle = accountLinks.ogrenciBaglantiIzinleriniGuncelle;
 exports.ogrenciOdevTamamlandiBildir = accountLinks.ogrenciOdevTamamlandiBildir;
+
+
+const studentNotifications = require('./studentNotifications');
+exports.ogrenciPushTokenKaydet = studentNotifications.ogrenciPushTokenKaydet;
+exports.ogrenciPushTokenSil = studentNotifications.ogrenciPushTokenSil;
+exports.odevOlusturulduOgrenciBildirimleri = studentNotifications.odevOlusturulduOgrenciBildirimleri;
+exports.odeveOgrenciEklendiBildirimleri = studentNotifications.odeveOgrenciEklendiBildirimleri;
+exports.odevSilindiOgrenciBildirimleri = studentNotifications.odevSilindiOgrenciBildirimleri;
+
+const ownerStatistics = require('./ownerStatistics');
+exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;

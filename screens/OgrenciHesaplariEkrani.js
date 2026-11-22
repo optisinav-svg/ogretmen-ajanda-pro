@@ -40,7 +40,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
     setYukleniyor(true);
     try {
       const profil = await getDoc(doc(db, 'kullanicilar', uid));
-      if (!profil.exists() || (profil.data().rol && profil.data().rol !== 'ogretmen')) {
+      if (!profil.exists() || profil.data().rol !== 'ogretmen') {
         Alert.alert('Erişim yok', 'Bu ekran yalnızca öğretmen hesapları içindir.');
         navigation.goBack();
         return;
