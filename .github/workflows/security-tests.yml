@@ -9,6 +9,8 @@ on:
   pull_request:
     branches:
       - feature/group2-ders-konu-takvim
+      - integration/pre-apk-2026-11-21
+      - feature/group3-firestore-security-hardening
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
