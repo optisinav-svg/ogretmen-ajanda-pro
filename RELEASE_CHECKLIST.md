@@ -7,7 +7,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Mevcut telefon uygulaması, imza anahtarı ve Firebase verileri korunur. İmza eşleşmesi doğrulanmadan telefondaki uygulama güncellenmez veya kaldırılmaz.
 - Canlı veriye yönelik silme, toplu taşıma, geri yükleme veya başka yıkıcı işlem öncesinde yedek ve geri dönüş yöntemi doğrulanır; gerçek öğrenci kayıtları izinsiz test verisi olarak kullanılmaz.
 - Firestore yedeği, öğrenci/öğretmen kişisel verisi içerdiğinden gizli tutulur; GitHub'a, sohbete veya herkese açık depoya konulmaz.
-- Öğrenci hesap bağlantısı `ACCOUNT_LINKING_ENABLED=false` kalır. Yalnızca gerekli Cloud Functions ve Firestore rules canlıya dağıtılıp canlı kontroller başarıyla tamamlandıktan sonra açılır.
+- Öğrenci hesap bağlantısı `ACCOUNT_LINKING_ENABLED=false` kalır. Spark uyumlu doğrudan Firestore akışı kaynak koda alındı; özellik yalnızca güncel Firestore rules canlıya dağıtılıp erişim sınırları doğrulandıktan sonra açılır. Cloud Functions/Blaze şartı yoktur.
 - Ortaokul öğrenci hesapları, veli/vasi ve hukuki süreç netleşene kadar kapalı kalır.
 - Paylaşım izinleri varsayılan kapalıdır; öğrenci yalnızca öğretmenin açıkça verdiği izin kapsamındaki verileri okuyabilir.
 - Google Drive yedeklemesi kullanıcı isteğiyle bu sürüm kapsamından çıkarılmıştır; ertelenmiştir ve tablet APK / ilk kullanım testlerinin engeli değildir. Bu aşamada Drive bağlantısı, OAuth, otomatik yedek ve geri yükleme geliştirmesi yapılmayacaktır.
@@ -34,9 +34,9 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Silme işlemlerinde bağlı kayıtlar, yetki ve veri bütünlüğü kontrol edildi.
 
 ### Grup 3 — Firestore güvenliği ve backend
-- [ ] Öğretmen profili/rol ataması yalnızca güvenilir Cloud Functions üzerinden yapılır.
+- [ ] Öğretmen yalnızca kendi UID'si altında öğretmen profili oluşturabilir; öğrenci profili yalnızca doğrulanmış, tek kullanımlık kod talebiyle oluşur; uygulama sahibi claim'i istemciden atanamaz.
 - [ ] Firestore rules: kullanıcı/veri sahipliği, sınıf-öğrenci-ders-kitap ilişkileri, dönem tutarlılığı ve varsayılan reddetme denetlendi.
-- [ ] Öğrenci bağlantısı, kod süresi/tek kullanımlılık, e-posta/ad/sınıf/dönem doğrulaması ve öğretmen onayı denetlendi.
+- [ ] Spark eşleştirme akışı: SHA-256 belge kimlikli 16 karakter kod, 12 saat süre, tek kullanımlılık, doğrulanmış e-posta/ad/sınıf/dönem eşleşmesi ve öğretmen onayı Emulator'da denetlendi.
 - [ ] Veri saklama/temizleme işlevi güvenli varsayılanla (dry-run) çalışır; silme modu ayrıca yetkilendirilmeden açılmaz.
 - [ ] Canlı Firestore yedeği ve geri yükleme tatbikatı; Auth, Storage, rules, indexes ve Functions kapsamındaki ek yedek ihtiyaçları belirlendi.
 - [ ] Gerekli Firestore indeksleri gerçek sorgulara göre belirlendi ve canlı yapılandırmayla karşılaştırıldı.
@@ -49,7 +49,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Öğretmen izinleri varsayılan kapalıdır; öğrenci yalnızca izinli verileri okur.
 - [ ] Öğrenci ödev tamamlama bildirimi öğretmen değerlendirmesinden ayrı tutulur.
 - [ ] Uygulama içi yeni ödev bildirimi, okundu durumu ve bildirim iptali doğrulandı.
-- [ ] Expo Push / FCM V1 kimlik bilgileri EAS'te doğrulandı ve gerçek Android cihazda teslimat testi yapıldı.
+- [x] Firebase Spark sınırı nedeniyle sunucu tarafı Expo Push / FCM gönderimi bu sürümden çıkarıldı; öğrenci ekranında uygulama içi yeni ödev bildirimi kullanılır.
 - [ ] Push tokenları istemciden okunamaz/yazılamaz; mesaj yükünde öğrenci PII bulunmaz.
 - [ ] Ortaokul hesap akışı kapalıdır.
 
@@ -95,6 +95,9 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Cloud Functions birim/politika testleri.
 - [ ] Gerekli indeks ve sorgu testleri.
 - [ ] Öğretmen temel iş akışları için regresyon kontrolü.
+- [ ] Kullanıcının çalıştığını doğruladığı okul/sınıf/öğrenci, ders programı/notu, kazanım arama, yoklama, ödev, ortak kitap kütüphanesi, çoklu öğrenci kitap atama, öğrenci ilerleme ve öğrenci PDF raporları korunarak regresyon kontrolü.
+- [ ] Eksik sınıf raporu ekranı geliştirilmeli.
+- [ ] Özel ders, etüt ve soru çözümü etkinlikleri kullanıcı tarafından APK sonrası test edilmeli; mevcut takvim kapsamı değiştirilmemeli.
 - [ ] Öğrenci izin sınırları ve veri ayrımı için güvenlik kontrolü.
 - [ ] KVKK bilgilendirme ekranının cihaz üzerinde görüntülenmesi ve nihai metnin hukuki onayı. (Taslak ekran, nihai yasal uygunluk onayı değildir.)
 - [ ] Sürüm, paket kimliği, EAS projesi, build profili ve imza kontrolü.
@@ -103,14 +106,14 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Kullanıcıya canlıya geçiş özeti ve geri dönüş planı sunuldu.
 - [ ] Yedek alındı ve okunabilirliği/manifesti doğrulandı.
 - [ ] Doğru Firebase projesi açıkça doğrulandı.
-- [ ] Cloud Functions önce dağıtıldı; kritik callable işlevler canlıda doğrulandı.
-- [ ] Firestore rules kontrollü dağıtıldı; öğretmen ve öğrenci erişim sınırları doğrulandı.
+- [ ] Spark'ta Cloud Functions dağıtımı yapılmaz; tüm uygulama akışlarında callable bağımlılığı kalmadığı kaynak kodda doğrulanır.
+- [ ] Firestore rules kontrollü dağıtılır; öğretmen, öğrenci ve uygulama sahibi erişim sınırları doğrulanır.
 - [ ] Gerekli indexes dağıtıldı ve sorgular doğrulandı.
 - [ ] Öğrenci bağlantısı ancak tüm backend kontrolleri geçtikten sonra açıldı.
 - [ ] Canlı loglar, hata oranları ve güvenlik davranışları kontrol edildi.
 
 ## Aşama 6 — Tablet APK
-- [ ] EAS kimlik bilgileri ve FCM V1 ayarları doğrulandı.
+- [ ] EAS Android imza kimliği doğrulanır; FCM V1 ayarı gerekmez (push gönderimi bu sürümde yok).
 - [ ] Son sürüm kodundan `preview` APK üretildi.
 - [ ] Build başarılı ve APK indirilebilir olarak doğrulandı.
 - [ ] APK tablet üzerine kuruldu; mevcut telefon kurulumu değiştirilmedi.
