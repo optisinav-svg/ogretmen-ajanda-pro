@@ -79,12 +79,14 @@ async function main() {
     }
 
     const batch = db.batch();
+    let roleUpdates = 0;
     for (const candidate of candidates) {
       if (!candidate.profile.rol) {
         batch.update(candidate.profileRef, { rol: 'ogretmen' });
+        roleUpdates += 1;
       }
     }
-    await batch.commit();
+    if (roleUpdates > 0) await batch.commit();
 
     const currentOwner = await auth.getUser(owner.uid);
     await auth.setCustomUserClaims(owner.uid, {
