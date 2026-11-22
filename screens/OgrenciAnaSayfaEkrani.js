@@ -1,16 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import {
-  collection, doc, getDoc, getDocs, query, where,
+  collection, doc, getDoc, getDocs, query, where, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { donemUygun, donemYiliBugun } from '../utils/donem';
 import { donemHatirlatmaGosterilebilir, donemHatirlatmaKaydet } from '../utils/donemHatirlatici';
+
+const PUSH_TOKEN_KEY = '@ogretmenAjandaPro_ogrenciPushToken';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const PERMISSIONS = [
   ['dersProgrami', 'Ders programı'],
@@ -41,6 +57,8 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const [baglantilar, setBaglantilar] = useState([]);
   const [talepler, setTalepler] = useState([]);
   const [bildirimler, setBildirimler] = useState([]);
+  const [yeniOdevBildirimleri, setYeniOdevBildirimleri] = useState([]);
+  const [pushToken, setPushToken] = useState(null);
   const [gruplar, setGruplar] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [yenileniyor, setYenileniyor] = useState(false);
@@ -49,11 +67,12 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
     if (!uid || !ACCOUNT_LINKING_ENABLED) { setYukleniyor(false); return; }
     if (sessiz) setYenileniyor(true); else setYukleniyor(true);
     try {
-      const [profileSnap, linkSnap, requestSnap, notificationSnap] = await Promise.all([
+      const [profileSnap, linkSnap, requestSnap, notificationSnap, newHomeworkSnap] = await Promise.all([
         getDoc(doc(db, 'kullanicilar', uid)),
         getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('ogrenciUid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciEslesmeTalepleri'), where('ogrenciUid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciOdevBildirimleri'), where('ogrenciUid', '==', uid))),
+        getDocs(query(collection(db, 'ogrenciYeniOdevBildirimleri'), where('ogrenciUid', '==', uid))),
       ]);
       if (!profileSnap.exists() || profileSnap.get('rol') !== 'ogrenci') {
         Alert.alert('Öğrenci hesabı doğrulanamadı', 'Bu oturum öğrenci hesabı olarak tanımlı değil.');
@@ -66,6 +85,10 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
       setBaglantilar(links);
       setTalepler(sortNewest(requestSnap.docs.map(d => ({ id: d.id, ...d.data() }))));
       setBildirimler(sortNewest(notificationSnap.docs.map(d => ({ id: d.id, ...d.data() }))));
+      setYeniOdevBildirimleri(sortNewest(newHomeworkSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(item => item.durum !== 'iptal'))
+        .slice(0, 50));
 
       const dataGroups = await Promise.all(links.map(async link => {
         const active = link.durum === 'active';
@@ -141,6 +164,76 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
 
   useEffect(() => { yukle(); }, [yukle]);
 
+  useEffect(() => {
+    const received = Notifications.addNotificationReceivedListener(() => yukle(true));
+    const response = Notifications.addNotificationResponseReceivedListener(() => yukle(true));
+    return () => {
+      received.remove();
+      response.remove();
+    };
+  }, [yukle]);
+
+  const bildirimleriAc = async () => {
+    if (!Device.isDevice) {
+      Alert.alert('Gerçek cihaz gerekli', 'Telefon bildirimleri emülatör yerine gerçek Android veya iOS cihazında etkinleştirilmelidir.');
+      return;
+    }
+    if (!['android', 'ios'].includes(Platform.OS)) return;
+    try {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('homework', {
+          name: 'Ödev Bildirimleri',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'default',
+          vibrationPattern: [0, 250, 250, 250],
+        });
+      }
+      const current = await Notifications.getPermissionsAsync();
+      let status = current.status;
+      if (status !== 'granted') {
+        const requested = await Notifications.requestPermissionsAsync();
+        status = requested.status;
+      }
+      if (status !== 'granted') {
+        Alert.alert('Bildirim izni kapalı', 'Telefon ayarlarından Öğretmen AjandaPro bildirimlerine izin verirseniz yeni ödevler geldiğinde haber alabilirsiniz.');
+        return;
+      }
+      const projectId = Constants.easConfig?.projectId || Constants.expoConfig?.extra?.eas?.projectId;
+      if (!projectId) throw new Error('Expo proje kimliği bulunamadı. APK yapılandırmasını kontrol edin.');
+      const tokenResult = await Notifications.getExpoPushTokenAsync({ projectId });
+      const token = tokenResult.data;
+      const previousToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+      if (previousToken && previousToken !== token) {
+        try {
+          await httpsCallable(functions, 'ogrenciPushTokenSil')({ token: previousToken });
+        } catch (_) {}
+      }
+      await httpsCallable(functions, 'ogrenciPushTokenKaydet')({
+        token,
+        platform: Platform.OS,
+        deviceId: Device.modelId || Device.modelName || '',
+      });
+      await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+      setPushToken(token);
+      Alert.alert('Bildirimler etkin', 'Bu cihaz artık öğretmeninizin size verdiği yeni ödevler için bildirim alabilir.');
+    } catch (e) {
+      Alert.alert('Bildirimler açılamadı', e?.message || 'Bildirim ayarları kaydedilemedi. Daha sonra tekrar deneyin.');
+    }
+  };
+
+  const bildirimOkundu = async item => {
+    if (!item || item.okundu) return;
+    try {
+      await updateDoc(doc(db, 'ogrenciYeniOdevBildirimleri', item.id), {
+        okundu: true,
+        okunduTarihi: serverTimestamp(),
+      });
+      setYeniOdevBildirimleri(previous => previous.map(x => x.id === item.id ? { ...x, okundu: true } : x));
+    } catch (e) {
+      Alert.alert('Bildirim güncellenemedi', e?.message || 'Bildirim okundu olarak işaretlenemedi.');
+    }
+  };
+
   const tamamlandiBildir = async (link, homework) => {
     try {
       await httpsCallable(functions, 'ogrenciOdevTamamlandiBildir')({
@@ -157,6 +250,11 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const cikis = () => Alert.alert('Çıkış yap', 'Hesabınızdan çıkış yapmak istiyor musunuz?', [
     { text: 'Vazgeç', style: 'cancel' },
     { text: 'Çıkış yap', style: 'destructive', onPress: async () => {
+      try {
+        const savedToken = pushToken || await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+        if (savedToken) await httpsCallable(functions, 'ogrenciPushTokenSil')({ token: savedToken });
+        await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+      } catch (_) {}
       await signOut(auth);
       navigation.replace('Giris');
     }},
@@ -178,6 +276,14 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
             <Text style={s.sub}>{aktifSayisi} etkin öğretmen bağlantısı</Text>
           </View>
           <TouchableOpacity onPress={cikis} style={s.logout}><Text style={s.logoutText}>Çıkış</Text></TouchableOpacity>
+        </View>
+
+        <View style={s.actionCard}>
+          <Text style={s.cardTitle}>Telefon bildirimleri</Text>
+          <Text style={s.muted}>Öğretmeniniz yeni ödev verdiğinde bu cihaza bildirim gelsin.</Text>
+          <TouchableOpacity style={s.secondary} onPress={bildirimleriAc}>
+            <Text style={s.secondaryText}>{pushToken ? 'Bildirimleri yenile / bu cihazı eşitle' : 'Telefon bildirimlerini aç'}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={s.actionCard}>
@@ -228,6 +334,16 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         })}
 
         {!gruplar.length && <View style={s.card}><Text style={s.sectionTitle}>Henüz öğretmen bağlantınız yok</Text><Text style={s.muted}>Öğretmeninizden eşleştirme kodu isteyin. Kod girildikten sonra öğretmeninizin onayı beklenir.</Text></View>}
+        {!!yeniOdevBildirimleri.length && <View style={s.card}>
+          <Text style={s.sectionTitle}>Yeni ödev bildirimleri ({yeniOdevBildirimleri.filter(x => !x.okundu).length} okunmamış)</Text>
+          {yeniOdevBildirimleri.map(item => (
+            <TouchableOpacity key={item.id} style={s.item} onPress={() => bildirimOkundu(item)}>
+              <Text style={[s.itemTitle, !item.okundu && s.unread]}>{item.baslik || 'Yeni ödeviniz var'}</Text>
+              <Text style={s.itemText}>{item.aciklama || 'Öğretmeniniz yeni bir ödev verdi.'}</Text>
+              <Text style={s.meta}>Teslim: {dateLabel(item.teslimTarihi) || 'Belirtilmemiş'} · {item.okundu ? 'Okundu' : 'Okundu olarak işaretlemek için dokunun'}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>}
         {!!bildirimler.length && <View style={s.card}><Text style={s.sectionTitle}>Ödev bildirimlerim</Text>{bildirimler.map(x => <Text key={x.id} style={s.meta}>✓ {x.odevAciklama || 'Ödev'} · {x.durum === 'tamamlandi_bildirildi' ? 'Tamamlandı bildirimi gönderildi' : x.durum}</Text>)}</View>}
         <TouchableOpacity style={s.refresh} onPress={() => yukle(true)}><Text style={s.refreshText}>↻ Yenile</Text></TouchableOpacity>
       </ScrollView>
@@ -268,7 +384,7 @@ const s = StyleSheet.create({
   itemTitle:{fontSize:13,fontWeight:'700',color:'#37474F'},
   itemText:{fontSize:13,color:'#455A64',lineHeight:19},
   homework:{width:'100%'},primary:{backgroundColor:'#2E7D32',padding:12,borderRadius:9,alignItems:'center',marginTop:12},
-  primaryText:{color:'#fff',fontWeight:'700'},smallButton:{alignSelf:'flex-start',backgroundColor:'#E8F5E9',padding:8,borderRadius:7,marginTop:8},
+  primaryText:{color:'#fff',fontWeight:'700'},secondary:{backgroundColor:'#fff',borderWidth:1,borderColor:'#81C784',padding:11,borderRadius:9,alignItems:'center',marginTop:10},secondaryText:{color:'#1B5E20',fontWeight:'700'},unread:{color:'#1B5E20'},smallButton:{alignSelf:'flex-start',backgroundColor:'#E8F5E9',padding:8,borderRadius:7,marginTop:8},
   smallButtonText:{color:'#1B5E20',fontWeight:'700',fontSize:12},sent:{color:'#2E7D32',fontSize:12,fontWeight:'700',marginTop:7},
   revoked:{color:'#B71C1C',fontWeight:'700',marginTop:10},refresh:{alignItems:'center',padding:14},refreshText:{color:'#2E7D32',fontWeight:'700'},
   title:{fontSize:21,fontWeight:'bold',color:'#1B5E20',textAlign:'center',marginBottom:10},
