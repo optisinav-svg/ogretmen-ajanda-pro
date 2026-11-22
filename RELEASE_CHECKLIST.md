@@ -10,7 +10,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Öğrenci hesap bağlantısı `ACCOUNT_LINKING_ENABLED=false` kalır. Yalnızca gerekli Cloud Functions ve Firestore rules canlıya dağıtılıp canlı kontroller başarıyla tamamlandıktan sonra açılır.
 - Ortaokul öğrenci hesapları, veli/vasi ve hukuki süreç netleşene kadar kapalı kalır.
 - Paylaşım izinleri varsayılan kapalıdır; öğrenci yalnızca öğretmenin açıkça verdiği izin kapsamındaki verileri okuyabilir.
-- Google Drive yedeklemesi bu güncel sürüm planında tamamlanacak iştir; kullanıcı Google hesabını bağlamadan uygulamanın temel işlevleri kullanılabilmelidir. Drive bağlayan her kullanıcının yedeği kendi Drive alanına yazılmalı; hedef haftalık yedek ve en fazla üç başarılı yedeği tutmaktır.
+- Google Drive yedeklemesi kullanıcı isteğiyle bu sürüm kapsamından çıkarılmıştır; ertelenmiştir ve tablet APK / ilk kullanım testlerinin engeli değildir. Bu aşamada Drive bağlantısı, OAuth, otomatik yedek ve geri yükleme geliştirmesi yapılmayacaktır.
 - KVKK aydınlatma metni ile açık rıza birbirinden ayrılır. Açık rıza yalnızca gerçekten gerekli olduğu işlemler için alınır; bildirim izni ayrı ve isteğe bağlıdır. Veri sorumlusu kimliği/iletişim bilgisi uydurulmaz.
 - APK üretmek tek başına özelliği tamamlamaz. Tablet testleri kullanıcı tarafından yapılır; telefon güncellemesi tablet testleri geçtikten ve imza doğrulandıktan sonra hazırlanır.
 
@@ -66,7 +66,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Ödev görüntüleme, tamamlama bildirimi, öğretmen tarafı görünümü ve PDF üretimi test edildi.
 - [ ] Silme testleri yalnızca önceden yedek/geri dönüşü doğrulanmış, açıkça belirlenmiş öğrenci kaydı üzerinde yapıldı.
 - [ ] Hata düzeltmeleri ve regresyon testleri tamamlandı.
-- [ ] KVKK metinleri, onay kayıtları, geri çekme ve veri sahibi hakları akışları gözden geçirildi; hukuki inceleme ihtiyacı belirtildi.
+- [ ] KVKK taslak metni ve kayıt ekranı kullanıcıya gösterilecek; veri sorumlusu ad-soyad alanı `.......` bırakılacak. Mağaza yayını öncesi gerçek bilgiler girilecek ve hukuki inceleme yapılacak.
 - [ ] Tablet testleri geçtikten sonra telefon imza eşleşmesi doğrulandı ve güncelleme APK'sı hazırlandı.
 - [ ] Temizlik, geçici dosya/yedek ayıklama ve depo düzeni ancak yayın sonrası ve yedekler doğrulandıktan sonra yapıldı.
 
@@ -79,10 +79,8 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Yedek kapsamı, geri yükleme yöntemi ve geri dönüş adımları doğrulandı.
 - [ ] Bu denetim bitmeden canlıya dağıtım yapılmadı.
 
-## Aşama 3 — Drive, KVKK ve yarım işler
-- [ ] Google Drive bağlantısı isteğe bağlı tasarlandı; bağlantı olmadan uygulamanın ana işlevleri çalışır.
-- [ ] Kullanıcı başına yalnızca kendi Drive alanına yedekleme; haftalık otomasyon; en fazla üç başarılı yedeği tutma; hata bildirimi ve geri yükleme doğrulaması uygulandı.
-- [ ] OAuth izinleri en az yetki ilkesine göre seçildi; tokenlar güvenli saklandı; token iptali/bağlantı kesme akışı eklendi.
+## Aşama 3 — KVKK kayıt akışı ve ertelenen işler
+- [x] Google Drive yedeklemesi bu sürümden ertelendi; mevcut iş akışında yapılmayacak.
 - [ ] KVKK aydınlatma metni: veri sorumlusu, amaçlar, veri kategorileri, alıcılar/aktarim, hukuki sebep, saklama, ilgili kişi hakları ve iletişim kanalı.
 - [ ] Açık rıza, aydınlatma metninden ayrıldı ve yalnızca gerekli işlem için alındı.
 - [ ] Bildirim izni ayrı, isteğe bağlı ve geri alınabilir olarak kaydedildi.
@@ -98,7 +96,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Gerekli indeks ve sorgu testleri.
 - [ ] Öğretmen temel iş akışları için regresyon kontrolü.
 - [ ] Öğrenci izin sınırları ve veri ayrımı için güvenlik kontrolü.
-- [ ] KVKK/Drive otomasyon testleri.
+- [ ] KVKK kayıt/onay akışı testleri.
 - [ ] Sürüm, paket kimliği, EAS projesi, build profili ve imza kontrolü.
 
 ## Aşama 5 — Kontrollü canlı dağıtım
@@ -145,6 +143,10 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Grup 4 commit'i `676266565d995e6042c7e99c1348f57882b18ba6` için GitHub Actions güvenlik iş akışı başarılı.
 - `firebaseConfig.js` içinde `ACCOUNT_LINKING_ENABLED=false`.
 - `screens/OgrenciKayitEkrani.js` bu bayrak kapalıyken öğrenci hesap oluşturma akışını açıkça engelliyor.
-- Depo ağacında KVKK/onay veya Drive yedekleme uygulamasına ait ayrı bir modül/metin henüz görünmüyor; bu özellikler kod taramasıyla ayrıca doğrulanmalı.
+- Depo ağacında KVKK aydınlatma/onay ekranı veya metni henüz bulunmuyor; kayıt ekranlarına eklenmesi gerekiyor. Veri sorumlusu adı-soyadı şimdilik `.......` olarak bırakılacak.
+- Google Drive yedeklemesi kullanıcı talimatıyla ertelendi; APK hazırlığına engel değil.
+- PR #12 (Grup 3 + Grup 4) 22.11.2026 tarihinde entegrasyon dalına birleştirildi; PR #11 yinelenen değişiklik olduğu için kapatıldı.
+- Entegrasyon dalı son commit `591c4a2f7a5a34aff032eef5c5bef87e06cf0bcc`; Firestore ve hesap güvenliği CI çalışması `45018645836` başarıyla tamamlandı.
+- `firebase.json` artık `firestore.indexes.json` dosyasını deploy yapılandırmasına bağlıyor.
 - Canlı rules/Functions/indexes dağıtımı, FCM V1 ve gerçek cihaz push testi henüz kanıtlanmış değil.
 - EAS/telefon imza sertifikası karşılaştırması henüz yapılmadı.
