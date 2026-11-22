@@ -328,7 +328,7 @@ service cloud.firestore {
           request.resource.data.durum == 'reddedildi'
           ||
           (request.resource.data.durum == 'onaylandi'
-            && linkId == [request.auth.uid, resource.data.ogrenciUid, resource.data.sinifId].join('__')
+            && linkId == request.auth.uid + '__' + resource.data.ogrenciUid + '__' + resource.data.sinifId
             && existsAfter(studentLinkDocPath(linkId))
             && getAfter(studentLinkDocPath(linkId)).data.talepId == requestId
             && getAfter(studentLinkDocPath(linkId)).data.ogrenciUid == resource.data.ogrenciUid
@@ -343,9 +343,9 @@ service cloud.firestore {
       let requestData = getAfter(requestPath).data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciKayitId);
       let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
-      let indexPath = studentRecordIndexPath([request.auth.uid, data.ogrenciKayitId].join('__'));
+      let indexPath = studentRecordIndexPath(request.auth.uid + '__' + data.ogrenciKayitId);
       return isTeacher()
-        && linkId == [request.auth.uid, data.ogrenciUid, data.sinifId].join('__')
+        && linkId == request.auth.uid + '__' + data.ogrenciUid + '__' + data.sinifId
         && existsAfter(requestPath)
         && requestData.durum == 'onaylandi'
         && requestData.baglantiId == linkId
@@ -378,7 +378,7 @@ service cloud.firestore {
       let data = request.resource.data;
       let linkPath = studentLinkDocPath(data.baglantiId);
       return isTeacher()
-        && indexId == [request.auth.uid, data.ogrenciKayitId].join('__')
+        && indexId == request.auth.uid + '__' + data.ogrenciKayitId
         && existsAfter(linkPath)
         && getAfter(linkPath).data.ogretmenUid == request.auth.uid
         && getAfter(linkPath).data.ogrenciKayitId == data.ogrenciKayitId
@@ -395,7 +395,7 @@ service cloud.firestore {
       let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
       let homework = get(homeworkPath).data;
       return isStudent()
-        && notificationId == [request.auth.uid, data.baglantiId, data.odevId].join('__')
+        && notificationId == request.auth.uid + '__' + data.baglantiId + '__' + data.odevId
         && data.ogrenciUid == request.auth.uid
         && exists(linkPath)
         && link.ogrenciUid == request.auth.uid
@@ -420,7 +420,7 @@ service cloud.firestore {
       let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
       let homework = get(homeworkPath).data;
       return isTeacher()
-        && notificationId == [data.odevId, data.ogrenciUid, data.baglantiId].join('__')
+        && notificationId == data.odevId + '__' + data.ogrenciUid + '__' + data.baglantiId
         && data.ogretmenUid == request.auth.uid
         && data.uid == request.auth.uid
         && exists(linkPath)
