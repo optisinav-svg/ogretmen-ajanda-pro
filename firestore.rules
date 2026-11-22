@@ -159,10 +159,8 @@ service cloud.firestore {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list: if false;
 
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasAny(['rol'])
-        && request.resource.data.rol == 'ogretmen';
+      // All profile creation and role assignment must pass through trusted Cloud Functions.
+      allow create: if false;
 
       // Profil rolü oluşturulduktan sonra değiştirilemez.
       allow update: if signedIn()
@@ -274,14 +272,14 @@ service cloud.firestore {
     match /bireyselEtkinlikler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod();
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data);
       allow delete: if ownsEditablePeriodRecord();
     }
 
     match /bireyselDersOturumlari/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod();
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClass(request.resource.data) && individualEventBelongsToTeacher(request.resource.data);
       allow delete: if ownsEditablePeriodRecord();
     }
 
