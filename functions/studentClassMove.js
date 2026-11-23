@@ -37,6 +37,23 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     const student = studentSnap.data();
     const target = targetSnap.data();
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
+    const activeLinks = linksSnap.docs.filter(doc => doc.get('durum') === 'active');
+    const currentLink = activeLinks[0] || null;
+    let newLinkRef = null;
+    let newLinkSnap = null;
+    let newLinkId = null;
+    if (currentLink && currentLink.get('sinifId') !== hedefSinifId) {
+      const oldData = currentLink.data();
+      newLinkId = [teacherUid, oldData.ogrenciUid, hedefSinifId].join('__');
+      newLinkRef = db.collection('ogretmenOgrenciBaglantilari').doc(newLinkId);
+      newLinkSnap = await tx.get(newLinkRef);
+      if (newLinkSnap.exists && newLinkSnap.get('durum') === 'active'
+        && newLinkSnap.get('ogrenciKayitId') !== ogrenciKayitId) {
+        throw new HttpsError('already-exists', 'Hedef sınıfta aynı öğrenci hesabına ait başka bir etkin bağlantı var.');
+      }
+    }
+
+    // All transaction reads are complete before the first write.
     tx.update(studentRef, {
       sinifGecmisi: FieldValue.arrayUnion({
         sinifId: student.sinifId,
@@ -59,21 +76,13 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       kayitsizTasiIslemi: FieldValue.delete(),
     });
 
-    const activeLinks = linksSnap.docs.filter(doc => doc.get('durum') === 'active');
     for (const oldLink of activeLinks) {
-      if (oldLink.get('sinifId') === hedefSinifId) continue;
-      tx.update(oldLink.ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
-    }
-    const currentLink = activeLinks[0];
-    if (currentLink) {
-      const oldData = currentLink.data();
-      const newLinkId = [teacherUid, oldData.ogrenciUid, hedefSinifId].join('__');
-      const newLinkRef = db.collection('ogretmenOgrenciBaglantilari').doc(newLinkId);
-      const newLinkSnap = await tx.get(newLinkRef);
-      if (newLinkSnap.exists && newLinkSnap.get('durum') === 'active'
-        && newLinkSnap.get('ogrenciKayitId') !== ogrenciKayitId) {
-        throw new HttpsError('already-exists', 'Hedef sınıfta aynı öğrenci hesabına ait başka bir etkin bağlantı var.');
+      if (oldLink.get('sinifId') !== hedefSinifId) {
+        tx.update(oldLink.ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
       }
+    }
+    if (currentLink && newLinkRef && newLinkId) {
+      const oldData = currentLink.data();
       const nextLink = {
         ...oldData,
         sinifId: hedefSinifId,
