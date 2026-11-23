@@ -1,0 +1,103 @@
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+
+const db = getFirestore();
+const REGION = 'europe-west1';
+
+exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request => {
+  const teacherUid = request.auth?.uid;
+  if (!teacherUid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
+  const profile = await db.collection('kullanicilar').doc(teacherUid).get();
+  if (!profile.exists || profile.get('rol') !== 'ogretmen') {
+    throw new HttpsError('permission-denied', 'Bu işlem yalnızca öğretmen hesabı tarafından yapılabilir.');
+  }
+  const { ogrenciKayitId, kaynakSinifId, hedefSinifId, donemYili, tasimaTarihi, neden } = request.data || {};
+  if (![ogrenciKayitId, kaynakSinifId, hedefSinifId].every(x => typeof x === 'string' && x.trim())
+    || !Number.isInteger(donemYili)) {
+    throw new HttpsError('invalid-argument', 'Öğrenci ve kaynak/hedef sınıf bilgileri geçerli olmalıdır.');
+  }
+  const studentRef = db.collection('ogrenciler').doc(ogrenciKayitId);
+  const targetRef = db.collection('siniflar').doc(hedefSinifId);
+  const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
+    .where('ogretmenUid', '==', teacherUid).where('ogrenciKayitId', '==', ogrenciKayitId);
+  const indexRef = db.collection('ogrenciKayitEslesmeleri').doc([teacherUid, ogrenciKayitId].join('__'));
+  await db.runTransaction(async tx => {
+    const [studentSnap, targetSnap, linksSnap, indexSnap] = await Promise.all([
+      tx.get(studentRef), tx.get(targetRef), tx.get(linksQuery), tx.get(indexRef),
+    ]);
+    if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
+      || studentSnap.get('sinifId') !== kaynakSinifId
+      || studentSnap.get('donemYili') !== donemYili) {
+      throw new HttpsError('failed-precondition', 'Öğrencinin mevcut sınıfı veya dönem bilgisi değişmiş.');
+    }
+    if (!targetSnap.exists || targetSnap.get('uid') !== teacherUid
+      || targetSnap.get('donemYili') !== donemYili || targetSnap.get('arsivlendi') === true) {
+      throw new HttpsError('failed-precondition', 'Hedef sınıf bulunamadı veya bu dönem için etkin değil.');
+    }
+    const student = studentSnap.data();
+    const target = targetSnap.data();
+    const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
+    tx.update(studentRef, {
+      sinifGecmisi: FieldValue.arrayUnion({
+        sinifId: student.sinifId,
+        sinifAd: student.sinifAd || '',
+        okulId: student.okulId || '',
+        okulAd: student.okulAd || '',
+        donemYili,
+        tarih: movedAt,
+        neden: neden === 'kayitsizlara_tasima' ? 'kayitsizlara_tasima' : 'sinif_degisikligi',
+      }),
+      sinifId: hedefSinifId,
+      sinifAd: target.ad || '',
+      okulId: target.okulId || '',
+      okulAd: target.okulAd || '',
+      kademe: target.kademe || '',
+      brans: target.ders || '',
+      kayitsizMi: target.ozelTur === 'kayitsiz',
+      ...(target.ozelTur === 'kayitsiz' ? { kayitsizTarihi: movedAt } : {}),
+      sinifTasiIslemi: FieldValue.delete(),
+      kayitsizTasiIslemi: FieldValue.delete(),
+    });
+
+    const activeLinks = linksSnap.docs.filter(doc => doc.get('durum') === 'active');
+    for (const oldLink of activeLinks) {
+      if (oldLink.get('sinifId') === hedefSinifId) continue;
+      tx.update(oldLink.ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
+    }
+    const currentLink = activeLinks[0];
+    if (currentLink) {
+      const oldData = currentLink.data();
+      const newLinkId = [teacherUid, oldData.ogrenciUid, hedefSinifId].join('__');
+      const newLinkRef = db.collection('ogretmenOgrenciBaglantilari').doc(newLinkId);
+      const newLinkSnap = await tx.get(newLinkRef);
+      if (newLinkSnap.exists && newLinkSnap.get('durum') === 'active'
+        && newLinkSnap.get('ogrenciKayitId') !== ogrenciKayitId) {
+        throw new HttpsError('already-exists', 'Hedef sınıfta aynı öğrenci hesabına ait başka bir etkin bağlantı var.');
+      }
+      const nextLink = {
+        ...oldData,
+        sinifId: hedefSinifId,
+        sinifAd: target.ad || '',
+        okulAd: target.okulAd || '',
+        kademe: target.kademe || '',
+        ders: target.ders || '',
+        durum: 'active',
+        iptalTarihi: null,
+        tasinmaTarihi: FieldValue.serverTimestamp(),
+      };
+      if (newLinkSnap.exists) tx.set(newLinkRef, nextLink, { merge: true });
+      else tx.create(newLinkRef, nextLink);
+      if (indexSnap.exists && indexSnap.get('ogrenciUid') === oldData.ogrenciUid) {
+        tx.set(indexRef, {
+          ...indexSnap.data(),
+          sinifId: hedefSinifId,
+          baglantiId: newLinkId,
+          durum: 'active',
+          iptalTarihi: null,
+          guncellenme: FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+    }
+  });
+  return { durum: 'tasindi', ogrenciKayitId, hedefSinifId };
+});
