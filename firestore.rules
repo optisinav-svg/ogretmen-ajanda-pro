@@ -124,10 +124,23 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/$(collectionName)/$(documentId)).data.uid == request.auth.uid;
     }
 
+    function schoolAcceptsNewRecords(schoolId) {
+      return schoolId == ''
+        || (schoolId is string
+          && ownsDocument('okullar', schoolId)
+          && get(/databases/$(database)/documents/okullar/$(schoolId)).data.get('arsivlendi', false) != true
+          && get(/databases/$(database)/documents/okullar/$(schoolId)).data.get('arsivDurumu', '') != 'isleniyor');
+    }
+
     function classBelongsToTeacher(data) {
+      let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
+      let classData = get(classPath).data;
       return data.sinifId is string
         && ownsDocument('siniflar', data.sinifId)
-        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+        && classData.donemYili == data.donemYili
+        && classData.get('arsivlendi', false) != true
+        && classData.get('arsivDurumu', '') != 'isleniyor'
+        && schoolAcceptsNewRecords(classData.get('okulId', ''));
     }
 
     function studentBelongsToClass(data) {
@@ -136,8 +149,7 @@ service cloud.firestore {
         && ownsDocument('ogrenciler', data.ogrenciId)
         && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
         && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
-        && ownsDocument('siniflar', data.sinifId)
-        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+        && classBelongsToTeacher(data);
     }
 
     // Sınıf taşıma sırasında kitap/konu kayıtları, öğrenci kaydındaki açık
@@ -160,8 +172,7 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/siniflar/$(get(studentPath).data.sinifId)).data.donemYili == data.donemYili
           )
         )
-        && ownsDocument('siniflar', data.sinifId)
-        && get(/databases/$(database)/documents/siniflar/$(data.sinifId)).data.donemYili == data.donemYili;
+        && classBelongsToTeacher(data);
     }
 
     function schoolBelongsToTeacher(data) {
