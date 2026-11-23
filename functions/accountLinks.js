@@ -67,6 +67,11 @@ function isAcademicPeriodEditable(period, date = new Date()) {
   return today >= `${period}-06-01` && today <= `${period + 1}-06-30`;
 }
 
+function studentBelongsToLinkedClass(student, classId) {
+  return student?.sinifId === classId
+    || (Array.isArray(student?.sinifGecmisiIds) && student.sinifGecmisiIds.includes(classId));
+}
+
 function hasMatchingAcademicPeriod(student, classData) {
   return Number.isInteger(student?.donemYili)
     && Number.isInteger(classData?.donemYili)
@@ -425,9 +430,8 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const [homeworkSnap, studentSnap, classSnap, notificationSnap] = await Promise.all([
       tx.get(homeworkRef), tx.get(studentRef), tx.get(classRef), tx.get(notificationRef),
     ]);
-    const historicalClassIds = studentSnap.exists ? (studentSnap.get('sinifGecmisiIds') || []) : [];
     if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid
-      || (studentSnap.get('sinifId') !== link.sinifId && !historicalClassIds.includes(link.sinifId))
+      || (!studentBelongsToLinkedClass(studentSnap.data(), link.sinifId))
       || studentSnap.get('donemYili') !== link.donemYili
       || !classSnap.exists || classSnap.get('uid') !== link.ogretmenUid
       || classSnap.get('donemYili') !== link.donemYili) {
@@ -485,6 +489,7 @@ module.exports._test = {
   istanbulDateString,
   isAcademicPeriodEditable,
   hasMatchingAcademicPeriod,
+  studentBelongsToLinkedClass,
   normalizePermissions,
   CODE_TTL_MS,
   PERMISSION_KEYS,
