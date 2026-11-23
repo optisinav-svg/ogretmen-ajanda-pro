@@ -57,6 +57,7 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
     ? await db.collection('siniflar').doc(student.sinifId).get()
     : null;
   if (!classSnap?.exists || classSnap.get('uid') !== teacherUid
+    || classSnap.get('donemYili') !== student.donemYili
     || classSnap.get('ozelTur') !== 'kayitsiz') {
     throw new HttpsError('failed-precondition', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfında bulunan öğrenci kayıtları için yapılabilir.');
   }
