@@ -31,18 +31,20 @@ export default function OdevEkrani({route}){
     const now=new Date().toISOString();
     let konuAlan=kitapSecili?(hedef==='sinif'?{kitapId:kitapSecili.id,kitapAd:kitapSecili.ad,kitapKutuphanesiId:kitapSecili.id}:{kitapId:kitapSecili.id,kitapAd:kitapSecili.ad}):{};
     if(seciliKonu){
-      if(hedef==='sinif'){
-        const eslestirmeler={};
-        const eksik=[];
+      const kaynakKitapId=hedef==='sinif'?seciliKonu.kitapId:kitapSecili?.kitapKutuphanesiId;
+      const kaynakKonuId=hedef==='sinif'?seciliKonu.id:seciliKonu.kitapKutuphanesiKonuId;
+      if(kaynakKitapId&&kaynakKonuId){
+        const eslestirmeler={},eksik=[];
         hedefler.forEach(student=>{
-          const assignedBook=kitaplar.find(k=>k.ogrenciId===student.id&&k.kitapKutuphanesiId===seciliKonu.kitapId);
-          const assignedTopic=assignedBook&&konular.find(k=>k.kitapId===assignedBook.id&&k.kitapKutuphanesiKonuId===seciliKonu.id);
+          const assignedBook=kitaplar.find(k=>k.ogrenciId===student.id&&k.kitapKutuphanesiId===kaynakKitapId);
+          const assignedTopic=assignedBook&&konular.find(k=>k.kitapId===assignedBook.id&&k.kitapKutuphanesiKonuId===kaynakKonuId);
           if(assignedTopic)eslestirmeler[student.id]=assignedTopic.id;else eksik.push(student.adSoyad||'Öğrenci');
         });
         if(eksik.length)return Alert.alert('Kitap ataması eksik','Seçilen konu şu öğrencilere atanmış değil: '+eksik.join(', ')+'. Önce ortak kütüphanedeki kitabı bu öğrencilere atayın.');
-        konuAlan={kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,kitapKutuphanesiId:seciliKonu.kitapId,kitapKutuphanesiKonuId:seciliKonu.id,konuEslestirmeleri:eslestirmeler,konuAd:seciliKonu.ad,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)};
+        konuAlan={kitapId:kaynakKitapId,kitapAd:seciliKonu.kitapAd,kitapKutuphanesiId:kaynakKitapId,kitapKutuphanesiKonuId:kaynakKonuId,konuEslestirmeleri:eslestirmeler,konuId:hedefler.length===1?eslestirmeler[hedefler[0].id]:null,konuAd:seciliKonu.ad,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)};
       }else{
-        konuAlan={konuId:seciliKonu.id,kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,kitapKutuphanesiId:kitapSecili?.kitapKutuphanesiId||null,kitapKutuphanesiKonuId:seciliKonu.kitapKutuphanesiKonuId||null,konuAd:seciliKonu.ad,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)};
+        if(hedefler.length>1)return Alert.alert('Çoklu öğrenci ataması','Bu eski kitap kaydında ortak kütüphane eşleştirmesi bulunmuyor. Bu konuyu aynı anda yalnızca bir öğrenciye atayabilirsiniz.');
+        konuAlan={konuId:seciliKonu.id,kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,konuAd:seciliKonu.ad,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)};
       }
     }
     const targetIds=hedefler.map(x=>x.id);
