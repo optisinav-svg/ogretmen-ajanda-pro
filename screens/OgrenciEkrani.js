@@ -114,7 +114,7 @@ export default function OgrenciEkrani({route,navigation}){
       await ogrencileriYukle();
       Alert.alert('Tamamlandı','Yalnızca bu öğretmene ait öğrenci kaydı ve ilişkili veriler silindi. Öğrenci hesabı ve diğer öğretmen bağlantıları korundu.');
      }catch(e){
-      Alert.alert('Silinemedi',e?.message||'Öğrenci kaydı silinemedi. Kayıtlar korunuyor.');
+      Alert.alert('Silme tamamlanamadı','İşlem yarıda kaldıysa bazı ilişkili kayıtlar silinmiş olabilir. Öğrenci kaydı listede duruyorsa aynı işlemi yeniden deneyerek kalan kayıtları tamamlayabilirsiniz. '+(e?.message||''));
      }
     }}
    ]
