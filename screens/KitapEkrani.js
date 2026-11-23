@@ -57,6 +57,7 @@ export default function KitapEkrani({route,navigation}){
   olusturulma:zaman
  });
 
+ // Eşitleme tekrar çalıştırıldığında eksik konu kopyalarını tamamlar; öğrenci ödev kayıtlarına dokunmaz.
  const kutuphaneAtamalariniEsitle=async(kitapId,{kitapData=null,konuId=null,konuData=null}={})=>{
   const [kitapSnap,konuSnap]=await Promise.all([
    getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
