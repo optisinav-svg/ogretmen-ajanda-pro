@@ -418,8 +418,9 @@ exports.ogrenciOdevTamamlandiBildir = onCall({ region: REGION }, async (request)
     const [homeworkSnap, studentSnap, classSnap, notificationSnap] = await Promise.all([
       tx.get(homeworkRef), tx.get(studentRef), tx.get(classRef), tx.get(notificationRef),
     ]);
+    const historicalClassIds = studentSnap.exists ? (studentSnap.get('sinifGecmisiIds') || []) : [];
     if (!studentSnap.exists || studentSnap.get('uid') !== link.ogretmenUid
-      || studentSnap.get('sinifId') !== link.sinifId
+      || (studentSnap.get('sinifId') !== link.sinifId && !historicalClassIds.includes(link.sinifId))
       || studentSnap.get('donemYili') !== link.donemYili
       || !classSnap.exists || classSnap.get('uid') !== link.ogretmenUid
       || classSnap.get('donemYili') !== link.donemYili) {
