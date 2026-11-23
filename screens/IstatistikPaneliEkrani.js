@@ -4,11 +4,11 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { getIdTokenResult } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, getCountFromServer, query, where, limit, writeBatch, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { collection, getDocs, getCountFromServer, query, where } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { auth, db, functions } from '../firebaseConfig';
 
 const number = value => Number(value || 0).toLocaleString('tr-TR');
-const RETENTION_COLLECTIONS = ['dersler', 'dersNotlari', 'yoklamalar', 'odevler', 'kitaplar', 'konular'];
 const istanbulDateParts = () => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric',
@@ -116,8 +116,8 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   useEffect(() => { load(); }, [load]);
 
   const retentionDate = istanbulDateParts();
-  const retentionAvailable = retentionDate.year >= 2028 && retentionDate.month === 7;
-  const retentionTargetYear = retentionDate.year - 2;
+  const retentionAvailable = retentionDate.year >= 2029 && retentionDate.month === 7;
+  const retentionTargetYear = retentionDate.year - 3;
 
   const previewRetentionCleanup = async () => {
     if (!retentionAvailable || cleanupBusy) return;
@@ -127,22 +127,26 @@ export default function IstatistikPaneliEkrani({ navigation }) {
     try {
       const token = await getIdTokenResult(auth.currentUser, true);
       if (token.claims.uygulamaSahibi !== true) throw new Error('Uygulama sahibi yetkisi doğrulanamadı.');
-      const lockRef = doc(db, 'donemTemizlikKayitlari', String(retentionDate.year));
-      const lockSnap = await getDoc(lockRef);
-      if (lockSnap.exists()) {
-        setCleanupMessage(` ${retentionTargetYear} dönemi için Temmuz ${retentionDate.year} temizliği daha önce tamamlanmış.`.trim());
+      const preview = httpsCallable(functions, 'uygulamaSahibiDonemTemizliginiOnizle');
+      const response = await preview({});
+      const result = response.data || {};
+      if (result.status === 'completed') {
+        setCleanupMessage(`${result.targetYear} dönemi için Temmuz ${retentionDate.year} temizliği daha önce tamamlanmış.`);
         return;
       }
-      const entries = await Promise.all(RETENTION_COLLECTIONS.map(async name => {
-        const result = await getCountFromServer(query(
-          collection(db, name),
-          where('donemYili', '==', retentionTargetYear),
-        ));
-        return [name, result.data().count];
-      }));
-      const counts = Object.fromEntries(entries);
-      const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
-      setCleanupPreview({ currentYear: retentionDate.year, targetYear: retentionTargetYear, counts, total });
+      if (result.status === 'running') {
+        setCleanupMessage('Dönem temizliği başka bir oturumda devam ediyor. Kilit süresi dolana kadar yeni işlem başlatılamaz.');
+        return;
+      }
+      if (result.status === 'failed') {
+        setCleanupMessage('Önceki temizlik yarıda kalmış. Onay verirseniz aynı işlem güvenli biçimde kaldığı yerden tamamlanır.');
+      }
+      setCleanupPreview({
+        currentYear: retentionDate.year,
+        targetYear: result.targetYear,
+        counts: result.counts || {},
+        total: Number(result.total || 0),
+      });
     } catch (e) {
       setCleanupMessage(e?.message || 'Dönem kayıtları önizlenemedi.');
     } finally {
@@ -153,9 +157,9 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   const executeRetentionCleanup = async () => {
     if (!cleanupPreview || cleanupBusy) return;
     const now = istanbulDateParts();
-    if (now.month !== 7 || now.year < 2028 || now.year !== cleanupPreview.currentYear) {
+    if (now.month !== 7 || now.year < 2029 || now.year !== cleanupPreview.currentYear) {
       setCleanupPreview(null);
-      setCleanupMessage('Temizlik yalnızca Temmuz ayında ve yalnızca ilgili yılın kayıtları için başlatılabilir.');
+      setCleanupMessage('Temizlik yalnızca Temmuz ayında ve üç yıllık saklama süresi dolan dönem için başlatılabilir.');
       return;
     }
     setCleanupBusy(true);
@@ -163,41 +167,14 @@ export default function IstatistikPaneliEkrani({ navigation }) {
     try {
       const token = await getIdTokenResult(auth.currentUser, true);
       if (token.claims.uygulamaSahibi !== true) throw new Error('Uygulama sahibi yetkisi doğrulanamadı.');
-      const lockRef = doc(db, 'donemTemizlikKayitlari', String(now.year));
-      if ((await getDoc(lockRef)).exists()) throw new Error('Bu yılın temizliği daha önce tamamlanmış.');
-      const deletedCounts = {};
-      for (const name of RETENTION_COLLECTIONS) {
-        let deleted = 0;
-        while (true) {
-          const page = await getDocs(query(
-            collection(db, name),
-            where('donemYili', '==', cleanupPreview.targetYear),
-            limit(400),
-          ));
-          if (page.empty) break;
-          const batch = writeBatch(db);
-          page.docs.forEach(item => batch.delete(item.ref));
-          await batch.commit();
-          deleted += page.size;
-        }
-        deletedCounts[name] = deleted;
-      }
-      const totalDeleted = Object.values(deletedCounts).reduce((sum, value) => sum + value, 0);
-      await setDoc(lockRef, {
-        cleanupId: String(now.year),
-        currentYear: now.year,
-        targetYear: cleanupPreview.targetYear,
-        completedBy: auth.currentUser.uid,
-        completedAt: serverTimestamp(),
-        counts: deletedCounts,
-        totalDeleted,
-        policyVersion: 1,
-      });
+      const cleanup = httpsCallable(functions, 'uygulamaSahibiDonemTemizliginiOnayla');
+      const response = await cleanup({ confirm: true });
+      const result = response.data || {};
       setCleanupPreview(null);
-      setCleanupMessage(`Temizlik tamamlandı: yalnızca ${cleanupPreview.targetYear} dönemine ait ${number(totalDeleted)} kayıt silindi. Diğer dönemler ve öğrenci/sınıf/profil kayıtları korunmuştur.`);
+      setCleanupMessage(`Temizlik tamamlandı: ${result.targetYear} dönemine ait ${number(result.totalDeleted)} kayıt silindi. Öğrenci uygulama hesapları ve diğer dönem kayıtları korundu.`);
       await load(true);
     } catch (e) {
-      setCleanupMessage(`Temizlik tamamlanamadı: ${e?.message || 'Bilinmeyen hata'}. İşlem yarıda kaldıysa tekrar önizleme yapıldığında yalnızca kalan kayıtlar sayılır.`);
+      setCleanupMessage(`Temizlik tamamlanamadı: ${e?.message || 'Bilinmeyen hata'}. İşlem kilidi süre aşımından sonra güvenli biçimde yeniden denenebilir.`);
     } finally {
       setCleanupBusy(false);
     }
@@ -205,19 +182,18 @@ export default function IstatistikPaneliEkrani({ navigation }) {
 
   const confirmRetentionCleanup = () => {
     if (!cleanupPreview) return;
-    const summary = RETENTION_COLLECTIONS.map(name =>
-      `${name}: ${number(cleanupPreview.counts[name] || 0)}`
+    const summary = Object.entries(cleanupPreview.counts || {}).map(([name, count]) =>
+      `${name}: ${number(count || 0)}`
     ).join('\\n');
     Alert.alert(
       `${cleanupPreview.targetYear} dönemi silinecek`,
-      `Yalnızca aşağıdaki altı koleksiyonda ${cleanupPreview.targetYear} yılına ait kayıtlar silinecek. Bu işlem geri alınamaz.\\n\\n${summary}\\n\\nToplam: ${number(cleanupPreview.total)} kayıt.`,
+      `Üç yıllık saklama süresi dolan döneme ait aşağıdaki öğretmen verileri ve öğrenciye bağlı kayıtlar kalıcı olarak silinecek. Öğrencilerin genel uygulama hesapları ve diğer dönem kayıtları korunacak. İşlem geri alınamaz.\\n\\n${summary}\\n\\nToplam: ${number(cleanupPreview.total)} kayıt.`,
       [
         { text: 'Vazgeç', style: 'cancel' },
         { text: 'Silme işlemini başlat', style: 'destructive', onPress: executeRetentionCleanup },
       ],
     );
   };
-
 
   const goHome = () => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -286,19 +262,19 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Yıllık dönem arşivi ve temizliği</Text>
           {!retentionAvailable ? (
-            <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2028'de başlayabilir ve yalnızca 2026 kayıtlarını kapsar. Sonraki yıllarda her seferinde yalnızca iki yıl önceki dönem temizlenir. Şu anda hiçbir kayıt silinemez.</Text>
+            <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2029'da başlayabilir ve 2026 dönemini kapsar. Sonraki yıllarda üç yılını dolduran tek dönem, yalnızca uygulama sahibi onayıyla temizlenir.</Text>
           ) : (
             <>
-              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: yalnızca {retentionTargetYear} dönemine ait ders, ders notu, yoklama, ödev, kitap ve konu kayıtları temizlenebilir. Okul, sınıf, öğrenci, profil, bağlantı ve Firebase Auth hesapları kapsam dışıdır.</Text>
+              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: üç yılını dolduran {retentionTargetYear} dönemine ait öğretmen kayıtları, öğrenciye bağlı veriler, sınıflar, okullar, eşleştirme ve bildirim kayıtları temizlenebilir. Genel kullanıcı profilleri, Firebase Auth hesapları ve diğer dönemler korunur.</Text>
               <TouchableOpacity style={s.cleanupButton} disabled={cleanupBusy} onPress={previewRetentionCleanup}>
                 <Text style={s.cleanupButtonText}>{cleanupBusy ? 'İşlem sürüyor…' : 'Silinecek kayıtları önizle'}</Text>
               </TouchableOpacity>
               {!!cleanupPreview && (
                 <View style={s.cleanupPreview}>
-                  {RETENTION_COLLECTIONS.map(name => (
+                  {Object.entries(cleanupPreview.counts || {}).map(([name, count]) => (
                     <View key={name} style={s.row}>
                       <Text style={s.rowTitle}>{name}</Text>
-                      <Text style={s.rowValue}>{number(cleanupPreview.counts[name] || 0)}</Text>
+                      <Text style={s.rowValue}>{number(count || 0)}</Text>
                     </View>
                   ))}
                   <Text style={s.cleanupTotal}>Toplam: {number(cleanupPreview.total)} kayıt</Text>

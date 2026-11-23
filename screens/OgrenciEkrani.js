@@ -1,7 +1,8 @@
 import React,{useState,useEffect}from'react';
 import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,ActivityIndicator,KeyboardAvoidingView,Platform}from'react-native';
-import {collection,addDoc,getDocs,getDoc,doc,query,where,updateDoc,arrayUnion,deleteField}from'firebase/firestore';
-import {auth,db}from'../firebaseConfig';
+import {collection,addDoc,getDocs,getDoc,doc,query,where,updateDoc,deleteField}from'firebase/firestore';
+import {auth,db,functions}from'../firebaseConfig';
+import {httpsCallable} from'firebase/functions';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
 export default function OgrenciEkrani({route,navigation}){
  const {sinif}=route.params||{};
@@ -81,25 +82,14 @@ export default function OgrenciEkrani({route,navigation}){
           if (sonDurum.sinifId !== sinif.id && sonDurum.sinifId !== hedef.id) {
             throw new Error('Öğrenci başka bir sınıfa taşınmış. Listeyi yenileyin.');
           }
-          await updateDoc(ogrenciRef, {
-            sinifGecmisi: arrayUnion({
-              sinifId: islem.kaynakSinifId,
-              sinifAd: o.sinifAd || sinif.ad,
-              okulId: o.okulId || sinif.okulId || '',
-              okulAd: o.okulAd || sinif.okulAd || '',
-              donemYili,
-              tarih: islem.tarih,
-              neden: 'kayitsizlara_tasima',
-            }),
-            sinifId: hedef.id,
-            sinifAd: hedef.ad,
-            okulId: hedef.okulId || '',
-            okulAd: hedef.okulAd || '',
-            kademe: '',
-            brans: '',
-            kayitsizMi: true,
-            kayitsizTarihi: islem.tarih,
-            kayitsizTasiIslemi: deleteField(),
+          const moveStudent = httpsCallable(functions,'ogretmenOgrenciKaydiniTasi');
+          await moveStudent({
+            ogrenciKayitId:o.id,
+            kaynakSinifId:islem.kaynakSinifId,
+            hedefSinifId:hedef.id,
+            donemYili,
+            tasimaTarihi:islem.tarih,
+            neden:'kayitsizlara_tasima',
           });
           await ogrencileriYukle();
           Alert.alert('Tamamlandı', 'Öğrenci kaydı korunarak Kayıtsız Öğrenciler sınıfına taşındı.');
@@ -108,6 +98,26 @@ export default function OgrenciEkrani({route,navigation}){
         }
       }},
     ],
+  );
+ };
+ const ogrenciKaliciSil = o => {
+  if (sinif?.ozelTur !== 'kayitsiz') return Alert.alert('İşlem yapılamadı', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfındaki kayıtlar için yapılabilir.');
+  Alert.alert(
+   'Öğrenci kaydını kalıcı sil',
+   `${o.adSoyad} adlı öğrencinin yalnızca sizin öğretmen hesabınızdaki öğrenci kaydı, yoklama, ödev, kitap, konu ilerlemesi, ders/etüt geçmişi ve bu kayda ait bildirimleri kalıcı olarak silinecek. Bu işlem geri alınamaz. Öğrencinin genel uygulama hesabı ve diğer öğretmenlerle bağlantıları korunur.`,
+   [
+    {text:'Vazgeç',style:'cancel'},
+    {text:'Kalıcı olarak sil',style:'destructive',onPress:async()=>{
+     try{
+      const remove= httpsCallable(functions,'ogretmenOgrenciKaydiniKaliciSil');
+      await remove({ogrenciKayitId:o.id,confirm:true});
+      await ogrencileriYukle();
+      Alert.alert('Tamamlandı','Yalnızca bu öğretmene ait öğrenci kaydı ve ilişkili veriler silindi. Öğrenci hesabı ve diğer öğretmen bağlantıları korundu.');
+     }catch(e){
+      Alert.alert('Silme tamamlanamadı','İşlem yarıda kaldıysa bazı ilişkili kayıtlar silinmiş olabilir. Öğrenci kaydı listede duruyorsa aynı işlemi yeniden deneyerek kalan kayıtları tamamlayabilirsiniz. '+(e?.message||''));
+     }
+    }}
+   ]
   );
  };
  const ogrenciTasi=async(o,yeniSinif)=>{
@@ -140,10 +150,14 @@ export default function OgrenciEkrani({route,navigation}){
     const d=x.data();
     if(donemUygun(d,donemYili))await updateDoc(x.ref,{sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||d.kademe||'',brans:yeniSinif.ders||d.brans||''});
    }
-   await updateDoc(ogrenciRef,{
-    sinifGecmisi:arrayUnion({sinifId:sinif.id,sinifAd:o.sinifAd||sinif.ad,okulId:o.okulId||sinif.okulId||'',okulAd:o.okulAd||sinif.okulAd||'',donemYili,tarih:islem.tarih,neden:'sinif_degisikligi'}),
-    sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||'',brans:yeniSinif.ders||'',kayitsizMi:!!yeniSinif.ozelTur,
-    sinifTasiIslemi:deleteField()
+   const moveStudent = httpsCallable(functions,'ogretmenOgrenciKaydiniTasi');
+   await moveStudent({
+    ogrenciKayitId:o.id,
+    kaynakSinifId:islem.kaynakSinifId,
+    hedefSinifId:yeniSinif.id,
+    donemYili,
+    tasimaTarihi:islem.tarih,
+    neden:'sinif_degisikligi',
    });
    setTasimaci(null);setTasimaModal(false);
    await ogrencileriYukle();
@@ -153,7 +167,7 @@ export default function OgrenciEkrani({route,navigation}){
   }
  };
  if(yukleniyor)return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
- return <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS==='ios'?'padding':'height'}><View style={s.header}><Text style={s.title}>{sinif?.ad} - Öğrenciler</Text><Text style={s.school}>{sinif?.okulAd||'Okul belirtilmemiş'}{sinif?.kademe?` • ${sinif.kademe}. Sınıf`:''}{sinif?.ders?` • ${sinif.ders}`:''}</Text></View><ScrollView contentContainerStyle={{padding:12,paddingBottom:150}}>{!ogrenciler.length&&<Text style={s.empty}>Henüz öğrenci eklenmemiş.</Text>}{ogrenciler.map((o,i)=><View key={o.id} style={s.card}><TouchableOpacity style={s.main} onPress={()=>navigation.navigate('Rapor',{sinif,ogrenci:o,donemYili})}><View style={s.num}><Text style={s.numT}>{i+1}</Text></View><View style={{flex:1}}><Text style={s.name}>{o.adSoyad}</Text>{o.telefon?<Text style={s.phone}>📞 {o.telefon}</Text>:null}<Text style={s.reportHint}>Raporlar ›</Text></View><Text style={s.arrow}>›</Text></TouchableOpacity><View style={s.actions}><TouchableOpacity style={s.editBtn} onPress={()=>formAc(o)}><Text style={s.editT}>✏️ Düzenle</Text></TouchableOpacity><TouchableOpacity style={s.moveBtn} onPress={()=>{setTasimaci(o);setTasimaModal(true)}}><Text style={s.moveT}>↔️ Sınıf Değiştir</Text></TouchableOpacity>{!sinif?.ozelTur&&<TouchableOpacity style={s.delBtn} onPress={()=>ogrenciSil(o)}><Text style={s.delT}>📦 Kayıtsızlara Taşı</Text></TouchableOpacity>}</View></View>)}</ScrollView>{!sinif?.ozelTur&&!sinif?.arsivlendi&&<TouchableOpacity style={s.add} onPress={()=>formAc()}><Text style={s.addT}>+ Öğrenci Ekle</Text></TouchableOpacity>}
+ return <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS==='ios'?'padding':'height'}><View style={s.header}><Text style={s.title}>{sinif?.ad} - Öğrenciler</Text><Text style={s.school}>{sinif?.okulAd||'Okul belirtilmemiş'}{sinif?.kademe?` • ${sinif.kademe}. Sınıf`:''}{sinif?.ders?` • ${sinif.ders}`:''}</Text></View><ScrollView contentContainerStyle={{padding:12,paddingBottom:150}}>{!ogrenciler.length&&<Text style={s.empty}>Henüz öğrenci eklenmemiş.</Text>}{ogrenciler.map((o,i)=><View key={o.id} style={s.card}><TouchableOpacity style={s.main} onPress={()=>navigation.navigate('Rapor',{sinif,ogrenci:o,donemYili})}><View style={s.num}><Text style={s.numT}>{i+1}</Text></View><View style={{flex:1}}><Text style={s.name}>{o.adSoyad}</Text>{o.telefon?<Text style={s.phone}>📞 {o.telefon}</Text>:null}<Text style={s.reportHint}>Raporlar ›</Text></View><Text style={s.arrow}>›</Text></TouchableOpacity><View style={s.actions}><TouchableOpacity style={s.editBtn} onPress={()=>formAc(o)}><Text style={s.editT}>✏️ Düzenle</Text></TouchableOpacity><TouchableOpacity style={s.moveBtn} onPress={()=>{setTasimaci(o);setTasimaModal(true)}}><Text style={s.moveT}>↔️ Sınıf Değiştir</Text></TouchableOpacity>{!sinif?.ozelTur&&<TouchableOpacity style={s.delBtn} onPress={()=>ogrenciSil(o)}><Text style={s.delT}>📦 Kayıtsızlara Taşı</Text></TouchableOpacity>}{sinif?.ozelTur==='kayitsiz'&&<TouchableOpacity style={s.delBtn} onPress={()=>ogrenciKaliciSil(o)}><Text style={s.delT}>🗑️ Kalıcı Sil</Text></TouchableOpacity>}</View></View>)}</ScrollView>{!sinif?.ozelTur&&!sinif?.arsivlendi&&<TouchableOpacity style={s.add} onPress={()=>formAc()}><Text style={s.addT}>+ Öğrenci Ekle</Text></TouchableOpacity>}
  <Modal visible={modalAcik} transparent animationType="slide"><View style={s.bg}><View style={s.form}><Text style={s.formTitle}>{duzenlenen?'Öğrenciyi Düzenle':'Öğrenci Ekle'}</Text><TextInput style={s.input} placeholder="Ad" value={ad} onChangeText={setAd} autoCapitalize="words"/><TextInput style={s.input} placeholder="Soyad" value={soyad} onChangeText={setSoyad} autoCapitalize="words"/><TextInput style={s.input} placeholder="Telefon (isteğe bağlı)" value={telefon} onChangeText={setTelefon} keyboardType="phone-pad"/><TextInput style={s.input} placeholder="Öğrenci e-posta adresi (hesap eşleştirme için)" value={eposta} onChangeText={setEposta} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}/><TouchableOpacity style={s.save} onPress={ogrenciKaydet}><Text style={s.saveT}>{duzenlenen?'Güncelle':'Kaydet'}</Text></TouchableOpacity><TouchableOpacity style={s.cancel} onPress={formKapat}><Text>İptal</Text></TouchableOpacity></View></View></Modal>
  <Modal visible={tasimaModal} transparent animationType="slide"><View style={s.bg}><View style={s.form}><Text style={s.formTitle}>Öğrenciyi Sınıfa Taşı</Text><Text style={s.modalSub}>{tasimaci?.adSoyad} için yeni sınıf seçin.</Text><ScrollView style={{maxHeight:360}}>{siniflar.map(x=><TouchableOpacity key={x.id} style={s.classRow} onPress={()=>ogrenciTasi(tasimaci,x)}><Text style={s.className}>{x.ad}</Text><Text style={s.modalSub}>{x.okulAd||'Okul belirtilmemiş'}{x.kademe?` • ${x.kademe}. Sınıf`:''}{x.ders?` • ${x.ders}`:''}</Text></TouchableOpacity>)}{!siniflar.length&&<Text style={s.empty}>Taşınabilecek başka sınıf yok.</Text>}</ScrollView><TouchableOpacity style={s.cancel} onPress={()=>setTasimaModal(false)}><Text>İptal</Text></TouchableOpacity></View></View></Modal></KeyboardAvoidingView>;
 }

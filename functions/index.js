@@ -1,8 +1,8 @@
 // Firebase Spark uyumluluğu:
 // Zamanlanmış Cloud Functions Spark planında dağıtılamadığı için dönem temizliği
 // burada otomatik tetiklenmez. Dönem politikası functions/retentionPolicy.js
-// içinde saf/test edilebilir yardımcılar olarak tutulur; uygulama içi, yetkili
-// ve kullanıcı onaylı temizlik akışından çağrılmalıdır.
+// içinde saf/test edilebilir yardımcılarla doğrulanır; fiziksel silme yalnızca
+// uygulama sahibi onaylı, sunucu kilitli callable üzerinden yürütülür.
 
 const profileRegistration = require('./profileRegistration');
 exports.ogretmenProfiliOlustur = profileRegistration.ogretmenProfiliOlustur;
@@ -16,6 +16,14 @@ exports.ogrenciEslesmeTalebiniReddet = accountLinks.ogrenciEslesmeTalebiniReddet
 exports.ogrenciBaglantisiniIptalEt = accountLinks.ogrenciBaglantisiniIptalEt;
 exports.ogrenciBaglantiIzinleriniGuncelle = accountLinks.ogrenciBaglantiIzinleriniGuncelle;
 exports.ogrenciOdevTamamlandiBildir = accountLinks.ogrenciOdevTamamlandiBildir;
+
+const section7DataLifecycle = require('./section7DataLifecycle');
+exports.ogretmenOgrenciKaydiniKaliciSil = section7DataLifecycle.ogretmenOgrenciKaydiniKaliciSil;
+exports.uygulamaSahibiDonemTemizliginiOnizle = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnizle;
+exports.uygulamaSahibiDonemTemizliginiOnayla = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnayla;
+
+const studentClassMove = require('./studentClassMove');
+exports.ogretmenOgrenciKaydiniTasi = studentClassMove.ogretmenOgrenciKaydiniTasi;
 
 const studentNotifications = require('./studentNotifications');
 exports.ogrenciPushTokenKaydet = studentNotifications.ogrenciPushTokenKaydet;

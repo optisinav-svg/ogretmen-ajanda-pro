@@ -96,6 +96,17 @@ test('İptal edilmiş öğrenci kaydı başka hesapla yeniden eşleştirilebilir
 });
 
 
+test('Sınıfı değişen öğrenci kendi geçmiş sınıf bağlantısını korur', () => {
+  const student = {
+    sinifId: 'class-current',
+    sinifGecmisiIds: ['class-old', 'class-older'],
+  };
+  assert.equal(_test.studentBelongsToLinkedClass(student, 'class-current'), true);
+  assert.equal(_test.studentBelongsToLinkedClass(student, 'class-old'), true);
+  assert.equal(_test.studentBelongsToLinkedClass(student, 'class-older'), true);
+  assert.equal(_test.studentBelongsToLinkedClass(student, 'class-unrelated'), false);
+});
+
 test('Öğrenci eşleştirmesi yalnızca lise kademeleri için açıktır', () => {
   for (const grade of ['9', '10', '11', '12', 'TYT', 'AYT']) {
     assert.equal(_test.isAllowedStudentGrade(grade), true);

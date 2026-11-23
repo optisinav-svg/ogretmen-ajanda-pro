@@ -9,6 +9,7 @@ on:
       - integration/pre-apk-2026-11-21
       - release/pre-apk-2026-11-22
       - fix/spark-retention-and-apk-readiness-2026-11-22
+      - work/section7-safe-delete-retention
   pull_request:
     branches:
       - work/section5-homework-attendance-reports
@@ -18,6 +19,7 @@ on:
       - feature/group4-student-app
       - release/pre-apk-2026-11-22
       - fix/spark-retention-and-apk-readiness-2026-11-22
+      - work/section6-student-calendar-activities
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -47,7 +49,7 @@ jobs:
       - name: Install Cloud Functions dependencies
         run: npm install --prefix functions
       - name: Check Cloud Functions JavaScript syntax
-        run: node --check functions/index.js && node --check functions/profileRegistration.js && node --check functions/accountLinks.js && node --check functions/studentNotifications.js && node --check functions/ownerStatistics.js && node --check functions/scripts/firestore-backup.js && node --check functions/scripts/configure-existing-accounts.js && node --check functions/scripts/migrate-missing-periods-2026.js
+        run: node --check functions/index.js && node --check functions/profileRegistration.js && node --check functions/accountLinks.js && node --check functions/section7DataLifecycle.js && node --check functions/studentClassMove.js && node --check functions/studentNotifications.js && node --check functions/ownerStatistics.js && node --check functions/scripts/firestore-backup.js && node --check functions/scripts/configure-existing-accounts.js && node --check functions/scripts/migrate-missing-periods-2026.js
       - name: Run Cloud Functions policy tests
         run: npm test --prefix functions
 

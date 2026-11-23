@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Modal, SafeAreaView } from 'react-native';
-import { collection, addDoc, getDocs, getDoc, deleteDoc, doc, query, where, updateDoc, writeBatch, arrayUnion } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { collection, addDoc, getDocs, doc, query, where, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
+import { auth, db, functions } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
 import kazanmlar from '../assets/kazanimlar.json';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik} from '../utils/donem';
 
@@ -56,24 +57,6 @@ export default function OkulSinifEkrani({ navigation,route }) {
     const ref=await addDoc(collection(db,'siniflar'),{ad:'Kayıtsız Öğrenciler',kademe:'',ders:'',okulId:okul.id||'',okulAd:okul.ad||'',uid,donemYili,ozelTur:'kayitsiz',olusturulma:new Date().toISOString()});
     return {id:ref.id,ad:'Kayıtsız Öğrenciler',okulId:okul.id||'',okulAd:okul.ad||'',ozelTur:'kayitsiz'};
   };
-  const ogrencileriKorumaliTasi=async(sinifKayitlari,hedef,arsivBaslangic)=>{
-    const ogrenciler=[];
-    for(const sinif of sinifKayitlari){
-      const snap=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid)));
-      snap.docs.map(d=>({id:d.id,...d.data()})).filter(o=>donemUygun(o,donemYili)).forEach(o=>ogrenciler.push({ogrenci:o,sinif}));
-    }
-    if(ogrenciler.some(({ogrenci:o})=>o.sinifTasiIslemi||o.kayitsizTasiIslemi))throw new Error('Bu sınıfta tamamlanmamış öğrenci taşıma işlemi var. Önce ilgili öğrenci taşımasını tamamlayıp arşivlemeyi yeniden deneyin.');
-    for(let i=0;i<ogrenciler.length;i+=400){
-      const batch=writeBatch(db);
-      ogrenciler.slice(i,i+400).forEach(({ogrenci:o,sinif})=>{
-        batch.update(doc(db,'ogrenciler',o.id),{
-          sinifGecmisi:arrayUnion({sinifId:o.sinifId,sinifAd:o.sinifAd||sinif.ad,okulId:o.okulId||sinif.okulId||'',okulAd:o.okulAd||sinif.okulAd||'',donemYili,tarih:arsivBaslangic,neden:'sinif_arsivleme'}),
-          sinifId:hedef.id,sinifAd:hedef.ad,okulId:hedef.okulId||'',okulAd:hedef.okulAd||'',kademe:'',brans:'',kayitsizMi:true,kayitsizTarihi:new Date().toISOString()
-        });
-      });
-      await batch.commit();
-    }
-  };
   const dersProgramlariniKaldir=async(sinifKayitlari)=>{
     for(const sinif of sinifKayitlari){
       const snap=await getDocs(query(collection(db,'dersler'),where('sinifId','==',sinif.id),where('uid','==',uid)));
@@ -85,28 +68,106 @@ export default function OkulSinifEkrani({ navigation,route }) {
       }
     }
   };
-  const okulSil=(okul)=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul arşivlenemez.');Alert.alert('Okulu Arşivle','Okul ve sınıfları aktif listeden kaldırılacak. Bu okuldaki öğrenciler Kayıtsız Öğrenciler sınıfına taşınacak; geçmiş ders notları, yoklamalar, ödevler, kitaplar ve konu kayıtları korunacak. Bu işlem geri alınamaz.',[{text:'İptal',style:'cancel'},{text:'Okulu arşivle',style:'destructive',onPress:async()=>{
-    try{
-      const okulSnap=await getDoc(doc(db,'okullar',okul.id));
-      const arsivBaslangic=okulSnap.data()?.arsivBaslangic||new Date().toISOString();
-      await updateDoc(doc(db,'okullar',okul.id),{arsivDurumu:'isleniyor',arsivBaslangic});
-      const snap=await getDocs(query(collection(db,'siniflar'),where('okulId','==',okul.id),where('uid','==',uid)));
-      const okulSiniflari=snap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.ozelTur&&!x.arsivlendi);
-      const hedef=await kayitsizSinifGetir(okul);
-      await ogrencileriKorumaliTasi(okulSiniflari,hedef,arsivBaslangic);
-      await dersProgramlariniKaldir(okulSiniflari);
-      for(let i=0;i<okulSiniflari.length;i+=400){
+  const okulSil=async(okul)=>{
+    if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul kaldırılamaz.');
+    const okulRef=doc(db,'okullar',okul.id);
+    const sinifKilidiGuncelle=async(classes,locked)=>{
+      for(let i=0;i<classes.length;i+=400){
         const batch=writeBatch(db);
-        okulSiniflari.slice(i,i+400).forEach(x=>batch.update(doc(db,'siniflar',x.id),{arsivlendi:true,arsivTarihi:new Date().toISOString()}));
+        classes.slice(i,i+400).forEach(x=>batch.update(doc(db,'siniflar',x.id),{
+          arsivDurumu:locked?'isleniyor':deleteField(),
+        }));
         await batch.commit();
       }
-      await updateDoc(doc(db,'okullar',okul.id),{arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString()});
-      if(seciliOkul?.id===okul.id){setSeciliOkul(null);setSiniflar([])}
-      await okullariYukle();
-      Alert.alert('Tamamlandı','Okul arşivlendi. Öğrenciler ve geçmiş kayıtları korundu.');
-    }catch(e){Alert.alert('İşlem tamamlanamadı','Arşivleme kaldığı yerden tekrar başlatılabilir. Mevcut kayıtlar silinmedi. '+(e?.message||''));}
-  }}]);
-  }; 
+    };
+    const kilitleriKaldir=async(classes)=>{
+      await updateDoc(okulRef,{arsivDurumu:deleteField(),arsivBaslangic:deleteField()});
+      await sinifKilidiGuncelle(classes,false);
+    };
+    const kontrolEt=async()=>{
+      const classesSnap=await getDocs(query(collection(db,'siniflar'),where('okulId','==',okul.id),where('uid','==',uid)));
+      const schoolClasses=classesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));
+      const regularClasses=schoolClasses.filter(x=>!x.ozelTur);
+      const occupied=[];
+      for(const cls of regularClasses){
+        const students=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',cls.id),where('uid','==',uid)));
+        const count=students.docs.filter(x=>donemUygun(x.data(),donemYili)).length;
+        if(count)occupied.push(`${cls.ad}: ${count} öğrenci`);
+      }
+      const kayitsizClassIds=schoolClasses.filter(x=>x.ozelTur==='kayitsiz').map(x=>x.id);
+      const allTeacherStudents=await getDocs(query(collection(db,'ogrenciler'),where('uid','==',uid)));
+      const unregisteredStudents=allTeacherStudents.docs
+        .map(d=>({id:d.id,...d.data()}))
+        .filter(x=>donemUygun(x,donemYili)
+          && (kayitsizClassIds.includes(x.sinifId)||(x.kayitsizMi===true&&x.okulId===okul.id)));
+      return {schoolClasses,occupied,unregisteredStudents};
+    };
+    try{
+      const preview=await kontrolEt();
+      const hasPreviousLock=okul.arsivDurumu==='isleniyor'||preview.schoolClasses.some(x=>x.arsivDurumu==='isleniyor');
+      if(preview.occupied.length){
+        if(hasPreviousLock)await kilitleriKaldir(preview.schoolClasses);
+        return Alert.alert('Okul kaldırılamaz','Önce aşağıdaki sınıflardaki öğrencileri başka sınıflara veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.\n\n'+preview.occupied.join('\n'));
+      }
+      const irreversibleText=preview.unregisteredStudents.length
+        ? `\n\n${preview.unregisteredStudents.length} kayıtsız öğrencinin bu öğretmene ait öğrenci kaydı, yoklama, ödev, kitap, konu ilerlemesi, ders/etüt geçmişi ve bildirimleri kalıcı olarak silinecek. Öğrencilerin genel uygulama hesapları ve diğer öğretmenlerle bağlantıları korunacak. Bu silme geri alınamaz.`
+        : '\n\nKayıtsız öğrenci kaydı bulunmadı; öğrenci verisi silinmeyecek.';
+      Alert.alert('Okulu Kaldır',`Okul ve ${preview.schoolClasses.length} sınıf aktif listeden kaldırılacak. Normal sınıflarda kayıtlı öğrenci bulunmadığı doğrulandı.${irreversibleText}`,[
+        {text:'Vazgeç',style:'cancel',onPress:async()=>{
+          if(hasPreviousLock)try{await kilitleriKaldir(preview.schoolClasses)}catch(e){}
+        }},
+        {text:preview.unregisteredStudents.length?'Sil ve okulu kaldır':'Okulu kaldır',style:'destructive',onPress:async()=>{
+          try{
+            // Önce bütün sınıflar kilitlenir; ardından okul kilidi açılır.
+            await sinifKilidiGuncelle(preview.schoolClasses,true);
+            await updateDoc(okulRef,{
+              arsivDurumu:'isleniyor',
+              arsivBaslangic:new Date().toISOString(),
+            });
+            let latest=await kontrolEt();
+            // Kilitten hemen önce açılmış olabilecek yeni sınıfları da kilitle.
+            await sinifKilidiGuncelle(latest.schoolClasses,true);
+            latest=await kontrolEt();
+            if(latest.occupied.length){
+              await kilitleriKaldir(latest.schoolClasses);
+              return Alert.alert('Okul kaldırılamaz','Kontrol sırasında sınıfa öğrenci eklendi. Kilitler kaldırıldı. Öğrencileri önce başka sınıfa taşıyın.\n\n'+latest.occupied.join('\n'));
+            }
+            const previewIds=preview.unregisteredStudents.map(x=>x.id).sort();
+            const latestIds=latest.unregisteredStudents.map(x=>x.id).sort();
+            if(JSON.stringify(previewIds)!==JSON.stringify(latestIds)){
+              await kilitleriKaldir(latest.schoolClasses);
+              Alert.alert('Öğrenci listesi değişti','Silinecek kayıtsız öğrenci sayısı değişti. Güncel liste yeniden kontrol edilecek.');
+              return okulSil(okul);
+            }
+            const remove=httpsCallable(functions,'ogretmenOgrenciKaydiniKaliciSil');
+            for(const student of latest.unregisteredStudents){
+              await remove({ogrenciKayitId:student.id,confirm:true});
+            }
+            await dersProgramlariniKaldir(latest.schoolClasses);
+            for(let i=0;i<latest.schoolClasses.length;i+=400){
+              const batch=writeBatch(db);
+              latest.schoolClasses.slice(i,i+400).forEach(x=>batch.update(doc(db,'siniflar',x.id),{
+                arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
+              }));
+              await batch.commit();
+            }
+            await updateDoc(okulRef,{
+              arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
+            });
+            if(seciliOkul?.id===okul.id){setSeciliOkul(null);setSiniflar([])}
+            await okullariYukle();
+            Alert.alert('Tamamlandı',latest.unregisteredStudents.length
+              ? `Okul kaldırıldı. ${latest.unregisteredStudents.length} kayıtsız öğrenciye ait yalnızca sizin öğretmen kayıtlarınız ve ilişkili veriler silindi; genel öğrenci hesapları ve diğer öğretmen bağlantıları korundu.`
+              : 'Okul ve boş sınıfları arşivlendi. Öğrenci verisi silinmedi.');
+          }catch(e){
+            // Hata durumunda kilitler korunur; yeniden denemede işlem kaldığı yerden sürdürülür.
+            Alert.alert('İşlem tamamlanamadı','Okul kaldırma işlemi tamamlanamadı. Güvenlik için okul ve sınıflar geçici olarak kilitli tutuldu. Yeniden deneyebilir veya işlemi iptal ederek kilitleri kaldırabilirsiniz. Daha önce tamamlanan kalıcı öğrenci silme adımları geri alınamaz. '+(e?.message||''));
+            await okullariYukle();
+          }
+        }}
+      ]);
+    }catch(e){Alert.alert('Okul kontrol edilemedi','Silme öncesi öğrenci ve sınıf kontrolleri tamamlanamadı; hiçbir kayıt silinmedi. '+(e?.message||''));}
+  };
   const siniflariYukle=async(o)=>{setSeciliOkul(o);try{const q=query(collection(db,'siniflar'),where('okulId','==',o.id),where('uid','==',uid));const s=await getDocs(q);setSiniflar(s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.arsivlendi));}catch(e){Alert.alert('Hata','Sınıflar yüklenemedi.');}};
   const sinifEkle=async()=>{
     if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf kayıtları değiştirilemez.');
@@ -140,21 +201,35 @@ export default function OkulSinifEkrani({ navigation,route }) {
   };
   const kapatSinifModal=()=>{setYeniSinif('');setSeciliKademe('');setSeciliDers('');setDersArama('');setDuzenlenenSinif(null);setSinifModalAcik(false)};
   const sinifDuzenle=(s)=>{setDuzenlenenSinif(s);setYeniSinif(s.ad||'');setSeciliKademe(s.kademe||'');setSeciliDers(s.ders||'');setDersArama(s.ders||'');setSinifModalAcik(true)};
-  const sinifSil=(sinifKaydi)=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf arşivlenemez.');Alert.alert('Sınıfı Kaldır','Öğrenciler aynı okul içindeki Kayıtsız Öğrenciler sınıfına taşınacak. Ders programı kaldırılacak; geçmiş ders notları, yoklamalar, ödevler, kitaplar ve konu kayıtları silinmeyecek.',[{text:'İptal',style:'cancel'},{text:'Sınıfı kaldır',style:'destructive',onPress:async()=>{
-    if(sinifKaydi.ozelTur)return Alert.alert('İşlem yapılamadı','Kayıtsız Öğrenciler sınıfı doğrudan kaldırılamaz.');
-    try{
-      const sinifSnap=await getDoc(doc(db,'siniflar',sinifKaydi.id));
-      const arsivBaslangic=sinifSnap.data()?.arsivBaslangic||new Date().toISOString();
-      await updateDoc(doc(db,'siniflar',sinifKaydi.id),{arsivDurumu:'isleniyor',arsivBaslangic});
-      const hedef=await kayitsizSinifGetir({id:sinifKaydi.okulId||'',ad:sinifKaydi.okulAd||''});
-      await ogrencileriKorumaliTasi([sinifKaydi],hedef,arsivBaslangic);
-      await dersProgramlariniKaldir([sinifKaydi]);
-      await updateDoc(doc(db,'siniflar',sinifKaydi.id),{arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString()});
-      await siniflariYukle(seciliOkul);
-      Alert.alert('Tamamlandı','Sınıf arşivlendi. Öğrenciler ve geçmiş kayıtları korundu.');
-    }catch(e){Alert.alert('İşlem tamamlanamadı','Sınıf kaldırma işlemi tamamlanamadı. Kayıtlar silinmedi; tekrar deneyebilirsiniz. '+(e?.message||''));}
-  }}]);
+  const sinifSil=(sinifKaydi)=>{
+    if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için sınıf kaldırılamaz.');
+    if(sinifKaydi.ozelTur)return Alert.alert('İşlem yapılamadı','Kayıtsız Öğrenciler alanı doğrudan kaldırılamaz.');
+    Alert.alert('Sınıfı Kaldır','Sınıfta kayıtlı öğrenci varsa işlem yapılmayacak. Boş sınıf aktif listeden arşivlenerek kaldırılacak; geçmiş kayıtlar ve tarihsel sınıf referansları korunacak.',[
+      {text:'İptal',style:'cancel'},
+      {text:'Boş sınıfı kaldır',style:'destructive',onPress:async()=>{
+        try{
+          const classRef=doc(db,'siniflar',sinifKaydi.id);
+          // Kilit, silme kontrolü sırasında sınıfa yeni öğrenci eklenmesini engeller.
+          await updateDoc(classRef,{arsivDurumu:'isleniyor'});
+          const students=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinifKaydi.id),where('uid','==',uid)));
+          const count=students.docs.filter(x=>donemUygun(x.data(),donemYili)).length;
+          if(count){
+            await updateDoc(classRef,{arsivDurumu:deleteField()});
+            return Alert.alert('Sınıf kaldırılamaz',`Bu sınıfta ${count} kayıtlı öğrenci var. Önce öğrencileri başka bir sınıfa veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.`);
+          }
+          await dersProgramlariniKaldir([sinifKaydi]);
+          await updateDoc(classRef,{
+            arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
+          });
+          await siniflariYukle(seciliOkul);
+          Alert.alert('Tamamlandı','Boş sınıf aktif listeden kaldırıldı. Geçmiş kayıtlar ve sınıfın tarihsel referansı korundu.');
+        }catch(e){
+          Alert.alert('İşlem tamamlanamadı','Sınıf kaldırma işlemi tamamlanamadı. Güvenlik için sınıf geçici olarak kilitli tutuldu; aynı işlemi yeniden deneyebilirsiniz. '+(e?.message||''));
+        }
+      }}
+    ]);
   };
+
 
   if(yukleniyor) return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
   return <SafeAreaView style={styles.kapsayici}><ScrollView contentContainerStyle={{paddingBottom:40}}>
