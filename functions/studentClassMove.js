@@ -103,7 +103,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       sinifGecmisiIds: FieldValue.arrayUnion(kaynakSinifId),
       sinifGecmisi: FieldValue.arrayUnion({
         sinifId: student.sinifId,
-        sinifAd: student.sinifAd || '',
+        sinifAd: student.sinifAd || sourceSnap.get('ad') || '',
         okulId: student.okulId || sourceSnap.get('okulId') || '',
         okulAd: student.okulAd || sourceSnap.get('okulAd') || '',
         donemYili,
