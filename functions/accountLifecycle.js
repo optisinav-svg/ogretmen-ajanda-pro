@@ -109,14 +109,17 @@ exports.rolDuzeltmeTalebiniKararaBagla = onCall({ region: REGION }, async reques
       const target = snap.get('hedefRol');
       // Role conversion is intentionally blocked while teacher-owned or linked records exist.
       // A later reviewed migration can preserve these records without silently orphaning them.
-      const ownedCollections = ['okullar','siniflar','ogrenciler','dersler','odevler','yoklamalar','dersNotlari','kitaplar','konular','bireyselEtkinlikler','bireyselDersOturumlari','kitapKutuphanesi'];
+      const ownedCollections = ['okullar','siniflar','ogrenciler','dersler','odevler','yoklamalar','dersNotlari','kitaplar','konular','bireyselEtkinlikler','bireyselDersOturumlari','kitapKutuphanesi','kitapKutuphanesiKonulari'];
       if (snap.get('mevcutRol') === 'ogretmen') {
         for (const name of ownedCollections) {
           const found = await db.collection(name).where('uid','==',snap.get('uid')).limit(1).get();
           if (!found.empty) throw new HttpsError('failed-precondition', 'Öğretmen verileri bulundu. Veri sahipliği aktarımı tamamlanmadan rol değiştirilemez.');
         }
-        const links = await db.collection('ogretmenOgrenciBaglantilari').where('ogretmenUid','==',snap.get('uid')).where('durum','==','active').limit(1).get();
-        if (!links.empty) throw new HttpsError('failed-precondition', 'Etkin öğrenci bağlantıları bulundu. Önce bağlantıların güvenli devri gerekir.');
+      }
+      const teacherLinks = await db.collection('ogretmenOgrenciBaglantilari').where('ogretmenUid','==',snap.get('uid')).limit(1).get();
+      const studentLinks = await db.collection('ogretmenOgrenciBaglantilari').where('ogrenciUid','==',snap.get('uid')).limit(1).get();
+      if (!teacherLinks.empty || !studentLinks.empty) {
+        throw new HttpsError('failed-precondition', 'Geçmiş veya etkin öğretmen-öğrenci bağlantıları bulundu. Bağlantı geçmişi güvenli biçimde taşınmadan rol değiştirilemez.');
       }
       if (target === 'ogretmen' && (!request.data.brans || !request.data.sezon)) {
         throw new HttpsError('invalid-argument', 'Öğretmen rolü için branş ve eğitim dönemi gereklidir.');
