@@ -637,7 +637,8 @@ service cloud.firestore {
         && schoolBelongsToTeacher(request.resource.data)
         && (resource.data.get('arsivDurumu', '') != 'isleniyor'
           || request.resource.data.get('arsivlendi', false) == true
-          || request.resource.data.get('arsivDurumu', '') != 'isleniyor')
+          || request.resource.data.get('arsivDurumu', '') != 'isleniyor'
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['arsivDurumu']))
         && (request.resource.data.get('arsivlendi', false) == true
           || schoolAcceptsNewRecords(request.resource.data.get('okulId', '')));
       allow delete: if ownsEditablePeriodRecord();
