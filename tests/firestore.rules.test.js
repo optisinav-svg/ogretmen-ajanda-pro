@@ -516,6 +516,41 @@ test('Öğrenci kendi profilinde branş ve sezon alanlarını değiştiremez', a
   await assertFails(updateDoc(ref, { sezon: '2026/2027' }));
 });
 
+test('Öğretmen profili oluşturma kuralları branş ve sezon biçimini doğrular', async () => {
+  const db = testEnv.authenticatedContext('teacher-invalid-create', {
+    email: 'teacher-invalid-create@example.com',
+  }).firestore();
+  const ref = doc(db, 'kullanicilar', 'teacher-invalid-create');
+  const base = {
+    kullaniciAdi: 'Yeni Öğretmen',
+    brans: 'Coğrafya',
+    sezon: '2026/2027',
+    eposta: 'teacher-invalid-create@example.com',
+    rol: 'ogretmen',
+    olusturulmaTarihi: new Date().toISOString(),
+  };
+  await assertFails(setDoc(ref, { ...base, brans: 'x'.repeat(51) }));
+  await assertFails(setDoc(ref, { ...base, brans: 123 }));
+  await assertFails(setDoc(ref, { ...base, sezon: '2026-2027' }));
+  await assertFails(setDoc(ref, { ...base, sezon: 2026 }));
+  await assertSucceeds(setDoc(ref, base));
+});
+
+test('Öğrenci profili öğretmene ait branş ve sezon alanlarını içeremez', async () => {
+  const db = testEnv.authenticatedContext('student-profile-fields', {
+    email: 'student-profile-fields@example.com',
+    email_verified: true,
+  }).firestore();
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'student-profile-fields'), {
+    kullaniciAdi: 'Öğrenci Hesabı',
+    eposta: 'student-profile-fields@example.com',
+    rol: 'ogrenci',
+    brans: 'Coğrafya',
+    sezon: '2026/2027',
+    ilkEslesmeTalepId: 'missing-request',
+  }));
+});
+
 test('Öğrenci profili geçerli, doğrulanmış eşleştirme talebi olmadan oluşturulamaz', async () => {
   const db = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
