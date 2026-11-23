@@ -1,4 +1,5 @@
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
+const { setEmailAliasRetention } = require('./emailAliases');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 
 const REGION = 'europe-west1';
@@ -44,13 +45,21 @@ exports.hesapKapatmaTalebiOlustur = onCall({ region: REGION }, async request => 
   if (request.auth.token.uygulamaSahibi === true) throw new HttpsError('failed-precondition', 'Uygulama sahibi hesabı kapatılmadan önce sahiplik yetkisi güvenli biçimde devredilmelidir.');
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Hesap kapatma öncesinde e-posta doğrulanmalıdır.');
   const { ref, data } = await getProfile(uid);
-  if (data.hesapDurumu === 'kapali') return { durum: 'zaten_kapali' };
+  if (data.hesapDurumu === 'kapali') {
+    const expiry = data.hesapSaklamaSonu?.toDate?.();
+    if (expiry) await setEmailAliasRetention(uid, expiry);
+    return { durum: 'zaten_kapali' };
+  }
+  const saklamaSonu = new Date();
+  saklamaSonu.setFullYear(saklamaSonu.getFullYear() + 3);
   await ref.update({
     hesapDurumu: 'kapali',
     hesapKapatmaTalepTarihi: FieldValue.serverTimestamp(),
     hesapSaklamaBaslangic: FieldValue.serverTimestamp(),
+    hesapSaklamaSonu: Timestamp.fromDate(saklamaSonu),
     hesapKapatmaTalepUid: uid,
   });
+  await setEmailAliasRetention(uid, saklamaSonu);
   await db.collection('hesapYasamDongusuDenetimi').add({
     uid, islem: 'hesap_kapatildi', rol: data.rol || null,
     zaman: FieldValue.serverTimestamp(), sonuc: 'basarili',
@@ -63,8 +72,13 @@ exports.hesabiYenidenEtkinlestir = onCall({ region: REGION }, async request => {
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Yeniden etkinleştirme için e-posta doğrulanmalıdır.');
   const { ref, data } = await getProfile(uid);
   if (data.hesapDurumu !== 'kapali') return { durum: 'zaten_aktif' };
+  if (data.hesapSaklamaSonu?.toMillis?.() && data.hesapSaklamaSonu.toMillis() <= Date.now()) {
+    throw new HttpsError('failed-precondition', 'Hesabın üç yıllık saklama ve yeniden etkinleştirme süresi sona ermiş. Destekle iletişime geçin.');
+  }
+  await setEmailAliasRetention(uid, null);
   await ref.update({
     hesapDurumu: 'aktif',
+    hesapSaklamaSonu: FieldValue.delete(),
     hesapYenidenEtkinlestirmeTarihi: FieldValue.serverTimestamp(),
   });
   await db.collection('hesapYasamDongusuDenetimi').add({
