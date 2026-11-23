@@ -1,0 +1,67 @@
+# Bölüm 8 — Hesap, Profil, Dönem ve Kişisel Veri Yaşam Döngüsü
+
+## Amaç ve güvenlik sınırları
+Bu bölüm; öğretmen/öğrenci hesaplarının ayrımını, hesap sahipliğini, profil güncellemelerini, eski hesabın yeniden etkinleştirilmesini, rol düzeltme taleplerini ve akademik dönem geçişini kapsar. Hesap kimliği Firebase UID'dir; ad-soyad benzersiz değildir. Aynı görünen ada sahip çok sayıda kullanıcı bulunabilir.
+
+## Kararlaştırılan kullanıcı akışları
+- Tek kayıt giriş ekranı öğretmen ve öğrenci hesabı seçimi sunar. Öğrenci hesabı e-posta doğrulaması ve mevcut öğretmen eşleştirme onayı olmadan öğretmen verilerine erişemez.
+- Aynı e-posta adresiyle ikinci bir Firebase Auth hesabı oluşturulamaz. Kapalı hesap Auth kimliği hemen silinmeden tutulur; kullanıcı doğrulanmış oturumla yeniden etkinleştirme talep edebilir. Firebase Auth hesabının fiziksel silinmesi, saklama/imha değerlendirmesi ve yasal dayanak tamamlanmadan yapılmaz.
+- Ad ve soyad düzenlenebilir; mevcut birleşik kullaniciAdi alanı geriye dönük uyumluluk için korunur. İsimler benzersiz değildir.
+- Şifre değiştirme ve şifre sıfırlama akışları korunur.
+- Hesap türü kullanıcı tarafından değiştirilemez. Rol düzeltme talebi mevcut hesap sahibi tarafından oluşturulur; yalnızca özel uygulama sahibi yetkisi olan hesap inceler. Onay, veri sahipliği/bağlantı incelemesi tamamlanmadan rolü değiştirmez.
+- E-posta değişikliğinde mevcut hesap sahibi yeniden kimlik doğrular ve yeni adresi doğrular. Yeni adres başka bir Auth hesabında kullanılıyorsa işlem reddedilir. UID ve bağlantılar değişmez.
+- Öğretmen/öğrenci hesabı kapatıldığında erişim kuralları kapatılır; öğretmen-öğrenci geçmişi fiziksel olarak hemen silinmez. Aynı hesap yeniden etkinleştirilebilir.
+- Kapatma, diğer öğretmenlerin bağlantılarını veya öğrencilerin diğer öğretmenlerle ilişkilerini silmez.
+
+## Yetkili karar matrisi
+| İşlem | Kimlik doğrulayan | Kararı veren |
+|---|---|---|
+| E-posta değişikliği | Hesabın sahibi; mevcut kimlik bilgisi ve yeni e-posta doğrulaması | Otomatik güvenlik kontrolleri; rutin işlemde uygulama sahibi onayı yok |
+| Rol düzeltme | Talep sahibi | Uygulama sahibi; kendisiyle ilgili talepte bağımsız yetkili süreç gerekir |
+| Hesabı yeniden etkinleştirme | Hesap sahibi, doğrulanmış e-posta | Sunucu tarafı hesap durumu ve saklama politikası kontrolleri |
+| Süre sonu imha | Uygulama sahibi açık onayı | Sunucu tarafı önizleme, kilit, kapsam ve denetim kaydı |
+
+## Akademik dönem aktarımı — zorunlu kurallar
+1. Aktarılan her okul, sınıf, öğrenci ataması ve öğrenciye özel kitap/konu ilerleme kaydı hedef dönemin donemYili alanıyla yeni kaydı olarak oluşturulur.
+2. Eski dönem kayıtları değiştirilmez ve silinmez.
+3. Öğrenci Firebase UID'si değişmez; öğretmen yerel öğrenci kaydı yeni dönemde yeni kayıt kimliği alır. Yeni bağlantı yeni dönem ve sınıf kimliğine işaret eder.
+4. Kitap kütüphanesinin sezon bağımsız tanımları çoğaltılmaz; yeni dönem atamaları mevcut kütüphane kimliklerini kullanır.
+5. Eski ödev, yoklama, ders notu, bireysel etkinlik ve ilerleme kayıtları yeni döneme kopyalanmaz.
+6. Öğretmen okul, sınıf, öğrenci ve kitap atamalarını tek tek seçer. Sınıf seviyesi öğretmen tarafından hedeflenir; TYT öğrencisi TYT kalır, 12. sınıftan TYT'ye geçiş açık seçimdir.
+7. Aktarım önizlemesi, hedef dönem, kaynak/hedef sayıları ve uyarıları gösterir. İşlem kimliği ve deterministik kaynak-hedef eşlemesi tekrar çalıştırmada mükerrer kayıt oluşmasını engeller.
+8. Aktarım yarıda kalırsa aynı işlem kimliğiyle güvenli devam eder; yeni dönem kaydı oluşturulmadan önce kaynak ve hedef ilişkileri doğrulanır.
+
+## Hesap kapatma ve saklama
+Hesap kapatma, anında fiziksel silme değildir. Kapalı hesap normal öğretmen/öğrenci yetkilerini kullanamaz; hesap sahibi doğrulamayla yeniden etkinleştirme isteyebilir. Saklama süreleri veri kategorisine göre gerekçelendirilir. Üç yıl bütün veriler için otomatik bir saklama hakkı değildir. İlgili işleme amacı veya hukuki sebep daha önce sona ererse veriler daha önce silinir/yok edilir/anonimleştirilir. Yasal saklama yükümlülüğü olan kayıtlar ayrı tutulur.
+
+## KVKK saklama ve imha politikası — görüşmeye sunulan taslak
+Bu metin nihai hukuki görüş veya yayıma hazır aydınlatma metni değildir; veri sorumlusu, işleme amaçları, hukuki sebepler, saklama süreleri ve veri işleyenler somutlaştırılarak hukuk danışmanı tarafından doğrulanmalıdır.
+
+| Veri kategorisi | İşleme/saklama gerekçesi | Önerilen süre başlangıcı ve ölçüt | İmha yaklaşımı |
+|---|---|---|---|
+| Auth hesap kimliği, e-posta, rol | Hesap güvenliği, giriş, hizmetin sunulması | Hesap aktif olduğu sürece; kapatma sonrası yeniden etkinleştirme penceresi ve hukuki yükümlülükle sınırlı | Auth hesabı ve e-posta, saklama gerekçesi sona erince silinir; tekrar kayıt engeli için süresiz e-posta/hash listesi tutulmaz |
+| Öğretmen profili ve uygulama ayarları | Hesap ve hizmet yönetimi | Hesap aktifliği; kapanıştan sonra yalnızca gerekçeli süre | Silme veya anonimleştirme |
+| Öğrenci öğretmen-yerel kayıtları | Eğitim takibi, öğretmen-öğrenci ilişkisinin yürütülmesi | İlgili eğitim dönemi ve hizmet amacı; kapatma/ayrılma sonrası gerekçeli arşiv süresi | Öğrenci hesabı ve diğer öğretmen kayıtlarından ayrıştırılarak silme/anonimleştirme |
+| Yoklama, ödev, ders, ilerleme, rapor | Eğitim sürecinin yürütülmesi ve geçmiş raporların sunulması | Dönem sonu ve hukuki/operasyonel gereklilik | Kategori bazında süre sonunda imha |
+| Öğrenci-öğretmen bağlantıları ve onay kayıtları | Yetki, paylaşım ve hesap güvenliği | Bağlantı sona erene ve itiraz/denetim ihtiyacı bitene kadar | Gereksiz kişisel alanlar silinir; gerekli asgari denetim kanıtı ayrıştırılır |
+| Rol düzeltme talepleri | Yetki değişikliği denetimi ve kötüye kullanımın önlenmesi | Talep sonuçlandıktan sonra belirlenmiş denetim süresi | Gerekçe ve kanıt gereksiz kişisel ayrıntılardan arındırılarak saklanır |
+| Güvenlik/işlem denetim kayıtları | Olay inceleme, yetkisiz erişimi önleme | Risk ve hukuki yükümlülükle orantılı, tanımlı süre | Süre bitince silme/anonimleştirme |
+| Yedekler | Felaket kurtarma ve hizmet sürekliliği | Yedekleme takviminde belirlenmiş kısa döngü; canlı kayıttaki silme işaretleri yedek geri dönüşünde uygulanır | Yedek rotasyonu ve geri yükleme sonrası silme kuyruğu yeniden uygulanır |
+| İmha işlem kayıtları | Silme/yok etme/anonimleştirme işlemlerinin kanıtlanması | İlgili mevzuatın öngördüğü asgari süre; Yönetmelik kapsamındaki imha kayıtları en az 3 yıl | Süre sonunda güvenli imha |
+
+### Periyodik kontrol
+Veri kategorileri ve saklama gerekçeleri en az yılda bir gözden geçirilir. İlgili mevzuat kapsamındaki periyodik imha yükümlülükleri ayrıca takip edilir; uygulanabilir olduğu durumlarda periyodik imha aralığı altı ayı aşmaz. Her imha öncesi kapsam ve adet önizlemesi, yetkili onayı, işlem kilidi, sonuç ve hata denetimi tutulur.
+
+### Tamamlanması gereken hukuki bilgiler
+- Veri sorumlusu gerçek/tüzel kişi ve iletişim bilgileri.
+- Uygulamanın somut işleme amaçları ve her amaç için KVKK m.5/m.6 hukuki sebebi.
+- Çocuk/öğrenci verilerinde veli/kanuni temsilci süreçlerinin gerekip gerekmediği.
+- Firebase/Google ve diğer hizmet sağlayıcılarının veri işleyen/aktarımı rolleri ve yurt dışı aktarım mekanizması.
+- Her kategori için kesin süre ve başlangıç olayı.
+- İlgili kişi başvuru kanalı, başvuru prosedürü ve veri ihlali süreci.
+
+## Teknik sınırlamalar / canlıya alma ön koşulları
+- Bu dalda yapılan değişiklikler üretim Firebase'e dağıtılmaz.
+- Cloud Functions dağıtımı, e-posta doğrulama şablonları, Firebase Auth ayarları ve indeksler ayrıca doğrulanmalıdır.
+- Eski hesapların UID/e-posta eşlemesi salt okunur envanterle kontrol edilmeden toplu migrasyon yapılmaz.
+- Dönem aktarımı, kaynak koleksiyon şemaları ve bütün ilişki alanları doğrulanmadan üretim kullanımına açılmaz.
