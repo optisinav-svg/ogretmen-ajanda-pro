@@ -40,7 +40,7 @@ function archivedPeriodStartYear(date = new Date()) {
 /**
  * İlk temizlik Temmuz 2029'da 2026 dönemini siler.
  * Sonraki yıllarda, başlangıç yılından itibaren üç yılını dolduran dönem temizlenir.
- * Yalnızca Temmuz ve 2028+ yıllarında tek bir dönem adayı döndürür.
+ * Yalnızca Temmuz ve 2029+ yıllarında tek bir dönem adayı döndürür.
  */
 function expiredPeriodStartYear(date = new Date()) {
   const { year, month } = istanbulDateParts(date);
