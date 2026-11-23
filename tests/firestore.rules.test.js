@@ -1087,21 +1087,14 @@ test('Öğretmen yalnızca bağlantı kurulmuş ve ödev izni açık öğrenciye
 test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık kod ve öğretmen onayı gerektirir', async () => {
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   const code = 'ABCDEF0123456789';
-  const codeId = '1C1181E7F8DECE465E066361D49886EFA49B372E3E029FCDF21B9621E4021366';
+  const codeId = '1c1181e7f8dece465e066361d49886efa49b372e3e029fcdf21b9621e4021366';
   const codeRef = doc(teacherDb, 'ogrenciEslesmeKodlari', codeId);
   await assertSucceeds(setDoc(codeRef, {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
-    ogretmenHesapAdi: 'Öğretmen A',
     ogrenciKayitId: 'student-a',
-    ogrenciAdSoyad: 'Test Öğrencisi',
-    eposta: 'student-new@example.com',
     sinifId: 'class-a',
-    sinifAd: '9-A',
-    okulAd: 'A Okulu',
     donemYili: 2026,
-    kademe: '9',
-    ders: 'Coğrafya',
     kullanildi: false,
     olusturulma: serverTimestamp(),
     sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
