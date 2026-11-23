@@ -47,6 +47,18 @@ export default function OdevEkrani({route}){
         konuAlan={konuId:seciliKonu.id,kitapId:seciliKonu.kitapId,kitapAd:seciliKonu.kitapAd,konuAd:seciliKonu.ad,baslangicSayfa:seciliKonu.baslangicSayfa,bitisSayfa:seciliKonu.bitisSayfa,sayfaAdedi:sayfaAdedi(seciliKonu)};
       }
     }
+    if(seciliKonu){
+      const kaynakKonuId=konuAlan.kitapKutuphanesiKonuId||seciliKonu.kitapKutuphanesiKonuId||(hedef==='sinif'?seciliKonu.id:null);
+      const tekrar=hedefler.filter(student=>{
+        const assignedTopicId=konuAlan.konuEslestirmeleri?.[student.id]||(hedef==='bireysel'?seciliKonu.id:null);
+        return odev.some(existing=>existing.id!==edit?.id
+          && ((assignedTopicId&&(existing.konuId===assignedTopicId||existing.konuEslestirmeleri?.[student.id]===assignedTopicId))
+            || (kaynakKonuId&&existing.kitapKutuphanesiKonuId===kaynakKonuId))
+          && (((existing.hedef==='sinif'||existing.hedef==='tumSinif'||existing.tumSinif===true)&&existing.sinifId===secili.id)
+            || (existing.hedefOgrenciIds||[]).includes(student.id)));
+      });
+      if(tekrar.length)return Alert.alert('Konu için ödev zaten var','Bu konu şu öğrenciler için daha önce ödev olarak verilmiş: '+tekrar.map(x=>x.adSoyad||'Öğrenci').join(', ')+'. Önce mevcut ödevi düzenleyin.');
+    }
     const targetIds=hedefler.map(x=>x.id);
     const homeworkData={
       aciklama:aciklama.trim(),
