@@ -57,7 +57,7 @@ export default function KitapEkrani({route,navigation}){
   olusturulma:zaman
  });
 
- const kutuphaneAtamalariniEsitle=async(kitapId,{kitapData=null,konuId=null,konuData=null,yeniKonu=false}={})=>{
+ const kutuphaneAtamalariniEsitle=async(kitapId,{kitapData=null,konuId=null,konuData=null}={})=>{
   const [kitapSnap,konuSnap]=await Promise.all([
    getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
    getDocs(query(collection(db,'konular'),where('uid','==',uid)))
@@ -70,7 +70,7 @@ export default function KitapEkrani({route,navigation}){
   const islemler=[];
   for(const kitap of atamalar){
    if(kitapData)islemler.push({ref:doc(db,'kitaplar',kitap.id),data:kitapData});
-   if(yeniKonu&&konuId&&!mevcutKonular.some(x=>x.kitapId===kitap.id&&x.kitapKutuphanesiKonuId===konuId)){
+   if(konuId&&konuData&&!mevcutKonular.some(x=>x.kitapId===kitap.id&&x.kitapKutuphanesiKonuId===konuId)){
     const yeniRef=doc(collection(db,'konular'));
     islemler.push({ref:yeniRef,data:kitapKopyaVerisi(
      {id:kitapId,ad:kitapData?.ad||kitap.ad},
@@ -251,7 +251,7 @@ export default function KitapEkrani({route,navigation}){
     konuId=ref.id;
    }
    try{
-    await kutuphaneAtamalariniEsitle(seciliKitap.id,{konuId,konuData:data,yeniKonu:!duzenlenenKonu});
+    await kutuphaneAtamalariniEsitle(seciliKitap.id,{konuId,konuData:data});
    }catch(esitlemeHatasi){
     Alert.alert('Konu kaydedildi','Kütüphane konusu güncellendi ancak bazı mevcut öğrenci kitaplarına yansıtılamadı. Aynı konuyu yeniden kaydettiğinizde eşitleme tekrar denenir. '+(esitlemeHatasi?.message||''));
    }
