@@ -36,14 +36,24 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     const [studentSnap, targetSnap, linksSnap, indexSnap] = await Promise.all([
       tx.get(studentRef), tx.get(targetRef), tx.get(linksQuery), tx.get(indexRef),
     ]);
+    const targetSchoolId = targetSnap.exists ? targetSnap.get('okulId') : '';
+    const targetSchoolSnap = typeof targetSchoolId === 'string' && targetSchoolId
+      ? await tx.get(db.collection('okullar').doc(targetSchoolId))
+      : null;
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== kaynakSinifId
       || studentSnap.get('donemYili') !== donemYili) {
       throw new HttpsError('failed-precondition', 'Öğrencinin mevcut sınıfı veya dönem bilgisi değişmiş.');
     }
     if (!targetSnap.exists || targetSnap.get('uid') !== teacherUid
-      || targetSnap.get('donemYili') !== donemYili || targetSnap.get('arsivlendi') === true) {
-      throw new HttpsError('failed-precondition', 'Hedef sınıf bulunamadı veya bu dönem için etkin değil.');
+      || targetSnap.get('donemYili') !== donemYili
+      || targetSnap.get('arsivlendi') === true
+      || targetSnap.get('arsivDurumu') === 'isleniyor'
+      || (targetSchoolSnap && (!targetSchoolSnap.exists
+        || targetSchoolSnap.get('uid') !== teacherUid
+        || targetSchoolSnap.get('arsivlendi') === true
+        || targetSchoolSnap.get('arsivDurumu') === 'isleniyor'))) {
+      throw new HttpsError('failed-precondition', 'Hedef sınıf veya okul kaldırılma sürecinde ya da bu dönem için etkin değil.');
     }
     const student = studentSnap.data();
     const target = targetSnap.data();
