@@ -124,7 +124,7 @@ export default function OdevEkrani({route}){
   const ogrenciKonu=eslesmisKonuId?konular.find(k=>k.id===eslesmisKonuId):null;
   const secilecekKitap=sinifHedef
     ?(kutuphaneKitaplari.find(k=>k.id===(o.kitapKutuphanesiId||o.kitapId))||{id:o.kitapKutuphanesiId||o.kitapId,ad:o.kitapAd})
-    :kitaplar.find(k=>k.id===(ogrenciKonu?.kitapId||o.kitapId)||(k.ogrenciId===ilkOgrenciId&&k.kitapKutuphanesiId===o.kitapKutuphanesiId))
+    :kitaplar.find(k=>k.id===(ogrenciKonu?.kitapId||o.kitapId)||(!!o.kitapKutuphanesiId&&k.ogrenciId===ilkOgrenciId&&k.kitapKutuphanesiId===o.kitapKutuphanesiId))
       ||(o.kitapId?{id:o.kitapId,ad:o.kitapAd}:null);
   setKitapSecili(secilecekKitap||null);
   const kaynakKonu=sinifHedef
