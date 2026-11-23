@@ -1322,3 +1322,59 @@ test('Push token koleksiyonu istemci tarafından okunamaz veya yazılamaz', asyn
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   await assertFails(getDocs(collection(teacherDb, 'ogrenciPushTokenlari')));
 });
+
+test('Aynı öğrenci ve ders oturumu için belirleyici yoklama kimliği tek kayıt tutar', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const oturumId = 'lesson-a_2026-11-23';
+  const attendanceId = ['teacher-a', oturumId, 'student-a'].join('__');
+  const ref = doc(db, 'yoklamalar', attendanceId);
+  const base = {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    ogrenciId: 'student-a',
+    dersId: 'lesson-a',
+    oturumId,
+    donemYili: 2026,
+    tarih: '2026-11-23',
+    durum: 'geldi',
+  };
+  await assertSucceeds(setDoc(ref, base));
+  await assertSucceeds(setDoc(ref, { ...base, durum: 'gecikti' }));
+  const records = await assertSucceeds(getDocs(query(
+    collection(db, 'yoklamalar'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('oturumId', '==', oturumId),
+  )));
+  assert.equal(records.size, 1);
+  assert.equal(records.docs[0].data().durum, 'gecikti');
+});
+
+test('Kitap kütüphanesinden sınıfa verilen ödev öğrenci bazlı konu eşleştirmelerini saklayabilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const ref = doc(db, 'odevler', 'class-shared-topic-homework');
+  await assertSucceeds(setDoc(ref, {
+    uid: 'teacher-a',
+    sinifId: 'class-a',
+    dersId: 'lesson-a',
+    donemYili: 2026,
+    hedef: 'sinif',
+    hedefOgrenciIds: ['student-a'],
+    aciklama: 'Coğrafya Kaynak Kitabı - Harita Bilgisi',
+    kitapId: 'library-book-a',
+    kitapKutuphanesiId: 'library-book-a',
+    kitapKutuphanesiKonuId: 'library-topic-a',
+    konuAd: 'Harita Bilgisi',
+    konuEslestirmeleri: { 'student-a': 'assigned-topic-student-a' },
+    baslangicSayfa: 1,
+    bitisSayfa: 20,
+    ogrenciDurumlari: { 'student-a': 'bekliyor' },
+  }));
+  await assertSucceeds(updateDoc(ref, {
+    ogrenciDurumlari: { 'student-a': 'yapildi' },
+  }));
+  const saved = await assertSucceeds(getDoc(ref));
+  assert.equal(saved.data().konuEslestirmeleri['student-a'], 'assigned-topic-student-a');
+  assert.equal(saved.data().ogrenciDurumlari['student-a'], 'yapildi');
+});
+
