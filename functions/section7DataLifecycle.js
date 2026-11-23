@@ -90,7 +90,7 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
         homeworkDeleted += 1;
       } else {
         const updates = { hedefOgrenciIds: nextTargets };
-        for (const field of ['ogrenciDurumlari', 'konuEslestirmeleri']) {
+        for (const field of ['ogrenciDurumlari', 'durumGecmisi', 'konuEslestirmeleri']) {
           if (data[field] && typeof data[field] === 'object' && !Array.isArray(data[field])) {
             const nextMap = { ...data[field] };
             delete nextMap[studentRecordId];
