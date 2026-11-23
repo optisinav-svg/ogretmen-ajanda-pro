@@ -1,8 +1,8 @@
 // Firebase Spark uyumluluğu:
 // Zamanlanmış Cloud Functions Spark planında dağıtılamadığı için dönem temizliği
 // burada otomatik tetiklenmez. Dönem politikası functions/retentionPolicy.js
-// içinde saf/test edilebilir yardımcılar olarak tutulur; uygulama içi, yetkili
-// ve kullanıcı onaylı temizlik akışından çağrılmalıdır.
+// içinde saf/test edilebilir yardımcılarla doğrulanır; fiziksel silme yalnızca
+// uygulama sahibi onaylı, sunucu kilitli callable üzerinden yürütülür.
 
 const profileRegistration = require('./profileRegistration');
 exports.ogretmenProfiliOlustur = profileRegistration.ogretmenProfiliOlustur;
