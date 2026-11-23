@@ -1,6 +1,7 @@
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { randomUUID } = require('node:crypto');
+const { RETENTION_COLLECTIONS, expiredPeriodStartYear } = require('./retentionPolicy');
 
 const db = getFirestore();
 const REGION = 'europe-west1';
@@ -146,14 +147,6 @@ exports.ogretmenOgrenciKaydiniKaliciSil = onCall({ region: REGION, timeoutSecond
   return deleteTeacherLocalStudentRecord(teacherUid, studentRecordId);
 });
 
-const RETENTION_COLLECTIONS = Object.freeze([
-  'dersler', 'dersNotlari', 'yoklamalar', 'odevler', 'kitaplar', 'konular',
-  'bireyselEtkinlikler', 'bireyselDersOturumlari',
-  'ogrenciler', 'siniflar', 'okullar',
-  'ogretmenOgrenciBaglantilari', 'ogrenciKayitEslesmeleri',
-  'ogrenciEslesmeTalepleri', 'ogrenciEslesmeKodlari',
-  'ogrenciOdevBildirimleri', 'ogrenciYeniOdevBildirimleri',
-]);
 function istanbulDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric',
@@ -206,11 +199,11 @@ exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async 
   if (request.auth.token.uygulamaSahibi !== true) {
     throw new HttpsError('permission-denied', 'Uygulama sahibi yetkisi gereklidir.');
   }
-  const { year, month } = istanbulDateParts();
-  if (month !== 7 || year < 2029) {
+  const { year } = istanbulDateParts();
+  const targetYear = expiredPeriodStartYear(new Date());
+  if (targetYear === null) {
     throw new HttpsError('failed-precondition', 'Önizleme yalnızca Temmuz ayında ve üç yıllık saklama süresi dolduğunda açılır.');
   }
-  const targetYear = year - 3;
   const lock = await db.collection('donemTemizlikKayitlari').doc(String(year)).get();
   if (lock.exists && lock.get('status') === 'completed') {
     return { status: 'completed', targetYear, counts: lock.get('counts') || {}, total: lock.get('totalDeleted') || 0 };
@@ -248,11 +241,11 @@ exports.uygulamaSahibiDonemTemizliginiOnayla = onCall({ region: REGION, timeoutS
   if (request.data?.confirm !== true) {
     throw new HttpsError('failed-precondition', 'Silme işlemi için açık uygulama sahibi onayı gereklidir.');
   }
-  const { year, month } = istanbulDateParts();
-  if (month !== 7 || year < 2029) {
+  const { year } = istanbulDateParts();
+  const targetYear = expiredPeriodStartYear(new Date());
+  if (targetYear === null) {
     throw new HttpsError('failed-precondition', 'Dönem temizliği yalnızca Temmuz ayında ve üç yıllık saklama süresi dolduğunda yapılabilir.');
   }
-  const targetYear = year - 3;
   const token = randomUUID();
   const lockRef = db.collection('donemTemizlikKayitlari').doc(String(year));
   const existingLock = await lockRef.get();
