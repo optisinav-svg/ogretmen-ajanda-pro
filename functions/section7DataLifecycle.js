@@ -38,9 +38,9 @@ async function deleteInChunks(refs) {
   }
 }
 
-async function queryTeacherDocs(collectionName, teacherUid) {
-  const snap = await db.collection(collectionName).where('uid', '==', teacherUid).get();
-  return snap.docs;
+async function queryStudentDocs(collectionName, field, value, teacherUid, ownerField = 'uid') {
+  const snap = await db.collection(collectionName).where(field, '==', value).get();
+  return snap.docs.filter(doc => doc.get(ownerField) === teacherUid);
 }
 
 async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
@@ -68,14 +68,13 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
 
   const deleted = {};
   for (const collectionName of STUDENT_CHILD_COLLECTIONS) {
-    const docs = await queryTeacherDocs(collectionName, teacherUid);
-    const matched = docs.filter(doc => doc.get('ogrenciId') === studentRecordId);
+    const matched = await queryStudentDocs(collectionName, 'ogrenciId', studentRecordId, teacherUid);
     await deleteInChunks(matched.map(doc => doc.ref));
     deleted[collectionName] = matched.length;
   }
 
   // Sınıf ödevlerinde yalnızca bu öğrenci hedef listesinden çıkarılır.
-  const homeworkDocs = await queryTeacherDocs('odevler', teacherUid);
+  const homeworkDocs = await queryStudentDocs('odevler', 'hedefOgrenciIds', studentRecordId, teacherUid);
   let homeworkUpdated = 0;
   let homeworkDeleted = 0;
   for (let i = 0; i < homeworkDocs.length; i += 300) {
@@ -109,20 +108,14 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
   deleted.odevlerGuncellendi = homeworkUpdated;
 
   // Yalnızca bu öğretmenin öğrenci bağlantısı ve kayıt indeksi kaldırılır.
-  const [links, indexes, requests, pairingCodes, completionNotices, newHomeworkNotices] = await Promise.all([
-    db.collection('ogretmenOgrenciBaglantilari').where('ogretmenUid', '==', teacherUid).get(),
-    db.collection('ogrenciKayitEslesmeleri').where('ogretmenUid', '==', teacherUid).get(),
-    db.collection('ogrenciEslesmeTalepleri').where('ogretmenUid', '==', teacherUid).get(),
-    db.collection('ogrenciEslesmeKodlari').where('uid', '==', teacherUid).get(),
-    db.collection('ogrenciOdevBildirimleri').where('ogretmenUid', '==', teacherUid).get(),
-    db.collection('ogrenciYeniOdevBildirimleri').where('ogretmenUid', '==', teacherUid).get(),
+  const [relatedLinks, relatedIndexes, relatedRequests, relatedPairingCodes, relatedCompletionNotices, relatedNewHomeworkNotices] = await Promise.all([
+    queryStudentDocs('ogretmenOgrenciBaglantilari', 'ogrenciKayitId', studentRecordId, teacherUid, 'ogretmenUid'),
+    queryStudentDocs('ogrenciKayitEslesmeleri', 'ogrenciKayitId', studentRecordId, teacherUid, 'ogretmenUid'),
+    queryStudentDocs('ogrenciEslesmeTalepleri', 'ogrenciKayitId', studentRecordId, teacherUid, 'ogretmenUid'),
+    queryStudentDocs('ogrenciEslesmeKodlari', 'ogrenciKayitId', studentRecordId, teacherUid),
+    queryStudentDocs('ogrenciOdevBildirimleri', 'ogrenciKayitId', studentRecordId, teacherUid, 'ogretmenUid'),
+    queryStudentDocs('ogrenciYeniOdevBildirimleri', 'ogrenciKayitId', studentRecordId, teacherUid, 'ogretmenUid'),
   ]);
-  const relatedLinks = links.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
-  const relatedIndexes = indexes.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
-  const relatedRequests = requests.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
-  const relatedPairingCodes = pairingCodes.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
-  const relatedCompletionNotices = completionNotices.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
-  const relatedNewHomeworkNotices = newHomeworkNotices.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   await deleteInChunks([
     ...relatedLinks, ...relatedIndexes, ...relatedRequests, ...relatedPairingCodes,
     ...relatedCompletionNotices, ...relatedNewHomeworkNotices,
