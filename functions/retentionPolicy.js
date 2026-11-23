@@ -9,6 +9,17 @@ const RETENTION_COLLECTIONS = Object.freeze([
   'odevler',
   'kitaplar',
   'konular',
+  'bireyselEtkinlikler',
+  'bireyselDersOturumlari',
+  'ogrenciler',
+  'siniflar',
+  'okullar',
+  'ogretmenOgrenciBaglantilari',
+  'ogrenciKayitEslesmeleri',
+  'ogrenciEslesmeTalepleri',
+  'ogrenciEslesmeKodlari',
+  'ogrenciOdevBildirimleri',
+  'ogrenciYeniOdevBildirimleri',
 ]);
 function istanbulDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
