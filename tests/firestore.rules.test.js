@@ -407,6 +407,93 @@ test('Kitap ve konu aynı batch içinde güvenli biçimde oluşturulabilir', asy
   await assertSucceeds(batch.commit());
 });
 
+test('Öğretmen kendi kitap kütüphanesine geçerli kitap ve konu ekleyebilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const bookRef = doc(collection(db, 'kitapKutuphanesi'));
+  await assertSucceeds(setDoc(bookRef, {
+    uid: 'teacher-a',
+    ad: 'Coğrafya Kaynak Kitabı',
+    sayfaSayisi: 240,
+    olusturulma: new Date().toISOString(),
+  }));
+
+  const topicRef = doc(collection(db, 'kitapKutuphanesiKonulari'));
+  await assertSucceeds(setDoc(topicRef, {
+    uid: 'teacher-a',
+    kitapId: bookRef.id,
+    kitapAd: 'Coğrafya Kaynak Kitabı',
+    ad: 'Harita Bilgisi',
+    baslangicSayfa: 1,
+    bitisSayfa: 20,
+    kazanımKodu: '',
+    kaynak: 'manuel',
+    olusturulma: new Date().toISOString(),
+  }));
+});
+
+test('Kitap kütüphanesi sayfa sınırını ve konu aralığını Firestore kuralları doğrular', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  const invalidBookRef = doc(collection(db, 'kitapKutuphanesi'));
+  await assertFails(setDoc(invalidBookRef, {
+    uid: 'teacher-a',
+    ad: 'Geçersiz kitap',
+    sayfaSayisi: 0,
+    olusturulma: new Date().toISOString(),
+  }));
+
+  const bookRef = doc(collection(db, 'kitapKutuphanesi'));
+  await assertSucceeds(setDoc(bookRef, {
+    uid: 'teacher-a',
+    ad: 'Geçerli kitap',
+    sayfaSayisi: 100,
+    olusturulma: new Date().toISOString(),
+  }));
+  const invalidTopicRef = doc(collection(db, 'kitapKutuphanesiKonulari'));
+  await assertFails(setDoc(invalidTopicRef, {
+    uid: 'teacher-a',
+    kitapId: bookRef.id,
+    kitapAd: 'Geçerli kitap',
+    ad: 'Sayfa sınırını aşan konu',
+    baslangicSayfa: 90,
+    bitisSayfa: 101,
+    kazanımKodu: '',
+    kaynak: 'manuel',
+    olusturulma: new Date().toISOString(),
+  }));
+});
+
+test('Kitap kütüphanesi konusu başka öğretmenin kitabına taşınamaz', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'kitapKutuphanesi', 'library-book-b'), {
+      uid: 'teacher-b',
+      ad: 'B öğretmeninin kitabı',
+      sayfaSayisi: 100,
+      olusturulma: new Date().toISOString(),
+    });
+  });
+  const ownBook = doc(collection(db, 'kitapKutuphanesi'));
+  await assertSucceeds(setDoc(ownBook, {
+    uid: 'teacher-a',
+    ad: 'A öğretmeninin kitabı',
+    sayfaSayisi: 100,
+    olusturulma: new Date().toISOString(),
+  }));
+  const topicRef = doc(collection(db, 'kitapKutuphanesiKonulari'));
+  await assertSucceeds(setDoc(topicRef, {
+    uid: 'teacher-a',
+    kitapId: ownBook.id,
+    kitapAd: 'A öğretmeninin kitabı',
+    ad: 'Başlangıç konusu',
+    baslangicSayfa: 1,
+    bitisSayfa: 10,
+    kazanımKodu: '',
+    kaynak: 'manuel',
+    olusturulma: new Date().toISOString(),
+  }));
+  await assertFails(updateDoc(topicRef, { kitapId: 'library-book-b', kitapAd: 'B öğretmeninin kitabı' }));
+});
+
 test('Öğretmen başka öğretmenin kitap kütüphanesi kitabına konu ekleyemez', async () => {
   const db = testEnv.authenticatedContext('teacher-a').firestore();
   await testEnv.withSecurityRulesDisabled(async (context) => {
