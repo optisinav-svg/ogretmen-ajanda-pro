@@ -27,13 +27,15 @@ service cloud.firestore {
     function isTeacher() {
       return signedIn()
         && exists(profilePath(request.auth.uid))
-        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen';
+        && get(profilePath(request.auth.uid)).data.rol == 'ogretmen'
+        && get(profilePath(request.auth.uid)).data.get('hesapDurumu', 'aktif') == 'aktif';
     }
 
     function isStudent() {
       return signedIn()
         && exists(profilePath(request.auth.uid))
-        && get(profilePath(request.auth.uid)).data.rol == 'ogrenci';
+        && get(profilePath(request.auth.uid)).data.rol == 'ogrenci'
+        && get(profilePath(request.auth.uid)).data.get('hesapDurumu', 'aktif') == 'aktif';
     }
 
     function studentLinkPath(teacherUid, classId) {
@@ -367,11 +369,13 @@ service cloud.firestore {
         && resource.data.keys().hasAny(['rol'])
         && data.rol == resource.data.rol
         && data.eposta == resource.data.eposta
-        && changed.hasOnly(['kullaniciAdi', 'brans', 'sezon'])
+        && changed.hasOnly(['kullaniciAdi', 'ad', 'soyad', 'brans', 'sezon'])
         && (!changed.hasAny(['kullaniciAdi'])
           || (data.kullaniciAdi is string
             && data.kullaniciAdi.size() >= 2
             && data.kullaniciAdi.size() <= 80))
+        && (!changed.hasAny(['ad']) || (data.ad is string && data.ad.size() >= 1 && data.ad.size() <= 60))
+        && (!changed.hasAny(['soyad']) || (data.soyad is string && data.soyad.size() >= 1 && data.soyad.size() <= 60))
         && (!changed.hasAny(['brans'])
           || (resource.data.rol == 'ogretmen'
             && data.brans is string
@@ -826,6 +830,16 @@ service cloud.firestore {
     // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
     match /ogrenciPushTokenlari/{tokenId} {
       allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYaşamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
     }
 
     match /donemTemizlikKayitlari/{cleanupId} {
