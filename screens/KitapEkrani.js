@@ -78,7 +78,7 @@ export default function KitapEkrani({route,navigation}){
      kitap,
      kitap.id,
      new Date().toISOString()
-    )});
+    ),create:true});
    }
   }
   for(const konu of mevcutKonular){
@@ -90,7 +90,7 @@ export default function KitapEkrani({route,navigation}){
   }
   for(let i=0;i<islemler.length;i+=450){
    const batch=writeBatch(db);
-   islemler.slice(i,i+450).forEach(x=>batch.update(x.ref,x.data));
+   islemler.slice(i,i+450).forEach(x=>x.create?batch.set(x.ref,x.data):batch.update(x.ref,x.data));
    await batch.commit();
   }
   return {atamaSayisi:atamalar.length,guncellenenKayit:islemler.length};
@@ -196,6 +196,11 @@ export default function KitapEkrani({route,navigation}){
     batch.update(doc(db,'kitapKutuphanesi',duzenlenenKitap.id),{ad:yeniAd,sayfaSayisi:toplamSayfa});
     if(yeniAd!==duzenlenenKitap.ad)mevcut.forEach(x=>batch.update(doc(db,'kitapKutuphanesiKonulari',x.id),{kitapAd:yeniAd}));
     await batch.commit();
+    try{
+     await kutuphaneAtamalariniEsitle(duzenlenenKitap.id,{kitapData:{ad:yeniAd,sayfaSayisi:toplamSayfa}});
+    }catch(esitlemeHatasi){
+     Alert.alert('Kitap kaydedildi','Kütüphane güncellendi ancak bazı mevcut öğrenci atamalarına yansıtılamadı. Aynı kitabı yeniden kaydederseniz eşitleme tekrar denenir. '+(esitlemeHatasi?.message||''));
+    }
     setSeciliKitap(prev=>prev?.id===duzenlenenKitap.id?{...prev,ad:yeniAd,sayfaSayisi:toplamSayfa}:prev);
    }else{
     await addDoc(collection(db,'kitapKutuphanesi'),{ad:yeniAd,sayfaSayisi:toplamSayfa,uid,olusturulma:new Date().toISOString()});
@@ -238,8 +243,18 @@ export default function KitapEkrani({route,navigation}){
  try{
   const data={ad,baslangicSayfa:bas,bitisSayfa:bit,kazanımKodu:manuelKonu?'':seciliKazanim?.kod||'',kaynak:manuelKonu?'manuel':'kazanım'};
   if(kutuphaneModu){
-   if(duzenlenenKonu)await updateDoc(doc(db,'kitapKutuphanesiKonulari',duzenlenenKonu.id),data);
-   else await addDoc(collection(db,'kitapKutuphanesiKonulari'),{...data,kitapId:seciliKitap.id,kitapAd:seciliKitap.ad,uid,olusturulma:new Date().toISOString()});
+   let konuId=duzenlenenKonu?.id;
+   if(duzenlenenKonu){
+    await updateDoc(doc(db,'kitapKutuphanesiKonulari',konuId),data);
+   }else{
+    const ref=await addDoc(collection(db,'kitapKutuphanesiKonulari'),{...data,kitapId:seciliKitap.id,kitapAd:seciliKitap.ad,uid,olusturulma:new Date().toISOString()});
+    konuId=ref.id;
+   }
+   try{
+    await kutuphaneAtamalariniEsitle(seciliKitap.id,{konuId,konuData:data,yeniKonu:!duzenlenenKonu});
+   }catch(esitlemeHatasi){
+    Alert.alert('Konu kaydedildi','Kütüphane konusu güncellendi ancak bazı mevcut öğrenci kitaplarına yansıtılamadı. Aynı konuyu yeniden kaydettiğinizde eşitleme tekrar denenir. '+(esitlemeHatasi?.message||''));
+   }
    konuFormKapat();await kutuphaneYukle();return;
   }
   if(duzenlenenKonu)await updateDoc(doc(db,'konular',duzenlenenKonu.id),data);
