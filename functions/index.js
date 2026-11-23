@@ -37,6 +37,7 @@ exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstat
 
 const accountLifecycle = require('./accountLifecycle');
 exports.profilAdSoyadGuncelle = accountLifecycle.profilAdSoyadGuncelle;
+exports.epostaDegisikliginiProfileYansit = accountLifecycle.epostaDegisikliginiProfileYansit;
 exports.hesapKapatmaTalebiOlustur = accountLifecycle.hesapKapatmaTalebiOlustur;
 exports.hesabiYenidenEtkinlestir = accountLifecycle.hesabiYenidenEtkinlestir;
 exports.rolDuzeltmeTalebiOlustur = accountLifecycle.rolDuzeltmeTalebiOlustur;
