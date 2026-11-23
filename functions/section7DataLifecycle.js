@@ -181,6 +181,10 @@ async function updateCleanupState(lockRef, token, patch) {
 }
 exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async request => {
   const ownerUid = requireTeacher(request);
+  const ownerProfile = await db.collection('kullanicilar').doc(ownerUid).get();
+  if (!ownerProfile.exists || ownerProfile.get('rol') !== 'ogretmen') {
+    throw new HttpsError('permission-denied', 'Uygulama sahibi işlemi öğretmen profiline bağlı olmalıdır.');
+  }
   if (request.auth.token.uygulamaSahibi !== true) {
     throw new HttpsError('permission-denied', 'Uygulama sahibi yetkisi gereklidir.');
   }
@@ -206,6 +210,10 @@ exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async 
 
 exports.uygulamaSahibiDonemTemizliginiOnayla = onCall({ region: REGION, timeoutSeconds: 540, memory: '1GiB' }, async request => {
   const ownerUid = requireTeacher(request);
+  const ownerProfile = await db.collection('kullanicilar').doc(ownerUid).get();
+  if (!ownerProfile.exists || ownerProfile.get('rol') !== 'ogretmen') {
+    throw new HttpsError('permission-denied', 'Uygulama sahibi işlemi öğretmen profiline bağlı olmalıdır.');
+  }
   if (request.auth.token.uygulamaSahibi !== true) {
     throw new HttpsError('permission-denied', 'Uygulama sahibi yetkisi gereklidir.');
   }
