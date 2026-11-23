@@ -72,7 +72,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
     if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul kaldırılamaz.');
     try{
       const classesSnap=await getDocs(query(collection(db,'siniflar'),where('okulId','==',okul.id),where('uid','==',uid)));
-      const schoolClasses=classesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili)&&!x.arsivlendi);
+      const schoolClasses=classesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));
       const regularClasses=schoolClasses.filter(x=>!x.ozelTur);
       const occupied=[];
       for(const cls of regularClasses){
