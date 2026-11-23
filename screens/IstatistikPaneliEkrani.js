@@ -9,7 +9,6 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebaseConfig';
 
 const number = value => Number(value || 0).toLocaleString('tr-TR');
-const RETENTION_COLLECTIONS = ['dersler','dersNotlari','yoklamalar','odevler','kitaplar','konular','bireyselEtkinlikler','bireyselDersOturumlari','ogrenciler','siniflar','okullar','ogretmenOgrenciBaglantilari','ogrenciKayitEslesmeleri','ogrenciEslesmeTalepleri','ogrenciEslesmeKodlari','ogrenciOdevBildirimleri','ogrenciYeniOdevBildirimleri'];
 const istanbulDateParts = () => {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric',
@@ -183,8 +182,8 @@ export default function IstatistikPaneliEkrani({ navigation }) {
 
   const confirmRetentionCleanup = () => {
     if (!cleanupPreview) return;
-    const summary = RETENTION_COLLECTIONS.map(name =>
-      `${name}: ${number(cleanupPreview.counts[name] || 0)}`
+    const summary = Object.entries(cleanupPreview.counts || {}).map(([name, count]) =>
+      `${name}: ${number(count || 0)}`
     ).join('\\n');
     Alert.alert(
       `${cleanupPreview.targetYear} dönemi silinecek`,
@@ -266,16 +265,16 @@ export default function IstatistikPaneliEkrani({ navigation }) {
             <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2029'da başlayabilir ve 2026 dönemini kapsar. Sonraki yıllarda üç yılını dolduran tek dönem, yalnızca uygulama sahibi onayıyla temizlenir.</Text>
           ) : (
             <>
-              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: yalnızca {retentionTargetYear} dönemine ait ders, öğrenci, sınıf, okul, yoklama, ödev, kitap, konu, bireysel etkinlik ve öğretmen-öğrenci bağlantı kayıtları temizlenebilir. Genel kullanıcı profilleri, Firebase Auth hesapları ve diğer dönemler korunur.</Text>
+              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: üç yılını dolduran {retentionTargetYear} dönemine ait öğretmen kayıtları, öğrenciye bağlı veriler, sınıflar, okullar, eşleştirme ve bildirim kayıtları temizlenebilir. Genel kullanıcı profilleri, Firebase Auth hesapları ve diğer dönemler korunur.</Text>
               <TouchableOpacity style={s.cleanupButton} disabled={cleanupBusy} onPress={previewRetentionCleanup}>
                 <Text style={s.cleanupButtonText}>{cleanupBusy ? 'İşlem sürüyor…' : 'Silinecek kayıtları önizle'}</Text>
               </TouchableOpacity>
               {!!cleanupPreview && (
                 <View style={s.cleanupPreview}>
-                  {RETENTION_COLLECTIONS.map(name => (
+                  {Object.entries(cleanupPreview.counts || {}).map(([name, count]) => (
                     <View key={name} style={s.row}>
                       <Text style={s.rowTitle}>{name}</Text>
-                      <Text style={s.rowValue}>{number(cleanupPreview.counts[name] || 0)}</Text>
+                      <Text style={s.rowValue}>{number(count || 0)}</Text>
                     </View>
                   ))}
                   <Text style={s.cleanupTotal}>Toplam: {number(cleanupPreview.total)} kayıt</Text>
