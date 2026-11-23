@@ -70,6 +70,10 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     const student = studentSnap.data();
     const target = targetSnap.data();
+    if (neden === 'kayitsizlara_tasima'
+      && (target.ozelTur !== 'kayitsiz' || !student.okulId || target.okulId !== student.okulId)) {
+      throw new HttpsError('failed-precondition', 'Öğrenci yalnızca kendi okulunun Kayıtsız Öğrenciler sınıfına taşınabilir.');
+    }
     if (!isCurrentAcademicPeriodEditable(donemYili)) {
       throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları taşınamaz.');
     }
