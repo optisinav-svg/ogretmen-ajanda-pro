@@ -401,7 +401,15 @@ exports.ogrenciBaglantiIzinleriniGuncelle = onCall({ region: REGION }, async (re
     if (!snap.exists || snap.get('ogretmenUid') !== teacherUid || snap.get('durum') !== 'active') {
       throw new HttpsError('not-found', 'Etkin öğrenci bağlantısı bulunamadı.');
     }
-    tx.update(ref, { izinler: permissions, izinGuncelleme: FieldValue.serverTimestamp() });
+    const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
+      .where('ogrenciKayitId', '==', snap.get('ogrenciKayitId'));
+    const linksSnap = await tx.get(linksQuery);
+    const relatedLinks = linksSnap.docs.filter(item =>
+      (item.get('ogretmenUid') === teacherUid || item.get('uid') === teacherUid)
+      && item.get('durum') === 'active');
+    for (const item of relatedLinks) {
+      tx.update(item.ref, { izinler: permissions, izinGuncelleme: FieldValue.serverTimestamp() });
+    }
   });
   return { durum: 'updated' };
 });
