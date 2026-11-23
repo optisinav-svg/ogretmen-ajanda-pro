@@ -9,8 +9,8 @@ const TARGET_UID = process.env.TARGET_UID;
 const TARGET_EMAIL = process.env.TARGET_EMAIL;
 const APPLY = process.argv.includes('--apply');
 
-const EXPECTED_NAME = 'R\\u0131za G\\u00f6k\\u00e7e';
-const EXPECTED_BRANCH = 'Co\\u011frafya';
+const EXPECTED_NAME = 'R\u0131za G\u00f6k\u00e7e';
+const EXPECTED_BRANCH = 'Co\u011frafya';
 const CORRUPTED_NAME = 'R?za G?k?e';
 const CORRUPTED_BRANCH = 'Co?rafya';
 
