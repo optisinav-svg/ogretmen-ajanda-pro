@@ -368,7 +368,7 @@ service cloud.firestore {
         && request.auth.uid == userId
         && resource.data.keys().hasAny(['rol'])
         && data.rol == resource.data.rol
-        && data.eposta == resource.data.eposta
+        && data.get('eposta', '') == resource.data.get('eposta', '')
         && changed.hasOnly(['kullaniciAdi', 'ad', 'soyad', 'brans', 'sezon'])
         && (!changed.hasAny(['kullaniciAdi'])
           || (data.kullaniciAdi is string
