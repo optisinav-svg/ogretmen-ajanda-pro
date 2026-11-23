@@ -239,11 +239,20 @@ service cloud.firestore {
     }
 
     function assignedBookBelongsToStudent(data) {
+      let bookPath = /databases/$(database)/documents/kitaplar/$(data.kitapId);
       return data.kitapId is string
-        && ownsDocumentAfter('kitaplar', data.kitapId)
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.ogrenciId == data.ogrenciId
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.sinifId == data.sinifId
-        && getAfter(/databases/$(database)/documents/kitaplar/$(data.kitapId)).data.donemYili == data.donemYili;
+        && (
+          (exists(bookPath)
+            && get(bookPath).data.uid == request.auth.uid
+            && get(bookPath).data.ogrenciId == data.ogrenciId
+            && get(bookPath).data.sinifId == data.sinifId
+            && get(bookPath).data.donemYili == data.donemYili)
+          || (existsAfter(bookPath)
+            && getAfter(bookPath).data.uid == request.auth.uid
+            && getAfter(bookPath).data.ogrenciId == data.ogrenciId
+            && getAfter(bookPath).data.sinifId == data.sinifId
+            && getAfter(bookPath).data.donemYili == data.donemYili)
+        );
     }
 
     // Kullanıcı profili: herkes yalnızca kendi profil belgesini görebilir.
