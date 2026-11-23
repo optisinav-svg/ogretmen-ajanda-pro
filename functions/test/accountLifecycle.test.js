@@ -14,3 +14,10 @@ test('only supported account roles are accepted', () => {
   assert.equal(_test.normalizeRole('ogretmen'), 'ogretmen');
   assert.throws(() => _test.normalizeRole('admin'));
 });
+
+const { _test: emailAliasTest } = require('../emailAliases');
+test('email aliases normalize case and whitespace and use deterministic opaque identifiers', () => {
+  assert.equal(emailAliasTest.normalizeEmail('  USER@Example.COM '), 'user@example.com');
+  assert.equal(emailAliasTest.emailAliasId('USER@example.com'), emailAliasTest.emailAliasId(' user@EXAMPLE.com '));
+  assert.notEqual(emailAliasTest.emailAliasId('a@example.com'), emailAliasTest.emailAliasId('b@example.com'));
+});
