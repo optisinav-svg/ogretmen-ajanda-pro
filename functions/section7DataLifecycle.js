@@ -38,8 +38,8 @@ async function deleteInChunks(refs) {
   }
 }
 
-async function queryStudentDocs(collectionName, field, value, teacherUid, ownerField = 'uid') {
-  const snap = await db.collection(collectionName).where(field, '==', value).get();
+async function queryStudentDocs(collectionName, field, value, teacherUid, ownerField = 'uid', operator = '==') {
+  const snap = await db.collection(collectionName).where(field, operator, value).get();
   return snap.docs.filter(doc => doc.get(ownerField) === teacherUid);
 }
 
@@ -74,7 +74,7 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
   }
 
   // Sınıf ödevlerinde yalnızca bu öğrenci hedef listesinden çıkarılır.
-  const homeworkDocs = await queryStudentDocs('odevler', 'hedefOgrenciIds', studentRecordId, teacherUid);
+  const homeworkDocs = await queryStudentDocs('odevler', 'hedefOgrenciIds', studentRecordId, teacherUid, 'uid', 'array-contains');
   let homeworkUpdated = 0;
   let homeworkDeleted = 0;
   for (let i = 0; i < homeworkDocs.length; i += 300) {
