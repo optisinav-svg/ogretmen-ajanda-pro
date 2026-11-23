@@ -46,7 +46,8 @@ service cloud.firestore {
       let classPath = /databases/$(database)/documents/siniflar/$(classId);
       return exists(studentPath)
         && get(studentPath).data.uid == teacherUid
-        && get(studentPath).data.sinifId == classId
+        && (get(studentPath).data.sinifId == classId
+          || get(studentPath).data.get('sinifGecmisiIds', []).hasAny([classId]))
         && get(studentPath).data.donemYili == link.donemYili
         && exists(classPath)
         && get(classPath).data.uid == teacherUid
