@@ -19,7 +19,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
   const studentRef = db.collection('ogrenciler').doc(ogrenciKayitId);
   const targetRef = db.collection('siniflar').doc(hedefSinifId);
   const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
-    .where('ogretmenUid', '==', teacherUid).where('ogrenciKayitId', '==', ogrenciKayitId);
+    .where('ogretmenUid', '==', teacherUid);
   const indexRef = db.collection('ogrenciKayitEslesmeleri').doc([teacherUid, ogrenciKayitId].join('__'));
   await db.runTransaction(async tx => {
     const [studentSnap, targetSnap, linksSnap, indexSnap] = await Promise.all([
@@ -37,7 +37,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     const student = studentSnap.data();
     const target = targetSnap.data();
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
-    const activeLinks = linksSnap.docs.filter(doc => doc.get('durum') === 'active');
+    const activeLinks = linksSnap.docs.filter(doc => doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
     const currentLink = activeLinks[0] || null;
     let newLinkRef = null;
     let newLinkSnap = null;
@@ -96,16 +96,19 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       };
       if (newLinkSnap.exists) tx.set(newLinkRef, nextLink, { merge: true });
       else tx.create(newLinkRef, nextLink);
-      if (indexSnap.exists && indexSnap.get('ogrenciUid') === oldData.ogrenciUid) {
-        tx.set(indexRef, {
-          ...indexSnap.data(),
-          sinifId: hedefSinifId,
-          baglantiId: newLinkId,
-          durum: 'active',
-          iptalTarihi: null,
-          guncellenme: FieldValue.serverTimestamp(),
-        }, { merge: true });
-      }
+      tx.set(indexRef, {
+        ...(indexSnap.exists ? indexSnap.data() : {}),
+        uid: teacherUid,
+        ogretmenUid: teacherUid,
+        donemYili,
+        ogrenciKayitId,
+        ogrenciUid: oldData.ogrenciUid,
+        sinifId: hedefSinifId,
+        baglantiId: newLinkId,
+        durum: 'active',
+        iptalTarihi: null,
+        guncellenme: FieldValue.serverTimestamp(),
+      }, { merge: true });
     }
   });
   return { durum: 'tasindi', ogrenciKayitId, hedefSinifId };
