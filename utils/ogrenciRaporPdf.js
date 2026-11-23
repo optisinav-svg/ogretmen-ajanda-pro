@@ -29,7 +29,7 @@ const durumAd = d => ({
 
 export function ogrenciRaporHtml({
   okulAdi, ogrenciAdi, sinifAdi, dersAdi, olusturmaTarihi,
-  konular = [], odevler = [], kitaplar = [], bireyselEtkinlikler = []
+  konular = [], odevler = [], kitaplar = [], bireyselEtkinlikler = [], bireyselProgramlar = []
 }) {
   const konuHtml = konular.map(k => {
     const d = k.yoklamaDurumu === 'geldi' ? 'Derste var' :
@@ -78,7 +78,21 @@ export function ogrenciRaporHtml({
   const etkinlikHtml = bireyselEtkinlikler
     .slice()
     .sort((a,b) => String(a.tarih || a.baslangicTarih || '').localeCompare(String(b.tarih || b.baslangicTarih || '')) || String(a.baslangicSaat || '').localeCompare(String(b.baslangicSaat || '')))
-    .map(e => '<div class="homework-row"><strong>' + esc(e.tur || 'Bireysel etkinlik') + '</strong><div>' + tarih(e.tarih) + ' · ' + esc(e.baslangicSaat || '') + ' – ' + esc(e.bitisSaat || '') + '</div><div class="record-meta">Yoklama: ' + (e.yoklamaDurumu === 'geldi' ? 'Geldi' : e.yoklamaDurumu === 'gecikti' ? 'Geç geldi' : e.yoklamaDurumu === 'gelmedi' ? 'Gelmedi' : 'Girilmedi') + '</div><div class="record-meta">İşlenen konular: ' + (Array.isArray(e.konular) && e.konular.length ? e.konular.map(esc).join(' · ') : 'Konu kaydı yok') + '</div></div>').join('');
+    .map(e => '<div class="homework-row"><strong>' + esc(e.tur || 'Bireysel etkinlik') + '</strong><div>' + tarih(e.tarih) + ' · ' + esc(e.baslangicSaat || '') + ' – ' + esc(e.bitisSaat || '') + '</div><div class="record-meta">Yoklama: ' + (e.yoklamaDurumu === 'geldi' ? 'Geldi' : e.yoklamaDurumu === 'gecikti' ? 'Geç geldi' : e.yoklamaDurumu === 'gelmedi' ? 'Gelmedi' : 'Girilmedi') + '</div><div class="record-meta">İşlenen konular: ' + (Array.isArray(e.konular) && e.konular.length ? e.konular.map(esc).join(' · ') : 'Konu kaydı yok') + '</div>' + (e.aciklama ? '<div class="record-meta">Not: ' + esc(e.aciklama) + '</div>' : '') + '</div>').join('');
+  const programHtml = bireyselProgramlar
+    .slice()
+    .sort((a,b) => String(a.baslangicTarih || '').localeCompare(String(b.baslangicTarih || '')) || String(a.baslangicSaat || '').localeCompare(String(b.baslangicSaat || '')))
+    .map(e => {
+      const tur = ({ ozelDers: 'Özel Ders', etut: 'Etüt', soruCozumu: 'Soru Çözümü' })[e.tur] || e.tur || 'Bireysel etkinlik';
+      const tarihAraligi = e.periyot === 'tek' || e.baslangicTarih === e.bitisTarih
+        ? tarih(e.baslangicTarih)
+        : `${tarih(e.baslangicTarih)} – ${tarih(e.bitisTarih)}`;
+      const tekrar = e.periyot === 'tek' ? 'Tek seferlik' : `Haftalık · ${esc(e.gun || 'Gün belirtilmedi')}`;
+      const istisna = Array.isArray(e.istisnaTarihleri) && e.istisnaTarihleri.length
+        ? ` · ${e.istisnaTarihleri.length} tarih hariç` : '';
+      return `<div class="homework-row"><strong>${esc(tur)}</strong><div>${tarihAraligi} · ${tekrar}${istisna}</div><div class="record-meta">${esc(e.baslangicSaat || '')} – ${esc(e.bitisSaat || '')}</div>${e.aciklama ? `<div class="record-meta">${esc(e.aciklama)}</div>` : ''}</div>`;
+    }).join('');
+
   const tarihMetni = tarih(olusturmaTarihi || new Date().toISOString());
 
   return `<!DOCTYPE html>
@@ -232,8 +246,10 @@ html, body {
     <section class="homework-section">
       <h2 class="section-title">\u00D6dev Ge\u00E7mi\u015Fi</h2>
       ${odevHtml || '<div class="homework-row">Hen\u00FCz \u00F6dev kayd\u0131 bulunmuyor.</div>'}
-      <h2 class="section-title">Bireysel Ders ve Etüt Geçmişi</h2>
-      ${etkinlikHtml || '<div>Henüz bireysel etkinlik kaydı bulunmuyor.</div>'}
+      <h2 class="section-title">Öğrenciye Özel Etkinlik Programı</h2>
+      ${programHtml || '<div class="homework-row">Tanımlı bireysel etkinlik programı bulunmuyor.</div>'}
+      <h2 class="section-title">Özel Ders, Etüt ve Soru Çözümü Oturum Geçmişi</h2>
+      ${etkinlikHtml || '<div class="homework-row">Henüz bireysel etkinlik oturumu bulunmuyor.</div>'}
       <h2 class="section-title books-title">Kitap \u0130lerlemesi</h2>
       ${kitapHtml || '<div class="homework-row">\u00D6\u011Frenciye atanm\u0131\u015F kitap bulunmuyor.</div>'}
     </section>
