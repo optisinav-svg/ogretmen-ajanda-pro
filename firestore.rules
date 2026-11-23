@@ -635,6 +635,9 @@ service cloud.firestore {
         && keepsOwner()
         && keepsPeriod()
         && schoolBelongsToTeacher(request.resource.data)
+        && (resource.data.get('arsivDurumu', '') != 'isleniyor'
+          || request.resource.data.get('arsivlendi', false) == true
+          || request.resource.data.get('arsivDurumu', '') != 'isleniyor')
         && (request.resource.data.get('arsivlendi', false) == true
           || schoolAcceptsNewRecords(request.resource.data.get('okulId', '')));
       allow delete: if ownsEditablePeriodRecord();
