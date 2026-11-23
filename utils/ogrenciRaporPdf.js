@@ -48,7 +48,7 @@ export function ogrenciRaporHtml({
 
   const odevHtml = odevler.map(o => {
     const d = o.durum || 'bekliyor';
-    const baslik = [o.kitapAd, o.aciklama].filter(Boolean).join(' - ') || '\u00D6dev';
+    const baslik = [o.kitapAd, o.konuAd || o.aciklama, o.baslangicSayfa && o.bitisSayfa ? `Sayfa ${o.baslangicSayfa}-${o.bitisSayfa}` : null].filter(Boolean).join(' · ') || '\u00D6dev';
     return `<div class="homework-row">
       <div class="homework-title">${esc(baslik)}</div>
       <div class="homework-meta">
