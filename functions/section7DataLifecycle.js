@@ -88,25 +88,28 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
   deleted.odevlerGuncellendi = homeworkUpdated;
 
   // Yalnızca bu öğretmenin öğrenci bağlantısı ve kayıt indeksi kaldırılır.
-  const [links, indexes, requests, completionNotices, newHomeworkNotices] = await Promise.all([
+  const [links, indexes, requests, pairingCodes, completionNotices, newHomeworkNotices] = await Promise.all([
     db.collection('ogretmenOgrenciBaglantilari').where('ogretmenUid', '==', teacherUid).get(),
     db.collection('ogrenciKayitEslesmeleri').where('ogretmenUid', '==', teacherUid).get(),
     db.collection('ogrenciEslesmeTalepleri').where('ogretmenUid', '==', teacherUid).get(),
+    db.collection('ogrenciEslesmeKodlari').where('uid', '==', teacherUid).get(),
     db.collection('ogrenciOdevBildirimleri').where('ogretmenUid', '==', teacherUid).get(),
     db.collection('ogrenciYeniOdevBildirimleri').where('ogretmenUid', '==', teacherUid).get(),
   ]);
   const relatedLinks = links.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   const relatedIndexes = indexes.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   const relatedRequests = requests.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
+  const relatedPairingCodes = pairingCodes.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   const relatedCompletionNotices = completionNotices.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   const relatedNewHomeworkNotices = newHomeworkNotices.docs.filter(doc => doc.get('ogrenciKayitId') === studentRecordId);
   await deleteInChunks([
-    ...relatedLinks, ...relatedIndexes, ...relatedRequests,
+    ...relatedLinks, ...relatedIndexes, ...relatedRequests, ...relatedPairingCodes,
     ...relatedCompletionNotices, ...relatedNewHomeworkNotices,
   ].map(doc => doc.ref));
   deleted.ogretmenOgrenciBaglantilari = relatedLinks.length;
   deleted.ogrenciKayitEslesmeleri = relatedIndexes.length;
   deleted.ogrenciEslesmeTalepleri = relatedRequests.length;
+  deleted.ogrenciEslesmeKodlari = relatedPairingCodes.length;
   deleted.ogrenciOdevBildirimleri = relatedCompletionNotices.length;
   deleted.ogrenciYeniOdevBildirimleri = relatedNewHomeworkNotices.length;
 
