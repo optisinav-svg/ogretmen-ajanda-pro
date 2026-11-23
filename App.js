@@ -24,7 +24,7 @@ export default function App(){return <NavigationContainer><Stack.Navigator initi
 <Stack.Screen name="Giris" component={GirisEkrani} options={{headerShown:false}}/>
 <Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>\n<Stack.Screen name="KVKKBilgilendirme" component={KVKKBilgilendirmeEkrani} options={{title:"KVKK Bilgilendirme"}}/>\n<Stack.Screen name="OgrenciKayit" component={OgrenciKayitEkrani} options={{title:"Öğrenci Kaydı"}}/>\n<Stack.Screen name="OgrenciAnaSayfa" component={OgrenciAnaSayfaEkrani} options={{title:"Öğrenci Ajandası",headerBackVisible:false}}/>
 <Stack.Screen name="AnaSayfa" component={AnaSayfa} options={{title:'Öğretmen AjandaPro',headerBackVisible:false}}/>
-<Stack.Screen name="IstatistikPaneli" component={IstatistikPaneliEkrani} options={{title:'İstatistik Paneli'}}/>
+<Stack.Screen name="IstatistikPaneli" component={IstatistikPaneliEkrani} options={{title:'Uygulama Sahibi'}}/>
 <Stack.Screen name="OkulSinif" component={OkulSinifEkrani} options={{title:'Okul & Sınıf Yönetimi'}}/>
 <Stack.Screen name="Ogrenci" component={OgrenciEkrani} options={{title:'Öğrenci Yönetimi'}}/>
 <Stack.Screen name="Kitap" component={KitapEkrani} options={{title:'Kitap & Konu Takibi'}}/>
