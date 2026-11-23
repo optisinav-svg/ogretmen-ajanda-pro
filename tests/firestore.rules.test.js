@@ -1179,6 +1179,28 @@ test('Öğrenci, sınıf ve öğrenciye atanan kitap aynı akademik dönemde olm
   }));
 });
 
+test('Okul veya sınıf arşivleme kilidi sırasında yeni öğrenci kaydı açılamaz', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'okullar', 'school-a'), { arsivDurumu: 'isleniyor' });
+  });
+  await assertFails(addDoc(collection(teacherDb, 'ogrenciler'), {
+    uid: 'teacher-a', sinifId: 'class-a', donemYili: 2026,
+    ad: 'Yeni', soyad: 'Öğrenci',
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'okullar', 'school-a'), { arsivDurumu: deleteField() });
+    await updateDoc(doc(context.firestore(), 'siniflar', 'class-a'), { arsivDurumu: 'isleniyor' });
+  });
+  await assertFails(addDoc(collection(teacherDb, 'ogrenciler'), {
+    uid: 'teacher-a', sinifId: 'class-a', donemYili: 2026,
+    ad: 'Yeni', soyad: 'Öğrenci',
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'siniflar', 'class-a'), { arsivDurumu: deleteField() });
+  });
+});
+
 test('Firestore eski dönem kayıtlarının düzenlenmesini ve silinmesini engeller', async () => {
   const db = testEnv.authenticatedContext('teacher-a').firestore();
   await assertSucceeds(getDoc(doc(db, 'okullar', 'school-old')));
