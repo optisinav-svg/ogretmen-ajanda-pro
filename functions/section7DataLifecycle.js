@@ -13,6 +13,18 @@ const STUDENT_CHILD_COLLECTIONS = [
   'dersNotlari',
 ];
 
+
+function isCurrentAcademicPeriodEditable(period, date = new Date()) {
+  if (!Number.isInteger(period)) return false;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  return (year === period && month >= 6) || (year === period + 1 && month <= 6);
+}
+
 function requireTeacher(request) {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
   return request.auth.uid;
@@ -38,6 +50,9 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
     throw new HttpsError('not-found', 'Öğretmene ait öğrenci kaydı bulunamadı.');
   }
   const student = studentSnap.data();
+  if (!isCurrentAcademicPeriodEditable(student.donemYili)) {
+    throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları kalıcı silinemez; üç yıllık saklama ve uygulama sahibi onayı süreci uygulanır.');
+  }
   if (student.kayitsizMi !== true) {
     const classSnap = typeof student.sinifId === 'string'
       ? await db.collection('siniflar').doc(student.sinifId).get()
