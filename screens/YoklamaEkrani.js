@@ -1,6 +1,6 @@
 import React,{useState,useEffect}from'react';
 import {View,Text,TouchableOpacity,StyleSheet,ScrollView,Alert,ActivityIndicator,SafeAreaView}from'react-native';
-import {collection,getDocs,query,where,setDoc,updateDoc}from'firebase/firestore';
+import {collection,getDocs,query,where,setDoc,updateDoc,doc}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
