@@ -241,18 +241,16 @@ service cloud.firestore {
       return exists(codePath)
         && invite.kullanildi == false
         && invite.sonaErme > request.time
-        && invite.eposta == request.auth.token.email
         && invite.ogretmenUid == requestData.ogretmenUid
         && invite.ogrenciKayitId == requestData.ogrenciKayitId
         && invite.sinifId == requestData.sinifId
         && invite.donemYili == requestData.donemYili
-        && invite.ogrenciAdSoyad == requestData.ogrenciHesapAdi
         && exists(studentPath)
         && get(studentPath).data.uid == invite.ogretmenUid
         && get(studentPath).data.sinifId == invite.sinifId
         && get(studentPath).data.donemYili == invite.donemYili
-        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == invite.ogrenciAdSoyad
-        && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == invite.eposta
+        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == requestData.ogrenciHesapAdi
+        && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == request.auth.token.email
         && exists(classPath)
         && get(classPath).data.uid == invite.ogretmenUid
         && get(classPath).data.donemYili == invite.donemYili;
@@ -333,32 +331,26 @@ service cloud.firestore {
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciKayitId);
       let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
       return isTeacher()
-        && codeId.size() == 64
-        && codeId.matches('^[A-F0-9]+')
-        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
+        && codeId.matches('^[A-Fa-f0-9]{64}$')
+        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogrenciKayitId', 'sinifId', 'donemYili', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
         && data.ogrenciKayitId is string
         && data.sinifId is string
-        && data.ogrenciAdSoyad is string
-        && data.eposta is string
-        && data.eposta.size() > 3
+        && data.donemYili is int
         && data.kullanildi == false
         && data.olusturulma == request.time
         && data.sonaErme > request.time
         && data.sonaErme <= request.time + duration.value(12, 'h')
+        && isEditablePeriod(data.donemYili)
         && exists(studentPath)
         && get(studentPath).data.uid == request.auth.uid
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
-        && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == data.ogrenciAdSoyad
-        && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
         && get(classPath).data.donemYili == data.donemYili
-        && data.kademe == get(classPath).data.kademe
-        && isEditablePeriod(data.donemYili)
-        && data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12];
+        && get(classPath).data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12];
     }
 
     function consumesPairingCode(codeId) {
