@@ -663,35 +663,35 @@ service cloud.firestore {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersNotlari') || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /yoklamalar/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'yoklama') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId)) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && studentBelongsToClass(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && studentBelongsToClass(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /odevler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'odevler') && resource.data.hedefOgrenciIds.hasAny([linkedStudentRecordId(resource.data.uid, resource.data.sinifId)])) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /kitaplar/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'kitaplar') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId)) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClassOrPendingTransfer(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     match /konular/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'konular') && resource.data.ogrenciId == linkedStudentRecordId(resource.data.uid, resource.data.sinifId)) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && studentBelongsToClass(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && studentBelongsToClassOrPendingTransfer(request.resource.data) && assignedBookBelongsToStudent(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Kitap ve konu tanımları öğretmenin sezon bağımsız kütüphanesinde tutulur.
