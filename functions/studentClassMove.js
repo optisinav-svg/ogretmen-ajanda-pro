@@ -29,12 +29,13 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
   }
   const studentRef = db.collection('ogrenciler').doc(ogrenciKayitId);
   const targetRef = db.collection('siniflar').doc(hedefSinifId);
+  const sourceRef = db.collection('siniflar').doc(kaynakSinifId);
   const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
     .where('ogrenciKayitId', '==', ogrenciKayitId);
   const indexRef = db.collection('ogrenciKayitEslesmeleri').doc([teacherUid, ogrenciKayitId].join('__'));
   await db.runTransaction(async tx => {
-    const [studentSnap, targetSnap, indexSnap] = await Promise.all([
-      tx.get(studentRef), tx.get(targetRef), tx.get(indexRef),
+    const [studentSnap, targetSnap, sourceSnap, indexSnap] = await Promise.all([
+      tx.get(studentRef), tx.get(targetRef), tx.get(sourceRef), tx.get(indexRef),
     ]);
     const targetSchoolId = targetSnap.exists ? targetSnap.get('okulId') : '';
     const targetSchoolSnap = typeof targetSchoolId === 'string' && targetSchoolId
@@ -55,7 +56,9 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== kaynakSinifId
-      || studentSnap.get('donemYili') !== donemYili) {
+      || studentSnap.get('donemYili') !== donemYili
+      || !sourceSnap.exists || sourceSnap.get('uid') !== teacherUid
+      || sourceSnap.get('donemYili') !== donemYili) {
       throw new HttpsError('failed-precondition', 'Öğrencinin mevcut sınıfı veya dönem bilgisi değişmiş.');
     }
     if (!targetSnap.exists || targetSnap.get('uid') !== teacherUid
@@ -70,8 +73,9 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     const student = studentSnap.data();
     const target = targetSnap.data();
+    const sourceSchoolId = student.okulId || sourceSnap.get('okulId') || '';
     if (neden === 'kayitsizlara_tasima'
-      && (target.ozelTur !== 'kayitsiz' || !student.okulId || target.okulId !== student.okulId)) {
+      && (target.ozelTur !== 'kayitsiz' || !sourceSchoolId || target.okulId !== sourceSchoolId)) {
       throw new HttpsError('failed-precondition', 'Öğrenci yalnızca kendi okulunun Kayıtsız Öğrenciler sınıfına taşınabilir.');
     }
     if (!isCurrentAcademicPeriodEditable(donemYili)) {
@@ -100,8 +104,8 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       sinifGecmisi: FieldValue.arrayUnion({
         sinifId: student.sinifId,
         sinifAd: student.sinifAd || '',
-        okulId: student.okulId || '',
-        okulAd: student.okulAd || '',
+        okulId: student.okulId || sourceSnap.get('okulId') || '',
+        okulAd: student.okulAd || sourceSnap.get('okulAd') || '',
         donemYili,
         tarih: movedAt,
         neden: neden === 'kayitsizlara_tasima' ? 'kayitsizlara_tasima' : 'sinif_degisikligi',
