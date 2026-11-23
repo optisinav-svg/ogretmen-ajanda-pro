@@ -52,7 +52,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
     const activeLinks = linksSnap.docs.filter(doc => doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
-    const currentLink = activeLinks[0] || null;
+    const currentLink = activeLinks.find(doc => doc.get('sinifId') === kaynakSinifId) || activeLinks[0] || null;
     let newLinkRef = null;
     let newLinkSnap = null;
     let newLinkId = null;
@@ -69,6 +69,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
 
     // All transaction reads are complete before the first write.
     tx.update(studentRef, {
+      sinifGecmisiIds: FieldValue.arrayUnion(kaynakSinifId),
       sinifGecmisi: FieldValue.arrayUnion({
         sinifId: student.sinifId,
         sinifAd: student.sinifAd || '',
@@ -90,11 +91,8 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       kayitsizTasiIslemi: FieldValue.delete(),
     });
 
-    for (const oldLink of activeLinks) {
-      if (oldLink.get('sinifId') !== hedefSinifId) {
-        tx.update(oldLink.ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
-      }
-    }
+    // Eski sınıf bağlantıları etkin kalır: öğrenci geçmiş yoklama/ödevlerini
+    // kendi uygulamasında görebilsin. Yeni sınıf için ayrı aktif bağlantı açılır.
     if (currentLink && newLinkRef && newLinkId) {
       const oldData = currentLink.data();
       const nextLink = {
