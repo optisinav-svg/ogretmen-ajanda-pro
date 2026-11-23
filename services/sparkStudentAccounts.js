@@ -11,7 +11,7 @@ const EMPTY_PERMISSIONS = Object.freeze(Object.fromEntries(PERMISSION_KEYS.map(k
 const CODE_TTL_MS = 12 * 60 * 60 * 1000;
 
 const normalizeEmail = value => String(value || '').trim().toLocaleLowerCase('en-US');
-const normalizeName = value => String(value || '').normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\\p{L}\\p{N}]/gu, '');
+const normalizeName = value => String(value || '').normalize('NFKC').toLocaleLowerCase('tr-TR').replace(/[^\p{L}\p{N}]/gu, '');
 const recordName = record => record?.adSoyad || [record?.ad, record?.soyad].filter(Boolean).join(' ') || record?.ad || '';
 const randomCode = async () => Array.from(await Crypto.getRandomBytesAsync(8))
   .map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase();
