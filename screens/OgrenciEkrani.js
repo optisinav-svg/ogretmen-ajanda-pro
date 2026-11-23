@@ -1,6 +1,6 @@
 import React,{useState,useEffect}from'react';
 import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,ActivityIndicator,KeyboardAvoidingView,Platform}from'react-native';
-import {collection,addDoc,getDocs,getDoc,doc,query,where,updateDoc,arrayUnion,deleteField}from'firebase/firestore';
+import {collection,addDoc,getDocs,getDoc,doc,query,where,updateDoc,deleteField}from'firebase/firestore';
 import {auth,db,functions}from'../firebaseConfig';
 import {httpsCallable} from'firebase/functions';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
