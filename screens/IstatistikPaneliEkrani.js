@@ -259,7 +259,7 @@ export default function IstatistikPaneliEkrani({ navigation }) {
             <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2029'da başlayabilir ve 2026 dönemini kapsar. Sonraki yıllarda üç yılını dolduran tek dönem, yalnızca uygulama sahibi onayıyla temizlenir.</Text>
           ) : (
             <>
-              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: yalnızca {retentionTargetYear} dönemine ait ders, ders notu, yoklama, ödev, kitap ve konu kayıtları temizlenebilir. Okul, sınıf, öğrenci, profil, bağlantı ve Firebase Auth hesapları kapsam dışıdır.</Text>
+              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: yalnızca {retentionTargetYear} dönemine ait ders, öğrenci, sınıf, okul, yoklama, ödev, kitap, konu, bireysel etkinlik ve öğretmen-öğrenci bağlantı kayıtları temizlenebilir. Genel kullanıcı profilleri, Firebase Auth hesapları ve diğer dönemler korunur.</Text>
               <TouchableOpacity style={s.cleanupButton} disabled={cleanupBusy} onPress={previewRetentionCleanup}>
                 <Text style={s.cleanupButtonText}>{cleanupBusy ? 'İşlem sürüyor…' : 'Silinecek kayıtları önizle'}</Text>
               </TouchableOpacity>
