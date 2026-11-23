@@ -209,7 +209,7 @@ service cloud.firestore {
         && data.baslangicSayfa > 0
         && data.bitisSayfa is int
         && data.bitisSayfa >= data.baslangicSayfa
-        && data.kazanımKodu is string
+        && data.get('kazanımKodu', '') is string
         && data.kaynak in ['manuel', 'kazanım']
         && data.kitapId is string
         && exists(bookPath)
@@ -218,11 +218,6 @@ service cloud.firestore {
         && data.kitapAd.size() >= 1
         && data.olusturulma is string
         && data.bitisSayfa <= book.sayfaSayisi;
-    }
-
-    function libraryBookBelongsToTeacher(data) {
-      return data.kitapId is string
-        && ownsDocument('kitapKutuphanesi', data.kitapId);
     }
 
     function individualEventBelongsToTeacher(data) {
