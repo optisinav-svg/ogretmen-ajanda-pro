@@ -223,15 +223,25 @@ exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async 
   if (lock.exists && lock.get('status') === 'completed') {
     return { status: 'completed', targetYear, counts: lock.get('counts') || {}, total: lock.get('totalDeleted') || 0 };
   }
+  if (lock.exists && lock.get('status') === 'running') {
+    const leaseEnd = lock.get('leaseExpiresAt')?.toMillis?.() || 0;
+    if (leaseEnd > Date.now()) {
+      return { status: 'running', targetYear, counts: lock.get('plannedCounts') || {}, total: 0 };
+    }
+  }
+  if (lock.exists && lock.get('status') === 'failed' && lock.get('plannedCounts')) {
+    const counts = lock.get('plannedCounts');
+    return {
+      status: 'failed', targetYear, counts,
+      total: Object.values(counts).reduce((sum, value) => sum + Number(value || 0), 0),
+    };
+  }
   const entries = await Promise.all(RETENTION_COLLECTIONS.map(async name => {
     const count = await db.collection(name).where('donemYili', '==', targetYear).count().get();
     return [name, count.data().count];
   }));
   const counts = Object.fromEntries(entries);
-  return {
-    status: lock.exists ? (lock.get('status') || 'pending') : 'pending',
-    targetYear, counts, total: Object.values(counts).reduce((sum, value) => sum + value, 0),
-  };
+  return { status: 'pending', targetYear, counts, total: Object.values(counts).reduce((sum, value) => sum + value, 0) };
 });
 
 exports.uygulamaSahibiDonemTemizliginiOnayla = onCall({ region: REGION, timeoutSeconds: 540, memory: '1GiB' }, async request => {
