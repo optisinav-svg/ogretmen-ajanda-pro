@@ -39,7 +39,13 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
   }
   const student = studentSnap.data();
   if (student.kayitsizMi !== true) {
-    throw new HttpsError('failed-precondition', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfındaki kayıtlar için yapılabilir.');
+    const classSnap = typeof student.sinifId === 'string'
+      ? await db.collection('siniflar').doc(student.sinifId).get()
+      : null;
+    if (!classSnap?.exists || classSnap.get('uid') !== teacherUid
+      || classSnap.get('ozelTur') !== 'kayitsiz') {
+      throw new HttpsError('failed-precondition', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfındaki kayıtlar için yapılabilir.');
+    }
   }
   if (student.sinifTasiIslemi || student.kayitsizTasiIslemi) {
     throw new HttpsError('failed-precondition', 'Öğrenci taşıma işlemi tamamlanmadan kayıt silinemez.');
