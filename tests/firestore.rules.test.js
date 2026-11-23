@@ -461,6 +461,61 @@ test('Öğretmen kendi profilini Spark üzerinde oluşturabilir ancak uygulama s
   }));
 });
 
+test('Öğretmen profilindeki izinli alanlar geçerli değerlerle güncellenebilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-profile-update').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'teacher-profile-update'), {
+      kullaniciAdi: 'Öğretmen Eski',
+      brans: 'Coğrafya',
+      sezon: '2026/2027',
+      eposta: 'teacher-profile-update@example.com',
+      rol: 'ogretmen',
+    });
+  });
+  await assertSucceeds(updateDoc(doc(db, 'kullanicilar', 'teacher-profile-update'), {
+    kullaniciAdi: 'Öğretmen Yeni',
+    brans: 'Tarih',
+    sezon: '2027/2028',
+  }));
+});
+
+test('Öğretmen profili güncellemesi boş, uzun veya hatalı tipte alanları reddeder', async () => {
+  const db = testEnv.authenticatedContext('teacher-profile-invalid').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'teacher-profile-invalid'), {
+      kullaniciAdi: 'Öğretmen',
+      brans: 'Coğrafya',
+      sezon: '2026/2027',
+      eposta: 'teacher-profile-invalid@example.com',
+      rol: 'ogretmen',
+    });
+  });
+  const ref = doc(db, 'kullanicilar', 'teacher-profile-invalid');
+  await assertFails(updateDoc(ref, { kullaniciAdi: 'A' }));
+  await assertFails(updateDoc(ref, { kullaniciAdi: 'x'.repeat(81) }));
+  await assertFails(updateDoc(ref, { kullaniciAdi: 123 }));
+  await assertFails(updateDoc(ref, { brans: '' }));
+  await assertFails(updateDoc(ref, { brans: 'x'.repeat(81) }));
+  await assertFails(updateDoc(ref, { brans: 123 }));
+  await assertFails(updateDoc(ref, { sezon: '2026-2027' }));
+  await assertFails(updateDoc(ref, { sezon: 2026 }));
+});
+
+test('Öğrenci kendi profilinde branş ve sezon alanlarını değiştiremez', async () => {
+  const db = testEnv.authenticatedContext('student-profile-update').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'student-profile-update'), {
+      kullaniciAdi: 'Öğrenci',
+      eposta: 'student-profile-update@example.com',
+      rol: 'ogrenci',
+    });
+  });
+  const ref = doc(db, 'kullanicilar', 'student-profile-update');
+  await assertSucceeds(updateDoc(ref, { kullaniciAdi: 'Öğrenci Yeni' }));
+  await assertFails(updateDoc(ref, { brans: 'Coğrafya' }));
+  await assertFails(updateDoc(ref, { sezon: '2026/2027' }));
+});
+
 test('Öğrenci profili geçerli, doğrulanmış eşleştirme talebi olmadan oluşturulamaz', async () => {
   const db = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
