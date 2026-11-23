@@ -89,8 +89,8 @@ export default function OkulSinifEkrani({ navigation,route }) {
       ]);
       const unregisteredStudents=allTeacherStudents.docs
         .map(d=>({id:d.id,...d.data()}))
-        .filter(x=>donemUygun(x,donemYili)&&x.kayitsizMi===true
-          && (x.okulId===okul.id||kayitsizClassIds.includes(x.sinifId)));
+        .filter(x=>donemUygun(x,donemYili)
+          && (kayitsizClassIds.includes(x.sinifId)||(x.kayitsizMi===true&&x.okulId===okul.id)));
       const irreversibleText=unregisteredStudents.length
         ? `\n\n${unregisteredStudents.length} kayıtsız öğrencinin bu öğretmene ait öğrenci kaydı, yoklama, ödev, kitap, konu ilerlemesi, ders/etüt geçmişi ve bildirimleri kalıcı olarak silinecek. Öğrencilerin genel uygulama hesapları ve diğer öğretmenlerle bağlantıları korunacak. Bu silme geri alınamaz.`
         : '\n\nKayıtsız öğrenci kaydı bulunmadı; öğrenci verisi silinmeyecek.';
