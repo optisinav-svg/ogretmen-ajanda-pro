@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Modal, SafeAreaView } from 'react-native';
-import { collection, addDoc, getDocs, getDoc, deleteDoc, doc, query, where, updateDoc, writeBatch, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, query, where, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, db, functions } from '../firebaseConfig';
 import { httpsCallable } from 'firebase/functions';
 import kazanmlar from '../assets/kazanimlar.json';
@@ -56,24 +56,6 @@ export default function OkulSinifEkrani({ navigation,route }) {
     if(mevcut)return mevcut;
     const ref=await addDoc(collection(db,'siniflar'),{ad:'Kayıtsız Öğrenciler',kademe:'',ders:'',okulId:okul.id||'',okulAd:okul.ad||'',uid,donemYili,ozelTur:'kayitsiz',olusturulma:new Date().toISOString()});
     return {id:ref.id,ad:'Kayıtsız Öğrenciler',okulId:okul.id||'',okulAd:okul.ad||'',ozelTur:'kayitsiz'};
-  };
-  const ogrencileriKorumaliTasi=async(sinifKayitlari,hedef,arsivBaslangic)=>{
-    const ogrenciler=[];
-    for(const sinif of sinifKayitlari){
-      const snap=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinif.id),where('uid','==',uid)));
-      snap.docs.map(d=>({id:d.id,...d.data()})).filter(o=>donemUygun(o,donemYili)).forEach(o=>ogrenciler.push({ogrenci:o,sinif}));
-    }
-    if(ogrenciler.some(({ogrenci:o})=>o.sinifTasiIslemi||o.kayitsizTasiIslemi))throw new Error('Bu sınıfta tamamlanmamış öğrenci taşıma işlemi var. Önce ilgili öğrenci taşımasını tamamlayıp arşivlemeyi yeniden deneyin.');
-    for(let i=0;i<ogrenciler.length;i+=400){
-      const batch=writeBatch(db);
-      ogrenciler.slice(i,i+400).forEach(({ogrenci:o,sinif})=>{
-        batch.update(doc(db,'ogrenciler',o.id),{
-          sinifGecmisi:arrayUnion({sinifId:o.sinifId,sinifAd:o.sinifAd||sinif.ad,okulId:o.okulId||sinif.okulId||'',okulAd:o.okulAd||sinif.okulAd||'',donemYili,tarih:arsivBaslangic,neden:'sinif_arsivleme'}),
-          sinifId:hedef.id,sinifAd:hedef.ad,okulId:hedef.okulId||'',okulAd:hedef.okulAd||'',kademe:'',brans:'',kayitsizMi:true,kayitsizTarihi:new Date().toISOString()
-        });
-      });
-      await batch.commit();
-    }
   };
   const dersProgramlariniKaldir=async(sinifKayitlari)=>{
     for(const sinif of sinifKayitlari){
