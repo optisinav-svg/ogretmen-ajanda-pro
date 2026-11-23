@@ -47,6 +47,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     const indexedLinkIsActive = indexedLinkSnap?.exists
       && indexedLinkSnap.get('ogrenciKayitId') === ogrenciKayitId
+      && (indexedLinkSnap.get('ogretmenUid') === teacherUid || indexedLinkSnap.get('uid') === teacherUid)
       && indexedLinkSnap.get('durum') === 'active';
     let fallbackActiveLinks = [];
     if (!indexedLinkIsActive) {
@@ -95,6 +96,9 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     let newLinkId = null;
     if (currentLink && currentLink.get('sinifId') !== hedefSinifId) {
       const oldData = currentLink.data();
+      if (typeof oldData.ogrenciUid !== 'string' || !oldData.ogrenciUid) {
+        throw new HttpsError('failed-precondition', 'Öğrenci uygulama bağlantısının hesap bilgisi doğrulanamadı.');
+      }
       newLinkId = [teacherUid, oldData.ogrenciUid, hedefSinifId].join('__');
       newLinkRef = db.collection('ogretmenOgrenciBaglantilari').doc(newLinkId);
       newLinkSnap = await tx.get(newLinkRef);
