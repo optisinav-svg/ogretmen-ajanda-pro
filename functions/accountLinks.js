@@ -364,11 +364,18 @@ exports.ogrenciBaglantisiniIptalEt = onCall({ region: REGION }, async (request) 
     if (!snap.exists || snap.get('ogretmenUid') !== teacherUid) {
       throw new HttpsError('not-found', 'Öğrenci bağlantısı bulunamadı.');
     }
-    if (snap.get('durum') === 'revoked') return;
-    const indexRef = db.collection('ogrenciKayitEslesmeleri').doc(createRecordLinkIndexId(teacherUid, snap.get('ogrenciKayitId')));
-    const indexSnap = await tx.get(indexRef);
-    tx.update(ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
-    if (indexSnap.exists && indexSnap.get('baglantiId') === linkId) {
+    const studentRecordId = snap.get('ogrenciKayitId');
+    const indexRef = db.collection('ogrenciKayitEslesmeleri').doc(createRecordLinkIndexId(teacherUid, studentRecordId));
+    const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
+      .where('ogretmenUid', '==', teacherUid);
+    const [indexSnap, linksSnap] = await Promise.all([tx.get(indexRef), tx.get(linksQuery)]);
+    const relatedLinks = linksSnap.docs.filter(item => item.get('ogrenciKayitId') === studentRecordId);
+    for (const item of relatedLinks) {
+      if (item.get('durum') === 'active') {
+        tx.update(item.ref, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
+      }
+    }
+    if (indexSnap.exists && indexSnap.get('durum') !== 'revoked') {
       tx.update(indexRef, { durum: 'revoked', iptalTarihi: FieldValue.serverTimestamp() });
     }
   });
