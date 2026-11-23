@@ -53,14 +53,12 @@ async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
   if (!isCurrentAcademicPeriodEditable(student.donemYili)) {
     throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları kalıcı silinemez; üç yıllık saklama ve uygulama sahibi onayı süreci uygulanır.');
   }
-  if (student.kayitsizMi !== true) {
-    const classSnap = typeof student.sinifId === 'string'
-      ? await db.collection('siniflar').doc(student.sinifId).get()
-      : null;
-    if (!classSnap?.exists || classSnap.get('uid') !== teacherUid
-      || classSnap.get('ozelTur') !== 'kayitsiz') {
-      throw new HttpsError('failed-precondition', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfındaki kayıtlar için yapılabilir.');
-    }
+  const classSnap = typeof student.sinifId === 'string'
+    ? await db.collection('siniflar').doc(student.sinifId).get()
+    : null;
+  if (!classSnap?.exists || classSnap.get('uid') !== teacherUid
+    || classSnap.get('ozelTur') !== 'kayitsiz') {
+    throw new HttpsError('failed-precondition', 'Kalıcı silme yalnızca Kayıtsız Öğrenciler sınıfında bulunan öğrenci kayıtları için yapılabilir.');
   }
   if (student.sinifTasiIslemi || student.kayitsizTasiIslemi) {
     throw new HttpsError('failed-precondition', 'Öğrenci taşıma işlemi tamamlanmadan kayıt silinemez.');
