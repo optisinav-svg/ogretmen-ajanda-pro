@@ -134,4 +134,17 @@ exports.rolDuzeltmeTalebiniKararaBagla = onCall({ region: REGION }, async reques
   });
 });
 
+
+exports.epostaDegisikliginiProfileYansit = onCall({ region: REGION }, async request => {
+  const uid = requireUid(request);
+  const email = typeof request.auth.token.email === 'string' ? request.auth.token.email.trim().toLowerCase() : '';
+  if (!email || request.auth.token.email_verified !== true) {
+    throw new HttpsError('failed-precondition', 'Yeni e-posta adresi doğrulanmalıdır.');
+  }
+  const { ref, data } = await getProfile(uid);
+  if (data.hesapDurumu === 'kapali') throw new HttpsError('failed-precondition', 'Kapalı hesapta e-posta değiştirilemez.');
+  await ref.update({ eposta: email, epostaGuncellenme: FieldValue.serverTimestamp() });
+  return { durum: 'guncellendi' };
+});
+
 exports._test = { normalizePersonName, normalizeRole };
