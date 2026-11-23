@@ -198,7 +198,11 @@ async function updateCleanupState(lockRef, token, patch) {
     if (!snap.exists || snap.get('leaseToken') !== token || snap.get('status') !== 'running') {
       throw new HttpsError('aborted', 'Temizlik işlemi kilidi kaybedildi; güvenlik için işlem durduruldu.');
     }
-    tx.set(lockRef, { ...patch, leaseExpiresAt: new Date(Date.now() + 10 * 60 * 1000) }, { merge: true });
+    const update = { ...patch };
+    update.leaseExpiresAt = patch.status === 'running'
+      ? new Date(Date.now() + 10 * 60 * 1000)
+      : FieldValue.delete();
+    tx.set(lockRef, update, { merge: true });
   });
 }
 exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async request => {
