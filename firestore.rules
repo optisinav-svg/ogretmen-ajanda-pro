@@ -619,8 +619,15 @@ service cloud.firestore {
     // Sınıf, yalnızca aynı öğretmene ait bir okula bağlanabilir.
     match /siniflar/{docId} {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, docId, 'dersProgrami');
-      allow create: if createsOwnPeriodRecord() && schoolBelongsToTeacher(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && schoolBelongsToTeacher(request.resource.data);
+      allow create: if createsOwnPeriodRecord()
+        && schoolBelongsToTeacher(request.resource.data)
+        && schoolAcceptsNewRecords(request.resource.data.get('okulId', ''));
+      allow update: if ownsEditablePeriodRecord()
+        && keepsOwner()
+        && keepsPeriod()
+        && schoolBelongsToTeacher(request.resource.data)
+        && (request.resource.data.get('arsivlendi', false) == true
+          || schoolAcceptsNewRecords(request.resource.data.get('okulId', '')));
       allow delete: if ownsEditablePeriodRecord();
     }
 
