@@ -148,7 +148,7 @@ function istanbulDateParts(date = new Date()) {
   const values = Object.fromEntries(parts.map(p => [p.type, p.value]));
   return { year: Number(values.year), month: Number(values.month) };
 }
-async function claimCleanup(lockRef, ownerUid, year, targetYear, token) {
+async function claimCleanup(lockRef, ownerUid, year, targetYear, token, plannedCounts) {
   return db.runTransaction(async tx => {
     const snap = await tx.get(lockRef);
     const now = Date.now();
@@ -166,6 +166,7 @@ async function claimCleanup(lockRef, ownerUid, year, targetYear, token) {
       leaseExpiresAt: new Date(now + 10 * 60 * 1000),
       startedBy: ownerUid, startedAt: FieldValue.serverTimestamp(),
       counts: snap.exists ? (snap.get('counts') || {}) : {},
+      plannedCounts: snap.exists ? (snap.get('plannedCounts') || plannedCounts) : plannedCounts,
       policyVersion: 2,
     }, { merge: true });
   });
@@ -227,25 +228,31 @@ exports.uygulamaSahibiDonemTemizliginiOnayla = onCall({ region: REGION, timeoutS
   const targetYear = year - 3;
   const token = randomUUID();
   const lockRef = db.collection('donemTemizlikKayitlari').doc(String(year));
-  await claimCleanup(lockRef, ownerUid, year, targetYear, token);
+  const existingLock = await lockRef.get();
+  const plannedCounts = existingLock.exists && existingLock.get('plannedCounts')
+    ? existingLock.get('plannedCounts')
+    : Object.fromEntries(await Promise.all(RETENTION_COLLECTIONS.map(async name => {
+      const count = await db.collection(name).where('donemYili', '==', targetYear).count().get();
+      return [name, count.data().count];
+    })));
+  await claimCleanup(lockRef, ownerUid, year, targetYear, token, plannedCounts);
   const counts = {};
   try {
     for (const collectionName of RETENTION_COLLECTIONS) {
-      let deleted = Number((await lockRef.get()).get('counts')?.[collectionName] || 0);
       while (true) {
         const page = await db.collection(collectionName)
           .where('donemYili', '==', targetYear).limit(350).get();
         if (page.empty) break;
         await deleteInChunks(page.docs.map(doc => doc.ref));
-        deleted += page.size;
-        counts[collectionName] = deleted;
-        await updateCleanupState(lockRef, token, { counts: { ...(await lockRef.get()).get('counts'), ...counts } });
       }
-      counts[collectionName] = deleted;
+      // The original planned count remains the audit total even if a retry
+      // resumes after a batch committed but before its progress update.
+      counts[collectionName] = Number(plannedCounts[collectionName] || 0);
+      await updateCleanupState(lockRef, token, { counts: { ...(await lockRef.get()).get('counts'), ...counts } });
     }
-    const totalDeleted = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    const totalDeleted = Object.values(plannedCounts).reduce((sum, count) => sum + Number(count || 0), 0);
     await updateCleanupState(lockRef, token, {
-      status: 'completed', counts, totalDeleted,
+      status: 'completed', counts: plannedCounts, totalDeleted,
       completedBy: ownerUid, completedAt: FieldValue.serverTimestamp(),
       leaseToken: FieldValue.delete(), leaseExpiresAt: FieldValue.delete(),
     });
