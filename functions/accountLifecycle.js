@@ -50,7 +50,7 @@ exports.hesapKapatmaTalebiOlustur = onCall({ region: REGION }, async request => 
     hesapSaklamaBaslangic: FieldValue.serverTimestamp(),
     hesapKapatmaTalepUid: uid,
   });
-  await db.collection('hesapYaşamDongusuDenetimi').add({
+  await db.collection('hesapYasamDongusuDenetimi').add({
     uid, islem: 'hesap_kapatildi', rol: data.rol || null,
     zaman: FieldValue.serverTimestamp(), sonuc: 'basarili',
   });
@@ -66,7 +66,7 @@ exports.hesabiYenidenEtkinlestir = onCall({ region: REGION }, async request => {
     hesapDurumu: 'aktif',
     hesapYenidenEtkinlestirmeTarihi: FieldValue.serverTimestamp(),
   });
-  await db.collection('hesapYaşamDongusuDenetimi').add({
+  await db.collection('hesapYasamDongusuDenetimi').add({
     uid, islem: 'hesap_yeniden_etkinlestirildi', rol: data.rol || null,
     zaman: FieldValue.serverTimestamp(), sonuc: 'basarili',
   });
