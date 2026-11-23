@@ -198,7 +198,6 @@ service cloud.firestore {
 
     function validLibraryTopic(data) {
       let bookPath = /databases/$(database)/documents/kitapKutuphanesi/$(data.kitapId);
-      let book = get(bookPath).data;
       return data.keys().hasOnly(['ad', 'baslangicSayfa', 'bitisSayfa', 'kazanımKodu', 'kaynak', 'kitapId', 'kitapAd', 'uid', 'olusturulma'])
         && data.keys().hasAll(['ad', 'baslangicSayfa', 'bitisSayfa', 'kazanımKodu', 'kaynak', 'kitapId', 'kitapAd', 'uid', 'olusturulma'])
         && data.uid == request.auth.uid
@@ -213,11 +212,11 @@ service cloud.firestore {
         && data.kaynak in ['manuel', 'kazanım']
         && data.kitapId is string
         && exists(bookPath)
-        && book.uid == request.auth.uid
+        && get(bookPath).data.uid == request.auth.uid
         && data.kitapAd is string
         && data.kitapAd.size() >= 1
         && data.olusturulma is string
-        && data.bitisSayfa <= book.sayfaSayisi;
+        && data.bitisSayfa <= get(bookPath).data.sayfaSayisi;
     }
 
     function individualEventBelongsToTeacher(data) {
