@@ -34,3 +34,10 @@ exports.odevSilindiOgrenciBildirimleri = studentNotifications.odevSilindiOgrenci
 
 const ownerStatistics = require('./ownerStatistics');
 exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
+
+const accountLifecycle = require('./accountLifecycle');
+exports.profilAdSoyadGuncelle = accountLifecycle.profilAdSoyadGuncelle;
+exports.hesapKapatmaTalebiOlustur = accountLifecycle.hesapKapatmaTalebiOlustur;
+exports.hesabiYenidenEtkinlestir = accountLifecycle.hesabiYenidenEtkinlestir;
+exports.rolDuzeltmeTalebiOlustur = accountLifecycle.rolDuzeltmeTalebiOlustur;
+exports.rolDuzeltmeTalebiniKararaBagla = accountLifecycle.rolDuzeltmeTalebiniKararaBagla;
