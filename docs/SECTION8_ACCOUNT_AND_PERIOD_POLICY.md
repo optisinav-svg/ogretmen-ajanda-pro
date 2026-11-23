@@ -5,7 +5,7 @@ Bu bölüm; öğretmen/öğrenci hesaplarının ayrımını, hesap sahipliğini,
 
 ## Kararlaştırılan kullanıcı akışları
 - Tek kayıt giriş ekranı öğretmen ve öğrenci hesabı seçimi sunar. Öğrenci hesabı e-posta doğrulaması ve mevcut öğretmen eşleştirme onayı olmadan öğretmen verilerine erişemez.
-- Aynı e-posta adresiyle ikinci bir Firebase Auth hesabı oluşturulamaz. Kapalı hesap Auth kimliği hemen silinmeden tutulur; kullanıcı doğrulanmış oturumla yeniden etkinleştirme talep edebilir. Firebase Auth hesabının fiziksel silinmesi, saklama/imha değerlendirmesi ve yasal dayanak tamamlanmadan yapılmaz.
+- Aynı e-posta adresiyle ikinci bir Firebase Auth hesabı oluşturulamaz. E-posta değişiminden önce mevcut adres hesap UID'sine bağlı, SHA-256 ile anahtarlanmış bir alias kaydıyla rezerve edilir. Kayıt öncesi ve giriş sırasında Identity Platform blocking trigger'ları alias'ın başka UID tarafından kullanılmasını engeller. Kapalı hesap Auth kimliği hemen silinmeden tutulur; hesap sahibi üç yıllık saklama penceresi içinde doğrulanmış oturumla yeniden etkinleştirebilir. Kapatma anında alias kayıtlarına üç yıllık sona erme tarihi yazılır; yeniden etkinleştirme bu tarihi kaldırır. Süre sonunda alias kişisel veriyi asgari düzeyde tutacak biçimde silinmeye uygun hâle gelir.
 - Ad ve soyad düzenlenebilir; mevcut birleşik kullaniciAdi alanı geriye dönük uyumluluk için korunur. İsimler benzersiz değildir.
 - Şifre değiştirme ve şifre sıfırlama akışları korunur.
 - Hesap türü kullanıcı tarafından değiştirilemez. Rol düzeltme talebi mevcut hesap sahibi tarafından oluşturulur; yalnızca özel uygulama sahibi yetkisi olan hesap inceler. Onay, veri sahipliği/bağlantı incelemesi tamamlanmadan rolü değiştirmez.
@@ -62,6 +62,8 @@ Veri kategorileri ve saklama gerekçeleri en az yılda bir gözden geçirilir. �
 
 ## Teknik sınırlamalar / canlıya alma ön koşulları
 - Bu dalda yapılan değişiklikler üretim Firebase'e dağıtılmaz.
+- `functions/emailAliases.js` içindeki `beforeUserCreated` ve `beforeUserSignedIn` korumaları Firebase Authentication with Identity Platform yükseltmesi ve Authentication > Blocking functions tetikleyicilerinin etkinleştirilmesini gerektirir. Bu işlem yapılmadan eski e-posta alias koruması üretimde kesin güvence sayılmaz. Identity Platform, Spark üzerinde günlük aktif kullanıcı sınırları ve ayrı fiyatlandırma kuralları getirir; yükseltme öncesinde kullanım ve maliyet etkisi kontrol edilmelidir.
+- E-posta alias kayıtları yalnızca SHA-256 e-posta özeti ve hesap UID'si tutar; hash de kişisel veriyle ilişkilendirilebilir olduğundan saklama ve imha politikası kapsamındadır.
 - Cloud Functions dağıtımı, e-posta doğrulama şablonları, Firebase Auth ayarları ve indeksler ayrıca doğrulanmalıdır.
 - Eski hesapların UID/e-posta eşlemesi salt okunur envanterle kontrol edilmeden toplu migrasyon yapılmaz.
 - Dönem aktarımı, kaynak koleksiyon şemaları ve bütün ilişki alanları doğrulanmadan üretim kullanımına açılmaz.
