@@ -30,7 +30,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
   const studentRef = db.collection('ogrenciler').doc(ogrenciKayitId);
   const targetRef = db.collection('siniflar').doc(hedefSinifId);
   const linksQuery = db.collection('ogretmenOgrenciBaglantilari')
-    .where('ogretmenUid', '==', teacherUid);
+    .where('ogrenciKayitId', '==', ogrenciKayitId);
   const indexRef = db.collection('ogrenciKayitEslesmeleri').doc([teacherUid, ogrenciKayitId].join('__'));
   await db.runTransaction(async tx => {
     const [studentSnap, targetSnap, indexSnap] = await Promise.all([
@@ -51,7 +51,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     if (!indexedLinkIsActive) {
       const linksSnap = await tx.get(linksQuery);
       fallbackActiveLinks = linksSnap.docs.filter(doc =>
-        doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
+        doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('ogretmenUid') === teacherUid && doc.get('durum') === 'active');
     }
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== kaynakSinifId
