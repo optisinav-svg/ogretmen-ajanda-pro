@@ -19,6 +19,7 @@ exports.ogrenciOdevTamamlandiBildir = accountLinks.ogrenciOdevTamamlandiBildir;
 
 const section7DataLifecycle = require('./section7DataLifecycle');
 exports.ogretmenOgrenciKaydiniKaliciSil = section7DataLifecycle.ogretmenOgrenciKaydiniKaliciSil;
+exports.uygulamaSahibiDonemTemizliginiOnizle = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnizle;
 exports.uygulamaSahibiDonemTemizliginiOnayla = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnayla;
 
 const studentClassMove = require('./studentClassMove');
