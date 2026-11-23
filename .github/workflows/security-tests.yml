@@ -11,6 +11,7 @@ on:
       - fix/spark-retention-and-apk-readiness-2026-11-22
   pull_request:
     branches:
+      - work/section5-homework-attendance-reports
       - feature/group2-ders-konu-takvim
       - integration/pre-apk-2026-11-21
       - feature/group3-firestore-security-hardening
@@ -42,7 +43,7 @@ jobs:
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
       - name: Run Firestore Emulator rules tests
-        run: firebase emulators:exec --only firestore --project demo-ogretmen-ajanda-rules "node --test tests/firestore.rules.test.js"
+        run: firebase emulators:exec --only firestore --project demo-ogretmen-ajanda-rules "node --test tests/*.test.js"
       - name: Install Cloud Functions dependencies
         run: npm install --prefix functions
       - name: Check Cloud Functions JavaScript syntax
