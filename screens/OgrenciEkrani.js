@@ -82,25 +82,14 @@ export default function OgrenciEkrani({route,navigation}){
           if (sonDurum.sinifId !== sinif.id && sonDurum.sinifId !== hedef.id) {
             throw new Error('Öğrenci başka bir sınıfa taşınmış. Listeyi yenileyin.');
           }
-          await updateDoc(ogrenciRef, {
-            sinifGecmisi: arrayUnion({
-              sinifId: islem.kaynakSinifId,
-              sinifAd: o.sinifAd || sinif.ad,
-              okulId: o.okulId || sinif.okulId || '',
-              okulAd: o.okulAd || sinif.okulAd || '',
-              donemYili,
-              tarih: islem.tarih,
-              neden: 'kayitsizlara_tasima',
-            }),
-            sinifId: hedef.id,
-            sinifAd: hedef.ad,
-            okulId: hedef.okulId || '',
-            okulAd: hedef.okulAd || '',
-            kademe: '',
-            brans: '',
-            kayitsizMi: true,
-            kayitsizTarihi: islem.tarih,
-            kayitsizTasiIslemi: deleteField(),
+          const moveStudent = httpsCallable(functions,'ogretmenOgrenciKaydiniTasi');
+          await moveStudent({
+            ogrenciKayitId:o.id,
+            kaynakSinifId:islem.kaynakSinifId,
+            hedefSinifId:hedef.id,
+            donemYili,
+            tasimaTarihi:islem.tarih,
+            neden:'kayitsizlara_tasima',
           });
           await ogrencileriYukle();
           Alert.alert('Tamamlandı', 'Öğrenci kaydı korunarak Kayıtsız Öğrenciler sınıfına taşındı.');
@@ -161,10 +150,14 @@ export default function OgrenciEkrani({route,navigation}){
     const d=x.data();
     if(donemUygun(d,donemYili))await updateDoc(x.ref,{sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||d.kademe||'',brans:yeniSinif.ders||d.brans||''});
    }
-   await updateDoc(ogrenciRef,{
-    sinifGecmisi:arrayUnion({sinifId:sinif.id,sinifAd:o.sinifAd||sinif.ad,okulId:o.okulId||sinif.okulId||'',okulAd:o.okulAd||sinif.okulAd||'',donemYili,tarih:islem.tarih,neden:'sinif_degisikligi'}),
-    sinifId:yeniSinif.id,sinifAd:yeniSinif.ad,okulId:yeniSinif.okulId||'',okulAd:yeniSinif.okulAd||'',kademe:yeniSinif.kademe||'',brans:yeniSinif.ders||'',kayitsizMi:!!yeniSinif.ozelTur,
-    sinifTasiIslemi:deleteField()
+   const moveStudent = httpsCallable(functions,'ogretmenOgrenciKaydiniTasi');
+   await moveStudent({
+    ogrenciKayitId:o.id,
+    kaynakSinifId:islem.kaynakSinifId,
+    hedefSinifId:yeniSinif.id,
+    donemYili,
+    tasimaTarihi:islem.tarih,
+    neden:'sinif_degisikligi',
    });
    setTasimaci(null);setTasimaModal(false);
    await ogrencileriYukle();
