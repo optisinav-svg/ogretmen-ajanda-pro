@@ -70,6 +70,20 @@ export default function OkulSinifEkrani({ navigation,route }) {
   };
   const okulSil=async(okul)=>{
     if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için okul kaldırılamaz.');
+    const okulRef=doc(db,'okullar',okul.id);
+    const sinifKilidiGuncelle=async(classes,locked)=>{
+      for(let i=0;i<classes.length;i+=400){
+        const batch=writeBatch(db);
+        classes.slice(i,i+400).forEach(x=>batch.update(doc(db,'siniflar',x.id),{
+          arsivDurumu:locked?'isleniyor':deleteField(),
+        }));
+        await batch.commit();
+      }
+    };
+    const kilitleriKaldir=async(classes)=>{
+      await updateDoc(okulRef,{arsivDurumu:deleteField(),arsivBaslangic:deleteField()});
+      await sinifKilidiGuncelle(classes,false);
+    };
     const kontrolEt=async()=>{
       const classesSnap=await getDocs(query(collection(db,'siniflar'),where('okulId','==',okul.id),where('uid','==',uid)));
       const schoolClasses=classesSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,donemYili));
@@ -90,36 +104,38 @@ export default function OkulSinifEkrani({ navigation,route }) {
     };
     try{
       const preview=await kontrolEt();
+      const hasPreviousLock=okul.arsivDurumu==='isleniyor'||preview.schoolClasses.some(x=>x.arsivDurumu==='isleniyor');
       if(preview.occupied.length){
+        if(hasPreviousLock)await kilitleriKaldir(preview.schoolClasses);
         return Alert.alert('Okul kaldırılamaz','Önce aşağıdaki sınıflardaki öğrencileri başka sınıflara veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.\n\n'+preview.occupied.join('\n'));
       }
       const irreversibleText=preview.unregisteredStudents.length
         ? `\n\n${preview.unregisteredStudents.length} kayıtsız öğrencinin bu öğretmene ait öğrenci kaydı, yoklama, ödev, kitap, konu ilerlemesi, ders/etüt geçmişi ve bildirimleri kalıcı olarak silinecek. Öğrencilerin genel uygulama hesapları ve diğer öğretmenlerle bağlantıları korunacak. Bu silme geri alınamaz.`
         : '\n\nKayıtsız öğrenci kaydı bulunmadı; öğrenci verisi silinmeyecek.';
       Alert.alert('Okulu Kaldır',`Okul ve ${preview.schoolClasses.length} sınıf aktif listeden kaldırılacak. Normal sınıflarda kayıtlı öğrenci bulunmadığı doğrulandı.${irreversibleText}`,[
-        {text:'Vazgeç',style:'cancel'},
+        {text:'Vazgeç',style:'cancel',onPress:async()=>{
+          if(hasPreviousLock)try{await kilitleriKaldir(preview.schoolClasses)}catch(e){}
+        }},
         {text:preview.unregisteredStudents.length?'Sil ve okulu kaldır':'Okulu kaldır',style:'destructive',onPress:async()=>{
           try{
-            // Kilit, aynı anda başka bir oturumun yeni öğrenci eklemesini engeller.
-            await updateDoc(doc(db,'okullar',okul.id),{
+            // Önce bütün sınıflar kilitlenir; ardından okul kilidi açılır.
+            await sinifKilidiGuncelle(preview.schoolClasses,true);
+            await updateDoc(okulRef,{
               arsivDurumu:'isleniyor',
               arsivBaslangic:new Date().toISOString(),
             });
-            const latest=await kontrolEt();
+            let latest=await kontrolEt();
+            // Kilitten hemen önce açılmış olabilecek yeni sınıfları da kilitle.
+            await sinifKilidiGuncelle(latest.schoolClasses,true);
+            latest=await kontrolEt();
             if(latest.occupied.length){
-              await updateDoc(doc(db,'okullar',okul.id),{
-                arsivDurumu:deleteField(),
-                arsivBaslangic:deleteField(),
-              });
-              return Alert.alert('Okul kaldırılamaz','Kontrol sırasında sınıfa öğrenci eklendi. Okul kilidi kaldırıldı. Öğrencileri önce başka sınıfa taşıyın.\n\n'+latest.occupied.join('\n'));
+              await kilitleriKaldir(latest.schoolClasses);
+              return Alert.alert('Okul kaldırılamaz','Kontrol sırasında sınıfa öğrenci eklendi. Kilitler kaldırıldı. Öğrencileri önce başka sınıfa taşıyın.\n\n'+latest.occupied.join('\n'));
             }
             const previewIds=preview.unregisteredStudents.map(x=>x.id).sort();
             const latestIds=latest.unregisteredStudents.map(x=>x.id).sort();
             if(JSON.stringify(previewIds)!==JSON.stringify(latestIds)){
-              await updateDoc(doc(db,'okullar',okul.id),{
-                arsivDurumu:deleteField(),
-                arsivBaslangic:deleteField(),
-              });
+              await kilitleriKaldir(latest.schoolClasses);
               Alert.alert('Öğrenci listesi değişti','Silinecek kayıtsız öğrenci sayısı değişti. Güncel liste yeniden kontrol edilecek.');
               return okulSil(okul);
             }
@@ -135,7 +151,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
               }));
               await batch.commit();
             }
-            await updateDoc(doc(db,'okullar',okul.id),{
+            await updateDoc(okulRef,{
               arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
             });
             if(seciliOkul?.id===okul.id){setSeciliOkul(null);setSiniflar([])}
@@ -144,8 +160,8 @@ export default function OkulSinifEkrani({ navigation,route }) {
               ? `Okul kaldırıldı. ${latest.unregisteredStudents.length} kayıtsız öğrenciye ait yalnızca sizin öğretmen kayıtlarınız ve ilişkili veriler silindi; genel öğrenci hesapları ve diğer öğretmen bağlantıları korundu.`
               : 'Okul ve boş sınıfları arşivlendi. Öğrenci verisi silinmedi.');
           }catch(e){
-            // Hata durumunda isleniyor kilidi korunur; tekrar denemede kalan işlem devam eder.
-            Alert.alert('İşlem tamamlanamadı','Okul kaldırma işlemi tamamlanamadı. Güvenlik için okul geçici olarak kilitli tutuldu; aynı işlemi yeniden deneyebilirsiniz. Daha önce tamamlanan kalıcı öğrenci silme adımları geri alınamaz. '+(e?.message||''));
+            // Hata durumunda kilitler korunur; yeniden denemede işlem kaldığı yerden sürdürülür.
+            Alert.alert('İşlem tamamlanamadı','Okul kaldırma işlemi tamamlanamadı. Güvenlik için okul ve sınıflar geçici olarak kilitli tutuldu. Yeniden deneyebilir veya işlemi iptal ederek kilitleri kaldırabilirsiniz. Daha önce tamamlanan kalıcı öğrenci silme adımları geri alınamaz. '+(e?.message||''));
             await okullariYukle();
           }
         }}
