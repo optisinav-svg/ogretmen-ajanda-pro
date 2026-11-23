@@ -42,3 +42,8 @@ exports.hesapKapatmaTalebiOlustur = accountLifecycle.hesapKapatmaTalebiOlustur;
 exports.hesabiYenidenEtkinlestir = accountLifecycle.hesabiYenidenEtkinlestir;
 exports.rolDuzeltmeTalebiOlustur = accountLifecycle.rolDuzeltmeTalebiOlustur;
 exports.rolDuzeltmeTalebiniKararaBagla = accountLifecycle.rolDuzeltmeTalebiniKararaBagla;
+
+const emailAliases = require('./emailAliases');
+exports.epostaAliasiniRezerveEt = emailAliases.epostaAliasiniRezerveEt;
+exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
+exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
