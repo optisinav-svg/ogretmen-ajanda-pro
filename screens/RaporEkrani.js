@@ -60,16 +60,16 @@ export default function RaporEkrani({navigation,route}){
  const bireyselEtkinlikGecmisi=id=>bireyselOturumlar.filter(e=>e.ogrenciId===id).sort((a,b)=>String(a.tarih||'').localeCompare(String(b.tarih||''))||String(a.baslangicSaat||'').localeCompare(String(b.baslangicSaat||'')));
 
  const studentHomework=id=>[...odevler,...gecmisOdevler].filter(o=>((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||(o.hedefOgrenciIds||[]).includes(id)).sort((a,b)=>zaman(a.olusturulma||a.teslimTarihi)-zaman(b.olusturulma||b.teslimTarihi));
- const studentBookHomework=id=>[...odevler,...gecmisOdevler].filter(o=>!!o.konuId&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||(o.hedefOgrenciIds||[]).includes(id))).sort((a,b)=>zaman(a.olusturulma||a.teslimTarihi)-zaman(b.olusturulma||b.teslimTarihi)).map(o=>{const durum=(o.ogrenciDurumlari||{})[id]||o.durum||'bekliyor';const sayfa=o.sayfaAdedi||sayfaAdedi(o);return{...o,durum,sayfaAdedi:sayfa}});
+ const studentBookHomework=id=>[...odevler,...gecmisOdevler].filter(o=>(!!o.konuId||!!o.konuEslestirmeleri?.[id])&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||(o.hedefOgrenciIds||[]).includes(id))).sort((a,b)=>zaman(a.olusturulma||a.teslimTarihi)-zaman(b.olusturulma||b.teslimTarihi)).map(o=>{const durum=(o.ogrenciDurumlari||{})[id]||o.durum||'bekliyor';const sayfa=o.sayfaAdedi||sayfaAdedi(o);return{...o,durum,sayfaAdedi:sayfa}});
  const studentTopics=id=>{const dersKonular=[...notlar,...gecmisNotlar].filter(n=>!n.ogrenciId||n.ogrenciId===id).map(n=>{const tarihAna=v=>String(v?.tarih||'').slice(0,10);const ayniTarih=v=>tarihAna(v)===tarihAna(n);const saatAna=v=>String(v||'').trim();const ayniSaat=(v,a,b)=>{const va=saatAna(v?.baslangicSaat),vb=saatAna(v?.bitisSaat),na=saatAna(a),nb=saatAna(b);return !!na&&!!nb&&!!va&&!!vb&&va===na&&vb===nb};const adaylar=[...yoklamalar,...gecmisYoklamalar].filter(v=>v.ogrenciId===id);let y=null;if(n.oturumId)y=adaylar.find(v=>v.oturumId===n.oturumId);if(!y&&n.dersId)y=adaylar.find(v=>v.dersId===n.dersId&&ayniTarih(v));if(!y&&n.sinifId)y=adaylar.find(v=>v.sinifId===n.sinifId&&ayniTarih(v)&&ayniSaat(v,n.baslangicSaat,n.bitisSaat));if(!y&&n.sinifId)y=adaylar.find(v=>v.sinifId===n.sinifId&&ayniTarih(v)&&String(v.dersEtiketi||'').includes(`${n.baslangicSaat}–${n.bitisSaat}`));if(!y){const gunluk=adaylar.filter(v=>ayniTarih(v));if(gunluk.length===1)y=gunluk[0]}return{id:'not-'+n.id,ad:n.not||'İşlenen konu',kitapAd:n.kitapAd||'',tarih:n.tarih,tarihGosterim:n.tarihGosterim,olusturulma:n.olusturulma,dersteYok:y?.durum==='gelmedi',yoklamaDurumu:y?.durum||null,kaynak:'sinif_dersi'}});const bireyselKonular=bireyselEtkinlikGecmisi(id).flatMap(o=>(o.konular||[]).map((ad,i)=>({id:`bireysel-${o.id}-${i}`,ad,kitapAd:'',tarih:o.tarih,tarihGosterim:o.tarihGosterim||o.tarih,olusturulma:o.tarih,dersteYok:false,yoklamaDurumu:o.yoklamaDurumu||null,kaynak:'bireysel',tur:o.tur,baslangicSaat:o.baslangicSaat,bitisSaat:o.bitisSaat})));return{ders:[...dersKonular,...bireyselKonular].sort((a,b)=>zaman(b.olusturulma||b.tarih)-zaman(a.olusturulma||a.tarih))};};
- const konuOdevDurumu=k=>{const h=[...odevler,...gecmisOdevler].filter(o=>o.konuId===k.id&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||(o.hedefOgrenciIds||[]).includes(detay?.id)));if(!h.length)return null;const latest=[...h].sort((a,b)=>zaman(b.olusturulma)-zaman(a.olusturulma))[0];return latest.ogrenciDurumlari?.[detay?.id]||latest.durum||'bekliyor'};
+ const konuOdevDurumu=k=>{const h=[...odevler,...gecmisOdevler].filter(o=>(o.konuId===k.id||o.konuEslestirmeleri?.[detay?.id]===k.id)&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||(o.hedefOgrenciIds||[]).includes(detay?.id)));if(!h.length)return null;const latest=[...h].sort((a,b)=>zaman(b.olusturulma)-zaman(a.olusturulma))[0];return latest.ogrenciDurumlari?.[detay?.id]||latest.durum||'bekliyor'};
  const kitapIlerleme=k=>{const ks=konular.filter(x=>x.kitapId===k.id),done=ks.reduce((sum,x)=>konuOdevDurumu(x)==='yapildi'?sum+sayfaAdedi(x):sum,0),total=parseInt(k.sayfaSayisi,10)||0;return{done:total?Math.min(done,total):done,total,pct:total?Math.min(100,Math.round(done/total*100)):0}};
  const kitapGruplari=id=>{const odevlerKitap=studentBookHomework(id),ogrenciKitaplari=kitaplar.filter(k=>k.ogrenciId===id);const gruplar={};ogrenciKitaplari.forEach(k=>{gruplar[k.id]={kitapId:k.id,kitapAd:k.ad||'Kitap',totalSayfa:parseInt(k.sayfaSayisi,10)||0,items:[]}});odevlerKitap.forEach(o=>{const key=o.kitapId||o.kitapAd||'Kitap';if(!gruplar[key])gruplar[key]={kitapId:o.kitapId||key,kitapAd:o.kitapAd||'Kitap',totalSayfa:0,items:[]};gruplar[key].items.push(o)});Object.values(gruplar).forEach(g=>{const covered=g.items.reduce((n,o)=>n+(o.sayfaAdedi||1),0);const kalan=Math.max(0,(g.totalSayfa||0)-covered);if(kalan>0)g.items.push({id:`kalan-${g.kitapId}`,kitapId:g.kitapId,kitapAd:g.kitapAd,aciklama:'Kalan sayfalar',sayfaAdedi:kalan,durum:'bekliyor',isKalan:true})});return Object.values(gruplar).sort((a,b)=>zaman(a.items[0]?.olusturulma)-zaman(b.items[0]?.olusturulma));};
  const ogrenciKitapRaporu=id=>kitaplar.filter(k=>k.ogrenciId===id).map(k=>{
   const ks=konular.filter(x=>x.ogrenciId===id&&x.kitapId===k.id)
     .sort((a,b)=>(parseInt(a.baslangicSayfa,10)||0)-(parseInt(b.baslangicSayfa,10)||0));
   const parcalar=ks.map(konu=>{
-    const adaylar=[...odevler,...gecmisOdevler].filter(o=>o.konuId===konu.id&&(
+    const adaylar=[...odevler,...gecmisOdevler].filter(o=>(o.konuId===konu.id||o.konuEslestirmeleri?.[id]===konu.id)&&(
       ((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===seciliSinif?.id)||
       (o.hedefOgrenciIds||[]).includes(id)
     )).sort((a,b)=>zaman(b.olusturulma)-zaman(a.olusturulma));
@@ -92,7 +92,7 @@ export default function RaporEkrani({navigation,route}){
       const kontroller=gecmis.filter(x=>x.durum&&x.durum!=='bekliyor')
         .sort((a,b)=>zaman(b.tarih)-zaman(a.tarih));
       const son=kontroller[0];
-      return {...o,durum,kontrolTarihi:son?.tarihGosterim||son?.tarih||'Kontrol tarihi yok'};
+      return {...o,durum,kontrolTarihi:son?.tarihGosterim||son?.tarih||'Kontrol tarihi yok',raporKonu:o.konuAd||o.aciklama,raporSayfa:o.baslangicSayfa&&o.bitisSayfa?`Sayfa ${o.baslangicSayfa}-${o.bitisSayfa}`:''};
     });
     const html=ogrenciRaporHtml({
       okulAdi:seciliSinif.okulAd||'Okul adi belirtilmedi',
@@ -207,7 +207,7 @@ export default function RaporEkrani({navigation,route}){
       else if(status==='yapilmadi')counts.notDone+=1;
       else counts.pending+=1;
     });
-    return {title:item.aciklama||item.kitapAd||'Ödev',due:item.teslimTarihi,...counts};
+    return {title:[item.kitapAd,item.konuAd||item.aciklama,item.baslangicSayfa&&item.bitisSayfa?`Sayfa ${item.baslangicSayfa}-${item.bitisSayfa}`:null].filter(Boolean).join(' · ')||'Ödev',due:item.teslimTarihi,...counts};
    });
    const books=ogrenciler.flatMap(student=>ogrenciKitapRaporu(student.id).map(book=>{
     const completed=book.parcalar.filter(part=>part.durum==='yapildi').reduce((sum,part)=>sum+(Number(part.sayfa)||0),0);
