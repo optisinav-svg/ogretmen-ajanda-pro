@@ -1,7 +1,7 @@
 // Yıllık dönem arşiv politikası — Spark uyumlu saf yardımcılar.
 // Firestore kayıtları fiziksel dosyalara taşınmaz; donemYili alanı aynı işi
 // mantıksal yıl arşivi olarak görür. Bu modül kendiliğinden silme yapmaz.
-const FIRST_CLEANUP_YEAR = 2028;
+const FIRST_CLEANUP_YEAR = 2029;
 const RETENTION_COLLECTIONS = Object.freeze([
   'dersNotlari',
   'dersler',
@@ -27,14 +27,14 @@ function archivedPeriodStartYear(date = new Date()) {
   return activePeriodStartYear(date) - 1;
 }
 /**
- * İlk temizlik Temmuz 2028'de 2026 dönemini siler.
- * Temmuz 2029'da 2027, Temmuz 2030'da 2028 silinir.
+ * İlk temizlik Temmuz 2029'da 2026 dönemini siler.
+ * Sonraki yıllarda, başlangıç yılından itibaren üç yılını dolduran dönem temizlenir.
  * Yalnızca Temmuz ve 2028+ yıllarında tek bir dönem adayı döndürür.
  */
 function expiredPeriodStartYear(date = new Date()) {
   const { year, month } = istanbulDateParts(date);
   if (month !== 7 || year < FIRST_CLEANUP_YEAR) return null;
-  return year - 2;
+  return year - 3;
 }
 function isEligiblePeriodRecord(data, targetYear) {
   return Boolean(data && Number.isInteger(targetYear)
