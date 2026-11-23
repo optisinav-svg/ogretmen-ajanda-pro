@@ -646,6 +646,7 @@ service cloud.firestore {
           || request.resource.data.get('arsivDurumu', '') != 'isleniyor'
           || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['arsivDurumu']))
         && (request.resource.data.get('arsivlendi', false) == true
+          || request.resource.data.get('arsivDurumu', '') == 'isleniyor'
           || schoolAcceptsNewRecords(request.resource.data.get('okulId', '')));
       allow delete: if ownsEditablePeriodRecord();
     }
