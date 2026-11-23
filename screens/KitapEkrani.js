@@ -263,7 +263,7 @@ export default function KitapEkrani({route,navigation}){
  }catch(e){Alert.alert('Hata','Konu kaydedilemedi. '+(e?.message||''))}
 };
 
- const konuSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları silinemez.');Alert.alert('Konuyu Sil','Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);};
+ const konuSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları silinemez.');Alert.alert('Konuyu Sil',kutuphaneModu?'Kütüphaneden kaldırılacak. Daha önce öğrencilere atanmış kitaplarda ve geçmiş ödev kayıtlarında korunacak. Devam edilsin mi?':'Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);};
 
  const konuOdevDurumu=k=>{const h=odevler.filter(o=>o.konuId===k.id&&((o.hedef==='sinif'&&o.sinifId===ogrenci?.sinifId)||(o.hedefOgrenciIds||[]).includes(ogrenci?.id)));if(!h.length)return null;const x=[...h].sort((a,b)=>new Date(b.olusturulma||0)-new Date(a.olusturulma||0))[0];return x.ogrenciDurumlari?.[ogrenci.id]||x.durum||'bekliyor'};
  const ilerleme=k=>{const ks=konular.filter(x=>x.kitapId===k.id),tam=ks.reduce((n,x)=>konuOdevDurumu(x)==='yapildi'?n+sayfaAdedi(x):n+0,0),top=parseInt(k.sayfaSayisi,10)||0;return{tam,top,yuzde:top?Math.min(100,Math.round(tam/top*100)):0}};
@@ -272,7 +272,7 @@ export default function KitapEkrani({route,navigation}){
  if(kutuphaneModu)return <KeyboardAvoidingView style={st.wrap} behavior={Platform.OS==='ios'?'padding':'height'}>
   <View style={st.header}>
    <Text style={st.headerTitle}>Kitap Kütüphanem</Text>
-   <Text style={st.headerSub}>Kitapları bir kez tanımlayın, istediğiniz öğrencilere atayın.</Text>
+   <Text style={st.headerSub}>Kitapları bir kez tanımlayın, istediğiniz öğrencilere atayın. Açık dönemdeki atamalar kitap ve konu düzenlemeleriyle eşitlenir; silinen kütüphane konuları eski öğrenci kayıtlarında korunur.</Text>
    <TouchableOpacity onPress={()=>{setKutuphaneModu(false);setSeciliKitap(null);setAtamaModal(false)}} style={{marginTop:10}}>
     <Text style={{color:'#fff',fontWeight:'bold'}}>← Öğrenci kitaplarına dön</Text>
    </TouchableOpacity>
