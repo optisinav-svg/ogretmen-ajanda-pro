@@ -500,15 +500,21 @@ test('Öğretmen başka öğretmenin kitap kütüphanesi kitabına konu ekleyeme
     await setDoc(doc(context.firestore(), 'kitapKutuphanesi', 'library-book-b'), {
       uid: 'teacher-b',
       ad: 'B öğretmeninin kitabı',
+      sayfaSayisi: 100,
+      olusturulma: new Date().toISOString(),
     });
   });
 
   await assertFails(addDoc(collection(db, 'kitapKutuphanesiKonulari'), {
     uid: 'teacher-a',
     kitapId: 'library-book-b',
+    kitapAd: 'B öğretmeninin kitabı',
     ad: 'Yetkisiz konu',
     baslangicSayfa: 1,
     bitisSayfa: 5,
+    kazanımKodu: '',
+    kaynak: 'manuel',
+    olusturulma: new Date().toISOString(),
   }));
 });
 
