@@ -8,6 +8,7 @@ on:
       - feature/group4-student-app
       - integration/pre-apk-2026-11-21
       - release/pre-apk-2026-11-22
+      - work/section3-shared-book-library
       - fix/spark-retention-and-apk-readiness-2026-11-22
   pull_request:
     branches:
