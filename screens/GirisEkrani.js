@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, reload } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 
 const EMAIL_KEY='@ogretmenAjandaPro_hatirlananEposta';
 const REMEMBER_KEY='@ogretmenAjandaPro_beniHatirla';
@@ -19,6 +20,23 @@ if (!profile.exists()) {
     return;
   }
   throw new Error('Hesap profiliniz henüz tamamlanmamış. Öğrenci hesabı özelliği canlıya alındığında eşleştirme koduyla kaydınızı tamamlayabilirsiniz.');
+}
+if (profile.get('hesapDurumu') === 'kapali') {
+  Alert.alert('Hesap kapalı', 'Bu hesap daha önce kapatılmış. Geçmiş kayıtlarınıza erişmek için hesabınızı yeniden etkinleştirebilirsiniz.', [
+    { text: 'Şimdi değil', style: 'cancel', onPress: async () => { await auth.signOut(); } },
+    { text: 'Hesabı yeniden etkinleştir', onPress: async () => { try {
+      await reload(credential.user);
+      if (!credential.user.emailVerified) throw new Error('Önce e-posta adresinizi doğrulayın.');
+      await httpsCallable(functions, 'hesabiYenidenEtkinlestir')({});
+      const refreshed = await getDoc(doc(db,'kullanicilar',credential.user.uid));
+      if (refreshed.get('rol') === 'ogrenci') navigation.replace('OgrenciAnaSayfa');
+      else navigation.replace('AnaSayfa');
+    } catch (e) { Alert.alert('Etkinleştirilemedi', e.message || 'Daha sonra tekrar deneyin.'); } } }
+  ]);
+  return;
+}
+if (credential.user.emailVerified && profile.get('eposta') !== credential.user.email) {
+  await httpsCallable(functions, 'epostaDegisikliginiProfileYansit')({});
 }
 const role = profile.get('rol');
 if (role === 'ogrenci') {
