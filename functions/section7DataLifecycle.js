@@ -40,7 +40,7 @@ async function deleteInChunks(refs) {
 
 async function queryStudentDocs(collectionName, field, value, teacherUid, ownerField = 'uid', operator = '==') {
   const snap = await db.collection(collectionName).where(field, operator, value).get();
-  return snap.docs.filter(doc => doc.get(ownerField) === teacherUid);
+  return snap.docs.filter(doc => doc.get(ownerField) === teacherUid || doc.get('uid') === teacherUid);
 }
 
 async function deleteTeacherLocalStudentRecord(teacherUid, studentRecordId) {
