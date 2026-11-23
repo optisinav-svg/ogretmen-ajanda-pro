@@ -1465,3 +1465,10 @@ test('closed teacher account loses teacher data access while own profile remains
   await assertSucceeds(getDoc(doc(db, 'kullanicilar', 'teacher-a')));
   await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
 });
+
+
+test('email alias registry is inaccessible to client accounts', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id')));
+  await assertFails(setDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id'), { ownerUid: 'teacher-a' }));
+});
