@@ -9,7 +9,7 @@ function requireUid(request) {
   return request.auth.uid;
 }
 function normalizePersonName(value, label) {
-  const result = typeof value === 'string' ? value.normalize('NFKC').trim().replace(/\\s+/g, ' ') : '';
+  const result = typeof value === 'string' ? value.normalize('NFKC').trim().replace(/\s+/g, ' ') : '';
   if (result.length < 1 || result.length > 60) {
     throw new HttpsError('invalid-argument', label + ' 1 ile 60 karakter arasında olmalıdır.');
   }
