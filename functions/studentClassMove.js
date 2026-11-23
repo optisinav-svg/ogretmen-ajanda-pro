@@ -33,13 +33,26 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     .where('ogretmenUid', '==', teacherUid);
   const indexRef = db.collection('ogrenciKayitEslesmeleri').doc([teacherUid, ogrenciKayitId].join('__'));
   await db.runTransaction(async tx => {
-    const [studentSnap, targetSnap, linksSnap, indexSnap] = await Promise.all([
-      tx.get(studentRef), tx.get(targetRef), tx.get(linksQuery), tx.get(indexRef),
+    const [studentSnap, targetSnap, indexSnap] = await Promise.all([
+      tx.get(studentRef), tx.get(targetRef), tx.get(indexRef),
     ]);
     const targetSchoolId = targetSnap.exists ? targetSnap.get('okulId') : '';
     const targetSchoolSnap = typeof targetSchoolId === 'string' && targetSchoolId
       ? await tx.get(db.collection('okullar').doc(targetSchoolId))
       : null;
+    let indexedLinkSnap = null;
+    if (indexSnap.exists && typeof indexSnap.get('baglantiId') === 'string') {
+      indexedLinkSnap = await tx.get(db.collection('ogretmenOgrenciBaglantilari').doc(indexSnap.get('baglantiId')));
+    }
+    const indexedLinkIsActive = indexedLinkSnap?.exists
+      && indexedLinkSnap.get('ogrenciKayitId') === ogrenciKayitId
+      && indexedLinkSnap.get('durum') === 'active';
+    let fallbackActiveLinks = [];
+    if (!indexedLinkIsActive) {
+      const linksSnap = await tx.get(linksQuery);
+      fallbackActiveLinks = linksSnap.docs.filter(doc =>
+        doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
+    }
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== kaynakSinifId
       || studentSnap.get('donemYili') !== donemYili) {
@@ -61,7 +74,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları taşınamaz.');
     }
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
-    const activeLinks = linksSnap.docs.filter(doc => doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
+    const activeLinks = indexedLinkIsActive ? [indexedLinkSnap] : fallbackActiveLinks;
     const currentLink = activeLinks.find(doc => doc.get('sinifId') === kaynakSinifId) || activeLinks[0] || null;
     let newLinkRef = null;
     let newLinkSnap = null;
