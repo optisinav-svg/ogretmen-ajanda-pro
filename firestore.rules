@@ -832,6 +832,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
     match /rolDuzeltmeTalepleri/{requestId} {
       allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
