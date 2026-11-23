@@ -52,7 +52,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     if (!indexedLinkIsActive) {
       const linksSnap = await tx.get(linksQuery);
       fallbackActiveLinks = linksSnap.docs.filter(doc =>
-        doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('ogretmenUid') === teacherUid && doc.get('durum') === 'active');
+        doc.get('ogrenciKayitId') === ogrenciKayitId && (doc.get('ogretmenUid') === teacherUid || doc.get('uid') === teacherUid) && doc.get('durum') === 'active');
     }
     if (!studentSnap.exists || studentSnap.get('uid') !== teacherUid
       || studentSnap.get('sinifId') !== kaynakSinifId
