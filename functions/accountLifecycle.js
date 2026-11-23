@@ -41,6 +41,7 @@ exports.profilAdSoyadGuncelle = onCall({ region: REGION }, async request => {
 
 exports.hesapKapatmaTalebiOlustur = onCall({ region: REGION }, async request => {
   const uid = requireUid(request);
+  if (request.auth.token.uygulamaSahibi === true) throw new HttpsError('failed-precondition', 'Uygulama sahibi hesabı kapatılmadan önce sahiplik yetkisi güvenli biçimde devredilmelidir.');
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Hesap kapatma öncesinde e-posta doğrulanmalıdır.');
   const { ref, data } = await getProfile(uid);
   if (data.hesapDurumu === 'kapali') return { durum: 'zaten_kapali' };
