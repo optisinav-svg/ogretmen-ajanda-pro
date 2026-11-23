@@ -192,16 +192,24 @@ export default function OkulSinifEkrani({ navigation,route }) {
       {text:'İptal',style:'cancel'},
       {text:'Boş sınıfı kaldır',style:'destructive',onPress:async()=>{
         try{
+          const classRef=doc(db,'siniflar',sinifKaydi.id);
+          // Kilit, silme kontrolü sırasında sınıfa yeni öğrenci eklenmesini engeller.
+          await updateDoc(classRef,{arsivDurumu:'isleniyor'});
           const students=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinifKaydi.id),where('uid','==',uid)));
           const count=students.docs.filter(x=>donemUygun(x.data(),donemYili)).length;
           if(count){
+            await updateDoc(classRef,{arsivDurumu:deleteField()});
             return Alert.alert('Sınıf kaldırılamaz',`Bu sınıfta ${count} kayıtlı öğrenci var. Önce öğrencileri başka bir sınıfa veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.`);
           }
           await dersProgramlariniKaldir([sinifKaydi]);
-          await updateDoc(doc(db,'siniflar',sinifKaydi.id),{arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString()});
+          await updateDoc(classRef,{
+            arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
+          });
           await siniflariYukle(seciliOkul);
           Alert.alert('Tamamlandı','Boş sınıf aktif listeden kaldırıldı. Geçmiş kayıtlar ve sınıfın tarihsel referansı korundu.');
-        }catch(e){Alert.alert('İşlem tamamlanamadı','Sınıf kaldırılamadı. Kayıtlar korunuyor. '+(e?.message||''));}
+        }catch(e){
+          Alert.alert('İşlem tamamlanamadı','Sınıf kaldırma işlemi tamamlanamadı. Güvenlik için sınıf geçici olarak kilitli tutuldu; aynı işlemi yeniden deneyebilirsiniz. '+(e?.message||''));
+        }
       }}
     ]);
   };
