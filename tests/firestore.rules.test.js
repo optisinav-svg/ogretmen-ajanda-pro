@@ -461,6 +461,96 @@ test('Öğretmen kendi profilini Spark üzerinde oluşturabilir ancak uygulama s
   }));
 });
 
+test('Öğretmen profilindeki izinli alanlar geçerli değerlerle güncellenebilir', async () => {
+  const db = testEnv.authenticatedContext('teacher-profile-update').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'teacher-profile-update'), {
+      kullaniciAdi: 'Öğretmen Eski',
+      brans: 'Coğrafya',
+      sezon: '2026/2027',
+      eposta: 'teacher-profile-update@example.com',
+      rol: 'ogretmen',
+    });
+  });
+  await assertSucceeds(updateDoc(doc(db, 'kullanicilar', 'teacher-profile-update'), {
+    kullaniciAdi: 'Öğretmen Yeni',
+    brans: 'Tarih',
+    sezon: '2027/2028',
+  }));
+});
+
+test('Öğretmen profili güncellemesi boş, uzun veya hatalı tipte alanları reddeder', async () => {
+  const db = testEnv.authenticatedContext('teacher-profile-invalid').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'teacher-profile-invalid'), {
+      kullaniciAdi: 'Öğretmen',
+      brans: 'Coğrafya',
+      sezon: '2026/2027',
+      eposta: 'teacher-profile-invalid@example.com',
+      rol: 'ogretmen',
+    });
+  });
+  const ref = doc(db, 'kullanicilar', 'teacher-profile-invalid');
+  await assertFails(updateDoc(ref, { kullaniciAdi: 'A' }));
+  await assertFails(updateDoc(ref, { kullaniciAdi: 'x'.repeat(81) }));
+  await assertFails(updateDoc(ref, { kullaniciAdi: 123 }));
+  await assertFails(updateDoc(ref, { brans: '' }));
+  await assertFails(updateDoc(ref, { brans: 'x'.repeat(81) }));
+  await assertFails(updateDoc(ref, { brans: 123 }));
+  await assertFails(updateDoc(ref, { sezon: '2026-2027' }));
+  await assertFails(updateDoc(ref, { sezon: 2026 }));
+});
+
+test('Öğrenci kendi profilinde branş ve sezon alanlarını değiştiremez', async () => {
+  const db = testEnv.authenticatedContext('student-profile-update').firestore();
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'kullanicilar', 'student-profile-update'), {
+      kullaniciAdi: 'Öğrenci',
+      eposta: 'student-profile-update@example.com',
+      rol: 'ogrenci',
+    });
+  });
+  const ref = doc(db, 'kullanicilar', 'student-profile-update');
+  await assertSucceeds(updateDoc(ref, { kullaniciAdi: 'Öğrenci Yeni' }));
+  await assertFails(updateDoc(ref, { brans: 'Coğrafya' }));
+  await assertFails(updateDoc(ref, { sezon: '2026/2027' }));
+});
+
+test('Öğretmen profili oluşturma kuralları branş ve sezon biçimini doğrular', async () => {
+  const db = testEnv.authenticatedContext('teacher-invalid-create', {
+    email: 'teacher-invalid-create@example.com',
+  }).firestore();
+  const ref = doc(db, 'kullanicilar', 'teacher-invalid-create');
+  const base = {
+    kullaniciAdi: 'Yeni Öğretmen',
+    brans: 'Coğrafya',
+    sezon: '2026/2027',
+    eposta: 'teacher-invalid-create@example.com',
+    rol: 'ogretmen',
+    olusturulmaTarihi: new Date().toISOString(),
+  };
+  await assertFails(setDoc(ref, { ...base, brans: 'x'.repeat(51) }));
+  await assertFails(setDoc(ref, { ...base, brans: 123 }));
+  await assertFails(setDoc(ref, { ...base, sezon: '2026-2027' }));
+  await assertFails(setDoc(ref, { ...base, sezon: 2026 }));
+  await assertSucceeds(setDoc(ref, base));
+});
+
+test('Öğrenci profili öğretmene ait branş ve sezon alanlarını içeremez', async () => {
+  const db = testEnv.authenticatedContext('student-profile-fields', {
+    email: 'student-profile-fields@example.com',
+    email_verified: true,
+  }).firestore();
+  await assertFails(setDoc(doc(db, 'kullanicilar', 'student-profile-fields'), {
+    kullaniciAdi: 'Öğrenci Hesabı',
+    eposta: 'student-profile-fields@example.com',
+    rol: 'ogrenci',
+    brans: 'Coğrafya',
+    sezon: '2026/2027',
+    ilkEslesmeTalepId: 'missing-request',
+  }));
+});
+
 test('Öğrenci profili geçerli, doğrulanmış eşleştirme talebi olmadan oluşturulamaz', async () => {
   const db = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
@@ -997,21 +1087,14 @@ test('Öğretmen yalnızca bağlantı kurulmuş ve ödev izni açık öğrenciye
 test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık kod ve öğretmen onayı gerektirir', async () => {
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   const code = 'ABCDEF0123456789';
-  const codeId = '1C1181E7F8DECE465E066361D49886EFA49B372E3E029FCDF21B9621E4021366';
+  const codeId = '1c1181e7f8dece465e066361d49886efa49b372e3e029fcdf21b9621e4021366';
   const codeRef = doc(teacherDb, 'ogrenciEslesmeKodlari', codeId);
   await assertSucceeds(setDoc(codeRef, {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
-    ogretmenHesapAdi: 'Öğretmen A',
     ogrenciKayitId: 'student-a',
-    ogrenciAdSoyad: 'Test Öğrencisi',
-    eposta: 'student-new@example.com',
     sinifId: 'class-a',
-    sinifAd: '9-A',
-    okulAd: 'A Okulu',
     donemYili: 2026,
-    kademe: '9',
-    ders: 'Coğrafya',
     kullanildi: false,
     olusturulma: serverTimestamp(),
     sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
