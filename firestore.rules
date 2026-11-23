@@ -13,9 +13,9 @@ service cloud.firestore {
 
     function isRetentionCleanupWindow(periodYear) {
       let istanbulNow = request.time + duration.value(3, 'h');
-      return istanbulNow.year() >= 2028
+      return istanbulNow.year() >= 2029
         && istanbulNow.month() == 7
-        && periodYear == istanbulNow.year() - 2;
+        && periodYear == istanbulNow.year() - 3;
     }
 
     function profilePath(userId) {
@@ -617,7 +617,7 @@ service cloud.firestore {
       allow read: if ownsRecord() || studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data);
       allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data);
-      allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
+      allow delete: if ownsEditablePeriodRecord();
     }
 
     // Öğrenci kayıtları (öğretmenin kendi öğrenci listesi)
@@ -791,17 +791,18 @@ service cloud.firestore {
 
     match /donemTemizlikKayitlari/{cleanupId} {
       allow get, list: if isApplicationOwner();
-      allow create: if isApplicationOwner()
+      allow create: if false
+        && isApplicationOwner()
         && request.resource.data.keys().hasOnly(['cleanupId', 'currentYear', 'targetYear', 'completedBy', 'completedAt', 'counts', 'totalDeleted', 'policyVersion'])
         && request.resource.data.cleanupId == cleanupId
         && request.resource.data.currentYear == (request.time + duration.value(3, 'h')).year()
-        && request.resource.data.targetYear == (request.time + duration.value(3, 'h')).year() - 2
+        && request.resource.data.targetYear == (request.time + duration.value(3, 'h')).year() - 3
         && isRetentionCleanupWindow(request.resource.data.targetYear)
         && request.resource.data.completedBy == request.auth.uid
         && request.resource.data.completedAt == request.time
         && request.resource.data.counts is map
         && request.resource.data.totalDeleted is int
-        && request.resource.data.policyVersion == 1;
+        && request.resource.data.policyVersion == 2;
       allow update, delete: if false;
     }
 
