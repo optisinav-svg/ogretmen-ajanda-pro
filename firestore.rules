@@ -837,7 +837,7 @@ service cloud.firestore {
       allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
     }
 
-    match /hesapYaşamDongusuDenetimi/{auditId} {
+    match /hesapYasamDongusuDenetimi/{auditId} {
       allow get, list: if isApplicationOwner();
       allow create, update, delete: if false;
     }
