@@ -184,9 +184,9 @@ async function updateCleanupState(lockRef, token, patch) {
       throw new HttpsError('aborted', 'Temizlik işlemi kilidi kaybedildi; güvenlik için işlem durduruldu.');
     }
     const update = { ...patch };
-    update.leaseExpiresAt = patch.status === 'running'
-      ? new Date(Date.now() + 10 * 60 * 1000)
-      : FieldValue.delete();
+    update.leaseExpiresAt = patch.status === 'completed' || patch.status === 'failed'
+      ? FieldValue.delete()
+      : new Date(Date.now() + 10 * 60 * 1000);
     tx.set(lockRef, update, { merge: true });
   });
 }
