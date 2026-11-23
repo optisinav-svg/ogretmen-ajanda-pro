@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signInWithEmailAndPassword, sendPasswordResetEmail, reload } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, reload, signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
@@ -23,7 +23,7 @@ if (!profile.exists()) {
 }
 if (profile.get('hesapDurumu') === 'kapali') {
   Alert.alert('Hesap kapalı', 'Bu hesap daha önce kapatılmış. Geçmiş kayıtlarınıza erişmek için hesabınızı yeniden etkinleştirebilirsiniz.', [
-    { text: 'Şimdi değil', style: 'cancel', onPress: async () => { await auth.signOut(); } },
+    { text: 'Şimdi değil', style: 'cancel', onPress: async () => { await signOut(auth); } },
     { text: 'Hesabı yeniden etkinleştir', onPress: async () => { try {
       await reload(credential.user);
       if (!credential.user.emailVerified) throw new Error('Önce e-posta adresinizi doğrulayın.');
