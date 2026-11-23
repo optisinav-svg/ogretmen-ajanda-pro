@@ -134,6 +134,9 @@ const RETENTION_COLLECTIONS = Object.freeze([
   'dersler', 'dersNotlari', 'yoklamalar', 'odevler', 'kitaplar', 'konular',
   'bireyselEtkinlikler', 'bireyselDersOturumlari',
   'ogrenciler', 'siniflar', 'okullar',
+  'ogretmenOgrenciBaglantilari', 'ogrenciKayitEslesmeleri',
+  'ogrenciEslesmeTalepleri', 'ogrenciEslesmeKodlari',
+  'ogrenciOdevBildirimleri', 'ogrenciYeniOdevBildirimleri',
 ]);
 function istanbulDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -173,6 +176,31 @@ async function updateCleanupState(lockRef, token, patch) {
     tx.set(lockRef, { ...patch, leaseExpiresAt: new Date(Date.now() + 10 * 60 * 1000) }, { merge: true });
   });
 }
+exports.uygulamaSahibiDonemTemizliginiOnizle = onCall({ region: REGION }, async request => {
+  const ownerUid = requireTeacher(request);
+  if (request.auth.token.uygulamaSahibi !== true) {
+    throw new HttpsError('permission-denied', 'Uygulama sahibi yetkisi gereklidir.');
+  }
+  const { year, month } = istanbulDateParts();
+  if (month !== 7 || year < 2029) {
+    throw new HttpsError('failed-precondition', 'Önizleme yalnızca Temmuz ayında ve üç yıllık saklama süresi dolduğunda açılır.');
+  }
+  const targetYear = year - 3;
+  const lock = await db.collection('donemTemizlikKayitlari').doc(String(year)).get();
+  if (lock.exists && lock.get('status') === 'completed') {
+    return { status: 'completed', targetYear, counts: lock.get('counts') || {}, total: lock.get('totalDeleted') || 0 };
+  }
+  const entries = await Promise.all(RETENTION_COLLECTIONS.map(async name => {
+    const count = await db.collection(name).where('donemYili', '==', targetYear).count().get();
+    return [name, count.data().count];
+  }));
+  const counts = Object.fromEntries(entries);
+  return {
+    status: lock.exists ? (lock.get('status') || 'pending') : 'pending',
+    targetYear, counts, total: Object.values(counts).reduce((sum, value) => sum + value, 0),
+  };
+});
+
 exports.uygulamaSahibiDonemTemizliginiOnayla = onCall({ region: REGION, timeoutSeconds: 540, memory: '1GiB' }, async request => {
   const ownerUid = requireTeacher(request);
   if (request.auth.token.uygulamaSahibi !== true) {
