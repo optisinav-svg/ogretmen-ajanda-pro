@@ -3,6 +3,17 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 
 const db = getFirestore();
 const REGION = 'europe-west1';
+function isCurrentAcademicPeriodEditable(period, date = new Date()) {
+  if (!Number.isInteger(period)) return false;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  return (year === period && month >= 6) || (year === period + 1 && month <= 6);
+}
+
 
 exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request => {
   const teacherUid = request.auth?.uid;
@@ -36,6 +47,9 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
     }
     const student = studentSnap.data();
     const target = targetSnap.data();
+    if (!isCurrentAcademicPeriodEditable(donemYili)) {
+      throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları taşınamaz.');
+    }
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
     const activeLinks = linksSnap.docs.filter(doc => doc.get('ogrenciKayitId') === ogrenciKayitId && doc.get('durum') === 'active');
     const currentLink = activeLinks[0] || null;
