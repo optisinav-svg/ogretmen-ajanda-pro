@@ -791,19 +791,8 @@ service cloud.firestore {
 
     match /donemTemizlikKayitlari/{cleanupId} {
       allow get, list: if isApplicationOwner();
-      allow create: if false
-        && isApplicationOwner()
-        && request.resource.data.keys().hasOnly(['cleanupId', 'currentYear', 'targetYear', 'completedBy', 'completedAt', 'counts', 'totalDeleted', 'policyVersion'])
-        && request.resource.data.cleanupId == cleanupId
-        && request.resource.data.currentYear == (request.time + duration.value(3, 'h')).year()
-        && request.resource.data.targetYear == (request.time + duration.value(3, 'h')).year() - 3
-        && isRetentionCleanupWindow(request.resource.data.targetYear)
-        && request.resource.data.completedBy == request.auth.uid
-        && request.resource.data.completedAt == request.time
-        && request.resource.data.counts is map
-        && request.resource.data.totalDeleted is int
-        && request.resource.data.policyVersion == 2;
-      allow update, delete: if false;
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
     }
 
     // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
