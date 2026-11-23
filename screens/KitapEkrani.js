@@ -35,25 +35,90 @@ export default function KitapEkrani({route,navigation}){
   finally{setAtamaYukleniyor(false)}
  };
 
+ const kitapKopyaVerisi=(kitap,konu,ogr,kitapRefId,zaman)=>({
+  ad:konu.ad,
+  baslangicSayfa:konu.baslangicSayfa,
+  bitisSayfa:konu.bitisSayfa,
+  kazanımKodu:konu['kazanımKodu']||'',
+  kaynak:konu.kaynak||'manuel',
+  kitapId:kitapRefId,
+  kitapAd:kitap.ad,
+  ogrenciId:ogr.ogrenciId||ogr.id,
+  sinifId:ogr.sinifId,
+  sinifAd:ogr.sinifAd||sinif?.ad||'',
+  okulId:ogr.okulId||'',
+  okulAd:ogr.okulAd||'',
+  kademe:ogr.kademe||kademe||'',
+  brans:ogr.brans||ders||'',
+  uid,
+  donemYili:ogr.donemYili||donemYili,
+  kitapKutuphanesiId:kitap.id,
+  kitapKutuphanesiKonuId:konu.id,
+  olusturulma:zaman
+ });
+
+ // Eşitleme tekrar çalıştırıldığında eksik konu kopyalarını tamamlar; öğrenci ödev kayıtlarına dokunmaz.
+ const kutuphaneAtamalariniEsitle=async(kitapId,{kitapData=null,konuId=null,konuData=null}={})=>{
+  const [kitapSnap,konuSnap]=await Promise.all([
+   getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
+   getDocs(query(collection(db,'konular'),where('uid','==',uid)))
+  ]);
+  const atamalar=kitapSnap.docs.map(x=>({id:x.id,...x.data()})).filter(x=>
+   x.kitapKutuphanesiId===kitapId&&donemDuzenlemeyeAcik(Number(x.donemYili))
+  );
+  const atamaMap=new Map(atamalar.map(x=>[x.id,x]));
+  const mevcutKonular=konuSnap.docs.map(x=>({id:x.id,ref:x.ref,...x.data()})).filter(x=>atamaMap.has(x.kitapId));
+  const islemler=[];
+  for(const kitap of atamalar){
+   if(kitapData)islemler.push({ref:doc(db,'kitaplar',kitap.id),data:kitapData});
+   if(konuId&&konuData&&!mevcutKonular.some(x=>x.kitapId===kitap.id&&x.kitapKutuphanesiKonuId===konuId)){
+    const yeniRef=doc(collection(db,'konular'));
+    islemler.push({ref:yeniRef,data:kitapKopyaVerisi(
+     {id:kitapId,ad:kitapData?.ad||kitap.ad},
+     {id:konuId,...konuData},
+     kitap,
+     kitap.id,
+     new Date().toISOString()
+    ),create:true});
+   }
+  }
+  for(const konu of mevcutKonular){
+   if(konuData&&konu.kitapKutuphanesiKonuId===konuId){
+    islemler.push({ref:doc(db,'konular',konu.id),data:{...konuData,kitapAd:kitapData?.ad||atamaMap.get(konu.kitapId)?.ad||konu.kitapAd}});
+   }else if(kitapData&&kitapData.ad){
+    islemler.push({ref:doc(db,'konular',konu.id),data:{kitapAd:kitapData.ad}});
+   }
+  }
+  for(let i=0;i<islemler.length;i+=450){
+   const batch=writeBatch(db);
+   islemler.slice(i,i+450).forEach(x=>x.create?batch.set(x.ref,x.data):batch.update(x.ref,x.data));
+   await batch.commit();
+  }
+  return {atamaSayisi:atamalar.length,guncellenenKayit:islemler.length};
+ };
+
  const kitapAta=async()=>{
   if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrencilere kitap atanamaz.');
   if(!seciliKitap)return Alert.alert('Kitap seçilmedi','Önce bir kitap seçin.');
   if(!kutuphaneSeciliOgrenciler.length)return Alert.alert('Öğrenci seçilmedi','En az bir öğrenci seçin.');
   const kaynakKonular=kutuphaneKonulari.filter(x=>x.kitapId===seciliKitap.id);
   if(kaynakKonular.length+1>450)return Alert.alert('Atama yapılamadı','Bu kitapta çok fazla konu kaydı var. Güvenli aktarım sınırı 449 konudur.');
-  let atanan=0,atlanan=0;
+  let atanan=0,atlanan=0,onarilan=0;
   setAtamaYukleniyor(true);
   try{
+   const [kitapSnap,konuSnap]=await Promise.all([
+    getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
+    getDocs(query(collection(db,'konular'),where('uid','==',uid)))
+   ]);
+   const tumKitaplar=kitapSnap.docs.map(x=>({id:x.id,...x.data()}));
+   const tumKonular=konuSnap.docs.map(x=>({id:x.id,...x.data()}));
    for(const ogrId of kutuphaneSeciliOgrenciler){
     const ogr=kutuphaneOgrencileri.find(x=>x.id===ogrId);
     if(!ogr)continue;
-    const mevcut=await getDocs(query(collection(db,'kitaplar'),where('ogrenciId','==',ogr.id),where('uid','==',uid)));
-    if(mevcut.docs.some(d=>{const veri=d.data();return donemUygun(veri,donemYili)&&veri.kitapKutuphanesiId===seciliKitap.id;})){
-     atlanan++;
-     continue;
-    }
-    const kitapRef=doc(collection(db,'kitaplar'));
-    const zaman=new Date().toISOString();
+    const mevcutKitap=tumKitaplar.find(x=>
+     x.ogrenciId===ogr.id&&Number(x.donemYili)===donemYili&&x.kitapKutuphanesiId===seciliKitap.id
+    );
+    const kitapRefId=mevcutKitap?.id||doc(collection(db,'kitaplar')).id;
     const kitapData={
      ad:seciliKitap.ad,
      sayfaSayisi:seciliKitap.sayfaSayisi,
@@ -68,46 +133,36 @@ export default function KitapEkrani({route,navigation}){
      uid,
      donemYili,
      kitapKutuphanesiId:seciliKitap.id,
-     olusturulma:zaman
+     olusturulma:mevcutKitap?.olusturulma||new Date().toISOString()
     };
-    const islemler=[{ref:kitapRef,data:kitapData}];
-    kaynakKonular.forEach(k=>{
-     const konuRef=doc(collection(db,'konular'));
-     islemler.push({
-      ref:konuRef,
-      data:{
-       ad:k.ad,
-       baslangicSayfa:k.baslangicSayfa,
-       bitisSayfa:k.bitisSayfa,
-       kazanımKodu:k['kazanımKodu']||'',
-       kaynak:k.kaynak||'manuel',
-       kitapId:kitapRef.id,
-       kitapAd:seciliKitap.ad,
-       ogrenciId:ogr.id,
-       sinifId:ogr.sinifId,
-       sinifAd:ogr.sinifAd||sinif?.ad||'',
-       okulId:ogr.okulId||'',
-       okulAd:ogr.okulAd||'',
-       kademe:ogr.kademe||kademe||'',
-       brans:ogr.brans||ders||'',
-       uid,
-       donemYili,
-       kitapKutuphanesiId:seciliKitap.id,
-       kitapKutuphanesiKonuId:k.id,
-       olusturulma:zaman
-      }
-     });
-    });
+    const existentes=tumKonular.filter(x=>x.kitapId===kitapRefId);
+    const novas=kaynakKonular.filter(k=>!existentes.some(x=>x.kitapKutuphanesiKonuId===k.id));
     const batch=writeBatch(db);
-    islemler.forEach(x=>batch.set(x.ref,x.data));
-    await batch.commit();
-    atanan++;
+    if(!mevcutKitap)batch.set(doc(db,'kitaplar',kitapRefId),kitapData);
+    else if(mevcutKitap.ad!==kitapData.ad||Number(mevcutKitap.sayfaSayisi)!==Number(kitapData.sayfaSayisi)){
+     batch.update(doc(db,'kitaplar',kitapRefId),{ad:kitapData.ad,sayfaSayisi:kitapData.sayfaSayisi});
+    }
+    existentes.filter(x=>x.kitapKutuphanesiKonuId&&x.kitapId===kitapRefId&&x.kitapAd!==seciliKitap.ad).forEach(x=>
+     batch.update(doc(db,'konular',x.id),{kitapAd:seciliKitap.ad})
+    );
+    novas.forEach(k=>{
+     const ref=doc(collection(db,'konular'));
+     batch.set(ref,kitapKopyaVerisi(seciliKitap,k,ogr,kitapRefId,new Date().toISOString()));
+    });
+    if(!mevcutKitap||novas.length||existentes.some(x=>x.kitapKutuphanesiKonuId&&x.kitapId===kitapRefId&&x.kitapAd!==seciliKitap.ad)){
+     await batch.commit();
+     if(mevcutKitap)onarilan++;else atanan++;
+    }else atlanan++;
+    if(!mevcutKitap){
+     tumKitaplar.push({id:kitapRefId,...kitapData});
+    }
+    novas.forEach(k=>existentes.push({kitapId:kitapRefId,kitapKutuphanesiKonuId:k.id}));
    }
    setAtamaModal(false);
    setKutuphaneSeciliOgrenciler([]);
-   Alert.alert('Atama tamamlandı',atanan+' öğrenciye kitap ve '+kaynakKonular.length+' konu kopyası oluşturuldu.'+(atlanan?'\n'+atlanan+' öğrenciye kitap zaten atanmış olduğu için atlandı.':''));
+   Alert.alert('Atama tamamlandı',atanan+' öğrenciye yeni kitap atandı.'+(onarilan? '\n'+onarilan+' mevcut atama eksik konu/kitap bilgileriyle tamamlandı.':'')+(atlanan?'\n'+atlanan+' öğrenci için kitap zaten günceldi.':''));
   }catch(e){
-   Alert.alert('Atama hatası','İşlem sırasında hata oluştu. '+(e?.message||'')+'\nDaha önce tamamlanan öğrenci kayıtları korunur.');
+   Alert.alert('Atama hatası','İşlem sırasında hata oluştu. '+(e?.message||'')+'\nTamamlanan kayıtlar korunur; yeniden denediğinizde mevcut atamalar kontrol edilerek eksikler tamamlanır.');
   }finally{setAtamaYukleniyor(false)}
  };
  const kutuphaneYukle=async()=>{
@@ -142,6 +197,11 @@ export default function KitapEkrani({route,navigation}){
     batch.update(doc(db,'kitapKutuphanesi',duzenlenenKitap.id),{ad:yeniAd,sayfaSayisi:toplamSayfa});
     if(yeniAd!==duzenlenenKitap.ad)mevcut.forEach(x=>batch.update(doc(db,'kitapKutuphanesiKonulari',x.id),{kitapAd:yeniAd}));
     await batch.commit();
+    try{
+     await kutuphaneAtamalariniEsitle(duzenlenenKitap.id,{kitapData:{ad:yeniAd,sayfaSayisi:toplamSayfa}});
+    }catch(esitlemeHatasi){
+     Alert.alert('Kitap kaydedildi','Kütüphane güncellendi ancak bazı mevcut öğrenci atamalarına yansıtılamadı. Aynı kitabı yeniden kaydederseniz eşitleme tekrar denenir. '+(esitlemeHatasi?.message||''));
+    }
     setSeciliKitap(prev=>prev?.id===duzenlenenKitap.id?{...prev,ad:yeniAd,sayfaSayisi:toplamSayfa}:prev);
    }else{
     await addDoc(collection(db,'kitapKutuphanesi'),{ad:yeniAd,sayfaSayisi:toplamSayfa,uid,olusturulma:new Date().toISOString()});
@@ -184,8 +244,18 @@ export default function KitapEkrani({route,navigation}){
  try{
   const data={ad,baslangicSayfa:bas,bitisSayfa:bit,kazanımKodu:manuelKonu?'':seciliKazanim?.kod||'',kaynak:manuelKonu?'manuel':'kazanım'};
   if(kutuphaneModu){
-   if(duzenlenenKonu)await updateDoc(doc(db,'kitapKutuphanesiKonulari',duzenlenenKonu.id),data);
-   else await addDoc(collection(db,'kitapKutuphanesiKonulari'),{...data,kitapId:seciliKitap.id,kitapAd:seciliKitap.ad,uid,olusturulma:new Date().toISOString()});
+   let konuId=duzenlenenKonu?.id;
+   if(duzenlenenKonu){
+    await updateDoc(doc(db,'kitapKutuphanesiKonulari',konuId),data);
+   }else{
+    const ref=await addDoc(collection(db,'kitapKutuphanesiKonulari'),{...data,kitapId:seciliKitap.id,kitapAd:seciliKitap.ad,uid,olusturulma:new Date().toISOString()});
+    konuId=ref.id;
+   }
+   try{
+    await kutuphaneAtamalariniEsitle(seciliKitap.id,{konuId,konuData:data});
+   }catch(esitlemeHatasi){
+    Alert.alert('Konu kaydedildi','Kütüphane konusu güncellendi ancak bazı mevcut öğrenci kitaplarına yansıtılamadı. Aynı konuyu yeniden kaydettiğinizde eşitleme tekrar denenir. '+(esitlemeHatasi?.message||''));
+   }
    konuFormKapat();await kutuphaneYukle();return;
   }
   if(duzenlenenKonu)await updateDoc(doc(db,'konular',duzenlenenKonu.id),data);
@@ -194,7 +264,7 @@ export default function KitapEkrani({route,navigation}){
  }catch(e){Alert.alert('Hata','Konu kaydedilemedi. '+(e?.message||''))}
 };
 
- const konuSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları silinemez.');Alert.alert('Konuyu Sil','Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);};
+ const konuSil=k=>{if(!kutuphaneModu&&!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kitap konuları silinemez.');Alert.alert('Konuyu Sil',kutuphaneModu?'Kütüphaneden kaldırılacak. Daha önce öğrencilere atanmış kitaplarda ve geçmiş ödev kayıtlarında korunacak. Devam edilsin mi?':'Bu konu kaydı silinsin mi?',[{text:'İptal',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,kutuphaneModu?'kitapKutuphanesiKonulari':'konular',k.id));if(kutuphaneModu)await kutuphaneYukle();else await yukle(ogrenci)}catch(e){Alert.alert('Hata','Konu silinemedi.')}}}]);};
 
  const konuOdevDurumu=k=>{const h=odevler.filter(o=>o.konuId===k.id&&((o.hedef==='sinif'&&o.sinifId===ogrenci?.sinifId)||(o.hedefOgrenciIds||[]).includes(ogrenci?.id)));if(!h.length)return null;const x=[...h].sort((a,b)=>new Date(b.olusturulma||0)-new Date(a.olusturulma||0))[0];return x.ogrenciDurumlari?.[ogrenci.id]||x.durum||'bekliyor'};
  const ilerleme=k=>{const ks=konular.filter(x=>x.kitapId===k.id),tam=ks.reduce((n,x)=>konuOdevDurumu(x)==='yapildi'?n+sayfaAdedi(x):n+0,0),top=parseInt(k.sayfaSayisi,10)||0;return{tam,top,yuzde:top?Math.min(100,Math.round(tam/top*100)):0}};
@@ -203,7 +273,7 @@ export default function KitapEkrani({route,navigation}){
  if(kutuphaneModu)return <KeyboardAvoidingView style={st.wrap} behavior={Platform.OS==='ios'?'padding':'height'}>
   <View style={st.header}>
    <Text style={st.headerTitle}>Kitap Kütüphanem</Text>
-   <Text style={st.headerSub}>Kitapları bir kez tanımlayın, istediğiniz öğrencilere atayın.</Text>
+   <Text style={st.headerSub}>Kitapları bir kez tanımlayın, istediğiniz öğrencilere atayın. Açık dönemdeki atamalar kitap ve konu düzenlemeleriyle eşitlenir; silinen kütüphane konuları eski öğrenci kayıtlarında korunur.</Text>
    <TouchableOpacity onPress={()=>{setKutuphaneModu(false);setSeciliKitap(null);setAtamaModal(false)}} style={{marginTop:10}}>
     <Text style={{color:'#fff',fontWeight:'bold'}}>← Öğrenci kitaplarına dön</Text>
    </TouchableOpacity>

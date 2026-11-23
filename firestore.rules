@@ -184,9 +184,39 @@ service cloud.firestore {
         );
     }
 
-    function libraryBookBelongsToTeacher(data) {
-      return data.kitapId is string
-        && ownsDocument('kitapKutuphanesi', data.kitapId);
+    function validLibraryBook(data) {
+      return data.keys().hasOnly(['ad', 'sayfaSayisi', 'uid', 'olusturulma'])
+        && data.keys().hasAll(['ad', 'sayfaSayisi', 'uid', 'olusturulma'])
+        && data.uid == request.auth.uid
+        && data.ad is string
+        && data.ad.size() >= 1
+        && data.ad.size() <= 160
+        && data.sayfaSayisi is int
+        && data.sayfaSayisi > 0
+        && data.olusturulma is string;
+    }
+
+    function validLibraryTopic(data) {
+      let bookPath = /databases/$(database)/documents/kitapKutuphanesi/$(data.kitapId);
+      return data.keys().hasOnly(['ad', 'baslangicSayfa', 'bitisSayfa', 'kazanımKodu', 'kaynak', 'kitapId', 'kitapAd', 'uid', 'olusturulma'])
+        && data.keys().hasAll(['ad', 'baslangicSayfa', 'bitisSayfa', 'kazanımKodu', 'kaynak', 'kitapId', 'kitapAd', 'uid', 'olusturulma'])
+        && data.uid == request.auth.uid
+        && data.ad is string
+        && data.ad.size() >= 1
+        && data.ad.size() <= 200
+        && data.baslangicSayfa is int
+        && data.baslangicSayfa > 0
+        && data.bitisSayfa is int
+        && data.bitisSayfa >= data.baslangicSayfa
+        && data.get('kazanımKodu', '') is string
+        && data.kaynak in ['manuel', 'kazanım']
+        && data.kitapId is string
+        && exists(bookPath)
+        && get(bookPath).data.uid == request.auth.uid
+        && data.kitapAd is string
+        && data.kitapAd.size() >= 1
+        && data.olusturulma is string
+        && data.bitisSayfa <= get(bookPath).data.sayfaSayisi;
     }
 
     function individualEventBelongsToTeacher(data) {
@@ -633,23 +663,25 @@ service cloud.firestore {
       allow delete: if ownsEditablePeriodRecord() || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
     }
 
-    // Kitap kütüphanesi şu an ortak değil, öğretmen hesabına özeldir.
-    // Kütüphane tanımları sezondan bağımsızdır; öğrenci ilerlemesi
-    // ayrı ve sezonlu kitaplar / konular koleksiyonlarında tutulur.
+    // Kitap ve konu tanımları öğretmenin sezon bağımsız kütüphanesinde tutulur.
+    // Öğrenciye atanan kopyalar kitaplar/konular koleksiyonlarında bağımsız ilerler.
     match /kitapKutuphanesi/{docId} {
       allow read: if ownsRecord();
-      allow create: if createsOwnRecord();
-      allow update: if ownsRecord() && keepsOwner();
+      allow create: if createsOwnRecord() && validLibraryBook(request.resource.data);
+      allow update: if ownsRecord()
+        && keepsOwner()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad', 'sayfaSayisi'])
+        && validLibraryBook(request.resource.data);
       allow delete: if ownsRecord();
     }
 
     match /kitapKutuphanesiKonulari/{docId} {
       allow read: if ownsRecord();
-      allow create: if createsOwnRecord()
-        && libraryBookBelongsToTeacher(request.resource.data);
+      allow create: if createsOwnRecord() && validLibraryTopic(request.resource.data);
       allow update: if ownsRecord()
         && keepsOwner()
-        && libraryBookBelongsToTeacher(request.resource.data);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ad', 'baslangicSayfa', 'bitisSayfa', 'kazanımKodu', 'kaynak', 'kitapAd'])
+        && validLibraryTopic(request.resource.data);
       allow delete: if ownsRecord();
     }
 
