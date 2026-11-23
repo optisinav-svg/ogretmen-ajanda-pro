@@ -82,6 +82,12 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
       throw new HttpsError('failed-precondition', 'Geçmiş dönem öğrenci kayıtları taşınamaz.');
     }
     const movedAt = typeof tasimaTarihi === 'string' && tasimaTarihi ? tasimaTarihi : new Date().toISOString();
+    const historicalClassIds = [
+      ...(Array.isArray(student.sinifGecmisiIds) ? student.sinifGecmisiIds : []),
+      ...(Array.isArray(student.sinifGecmisi) ? student.sinifGecmisi.map(item => item?.sinifId).filter(Boolean) : []),
+      kaynakSinifId,
+    ];
+    const uniqueHistoricalClassIds = [...new Set(historicalClassIds)];
     const activeLinks = indexedLinkIsActive ? [indexedLinkSnap] : fallbackActiveLinks;
     const currentLink = activeLinks.find(doc => doc.get('sinifId') === kaynakSinifId) || activeLinks[0] || null;
     let newLinkRef = null;
@@ -100,7 +106,7 @@ exports.ogretmenOgrenciKaydiniTasi = onCall({ region: REGION }, async request =>
 
     // All transaction reads are complete before the first write.
     tx.update(studentRef, {
-      sinifGecmisiIds: FieldValue.arrayUnion(kaynakSinifId),
+      sinifGecmisiIds: FieldValue.arrayUnion(...uniqueHistoricalClassIds),
       sinifGecmisi: FieldValue.arrayUnion({
         sinifId: student.sinifId,
         sinifAd: student.sinifAd || sourceSnap.get('ad') || '',
