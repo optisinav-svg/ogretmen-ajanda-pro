@@ -1033,6 +1033,52 @@ test('Öğrenci paneli kendi bağlantı özetini ve izinli ders programını sor
   )));
 });
 
+test('Sınıfı değişen öğrenci geçmiş sınıfındaki kendi yoklama kayıtlarını görmeye devam eder', async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const adminDb = context.firestore();
+    await setDoc(doc(adminDb, 'kullanicilar', 'student-history-user'), {
+      kullaniciAdi: 'Geçmiş sınıf öğrencisi',
+      rol: 'ogrenci',
+    });
+    await setDoc(doc(adminDb, 'ogrenciler', 'student-history-record'), {
+      uid: 'teacher-a',
+      sinifId: 'class-c',
+      sinifGecmisiIds: ['class-a'],
+      donemYili: 2026,
+      adSoyad: 'Geçmiş sınıf öğrencisi',
+    });
+    await setDoc(doc(adminDb, 'ogretmenOgrenciBaglantilari', 'teacher-a__student-history-user__class-a'), {
+      uid: 'teacher-a',
+      ogretmenUid: 'teacher-a',
+      ogrenciUid: 'student-history-user',
+      ogrenciKayitId: 'student-history-record',
+      sinifId: 'class-a',
+      donemYili: 2026,
+      durum: 'active',
+      izinler: {
+        dersProgrami: true, dersNotlari: true, konular: true,
+        yoklama: true, odevler: true, kitaplar: true,
+      },
+    });
+    await setDoc(doc(adminDb, 'yoklamalar', 'attendance-history-student'), {
+      uid: 'teacher-a',
+      sinifId: 'class-a',
+      ogrenciId: 'student-history-record',
+      durum: 'geldi',
+      donemYili: 2026,
+    });
+  });
+
+  const studentDb = testEnv.authenticatedContext('student-history-user').firestore();
+  const history = await assertSucceeds(getDocs(query(
+    collection(studentDb, 'yoklamalar'),
+    where('uid', '==', 'teacher-a'),
+    where('sinifId', '==', 'class-a'),
+    where('ogrenciId', '==', 'student-history-record'),
+  )));
+  assert.equal(history.size, 1);
+});
+
 test('Öğrenci paneli kendi ders notlarını ve yoklamalarını sınıf/öğrenci filtresiyle listeleyebilir', async () => {
   const db = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDocs(query(
