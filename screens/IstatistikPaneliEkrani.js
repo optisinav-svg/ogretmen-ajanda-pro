@@ -135,6 +135,13 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         setCleanupMessage(`${result.targetYear} dönemi için Temmuz ${retentionDate.year} temizliği daha önce tamamlanmış.`);
         return;
       }
+      if (result.status === 'running') {
+        setCleanupMessage('Dönem temizliği başka bir oturumda devam ediyor. Kilit süresi dolana kadar yeni işlem başlatılamaz.');
+        return;
+      }
+      if (result.status === 'failed') {
+        setCleanupMessage('Önceki temizlik yarıda kalmış. Onay verirseniz aynı işlem güvenli biçimde kaldığı yerden tamamlanır.');
+      }
       setCleanupPreview({
         currentYear: retentionDate.year,
         targetYear: result.targetYear,
