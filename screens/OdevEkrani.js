@@ -19,7 +19,7 @@ export default function OdevEkrani({route}){
  const temiz=()=>{setAciklama('');setTeslim('');setHedef('sinif');setIds([]);setEdit(null);setSeciliKonu(null);setKitapSecili(null);setModal(false)};
  const ac=()=>{temiz();setModal(true)};
  const toggle=id=>setIds(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
- const konuZatenOdev=(k,studentId)=>odev.some(o=>(o.konuId===k.id||(k.kitapKutuphanesiKonuId&&o.kitapKutuphanesiKonuId===k.kitapKutuphanesiKonuId&&o.kitapId===k.kitapId))&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===secili?.id)||(o.hedefOgrenciIds||[]).includes(studentId)));
+ const konuZatenOdev=(k,studentId)=>odev.some(o=>(o.konuId===k.id||o.konuEslestirmeleri?.[studentId]===k.id||(k.kitapKutuphanesiKonuId&&o.kitapKutuphanesiKonuId===k.kitapKutuphanesiKonuId))&&(((o.hedef==='sinif'||o.hedef==='tumSinif'||o.tumSinif===true)&&o.sinifId===secili?.id)||(o.hedefOgrenciIds||[]).includes(studentId)));
  const ogrenciKonulari=o=>kitaplar.filter(k=>k.ogrenciId===o.id).flatMap(kitap=>konular.filter(k=>k.kitapId===kitap.id&&!konuZatenOdev(k,o.id)).sort((a,b)=>(parseInt(a.baslangicSayfa,10)||0)-(parseInt(b.baslangicSayfa,10)||0)).slice(0,2));
  const konuSec=(o,k)=>{setSeciliKonu(k);setKitapSecili(kitaplar.find(x=>x.id===k.kitapId)||null);setEdit(null);setAciklama(`${k.kitapAd||'Kitap'} - ${k.ad}`);setTeslim(bugun());setHedef('bireysel');setIds([o.id]);setModal(true)};
  const kaydet=async()=>{
