@@ -139,8 +139,14 @@ service cloud.firestore {
         && ownsDocument('siniflar', data.sinifId)
         && classData.donemYili == data.donemYili
         && classData.get('arsivlendi', false) != true
-        && classData.get('arsivDurumu', '') != 'isleniyor'
-        && schoolAcceptsNewRecords(classData.get('okulId', ''));
+        && classData.get('arsivDurumu', '') != 'isleniyor';
+    }
+
+    function studentClassSchoolAcceptsNewRecords(data) {
+      let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
+      return data.sinifId is string
+        && ownsDocument('siniflar', data.sinifId)
+        && schoolAcceptsNewRecords(get(classPath).data.get('okulId', ''));
     }
 
     function studentBelongsToClass(data) {
@@ -655,8 +661,8 @@ service cloud.firestore {
     // Öğrenci kayıtları (öğretmenin kendi öğrenci listesi)
     match /ogrenciler/{docId} {
       allow read: if ownsRecord() || (isStudent() && studentHasPermission(resource.data.uid, resource.data.sinifId, 'dersProgrami') && linkedStudentRecordId(resource.data.uid, resource.data.sinifId) == docId);
-      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data);
+      allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && studentClassSchoolAcceptsNewRecords(request.resource.data);
+      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && studentClassSchoolAcceptsNewRecords(request.resource.data);
       allow delete: if ownsEditablePeriodRecord();
     }
 
