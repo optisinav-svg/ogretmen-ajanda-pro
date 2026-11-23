@@ -1,5 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { initializeApp, getApps } = require('firebase-admin/app');
+if (!getApps().length) initializeApp({ projectId: 'demo-ogretmen-ajanda-account-tests' });
 const { _test } = require('../accountLifecycle');
 
 test('person names are normalized and bounded', () => {
