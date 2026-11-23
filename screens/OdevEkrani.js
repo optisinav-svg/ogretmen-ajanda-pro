@@ -1,6 +1,6 @@
 import React,{useState,useEffect}from'react';
 import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,SafeAreaView,KeyboardAvoidingView,Platform}from'react-native';
-import {collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where}from'firebase/firestore';
+import {collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where,deleteField}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
@@ -71,7 +71,18 @@ export default function OdevEkrani({route}){
     let homeworkId;
     const previousTargetIds=edit?.hedefOgrenciIds||[];
     if(edit){
-      await updateDoc(doc(db,'odevler',edit.id),homeworkData);
+      const updateData={...homeworkData};
+      ['konuId','kitapId','kitapAd','kitapKutuphanesiId','kitapKutuphanesiKonuId','konuEslestirmeleri','konuAd','baslangicSayfa','bitisSayfa','sayfaAdedi'].forEach(key=>{
+        if(!Object.prototype.hasOwnProperty.call(konuAlan,key))updateData[key]=deleteField();
+      });
+      const durumlar={...(edit.ogrenciDurumlari||{})},gecmis={...(edit.durumGecmisi||{})};
+      hedefler.forEach(student=>{
+        if(!durumlar[student.id])durumlar[student.id]='bekliyor';
+        if(!gecmis[student.id])gecmis[student.id]=[{durum:'bekliyor',tarih:now,tarihGosterim:displayDate(tarih)}];
+      });
+      updateData.ogrenciDurumlari=durumlar;
+      updateData.durumGecmisi=gecmis;
+      await updateDoc(doc(db,'odevler',edit.id),updateData);
       homeworkId=edit.id;
     }else{
       const durumlar={},gecmis={};
