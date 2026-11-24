@@ -1532,12 +1532,11 @@ test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güv
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   const notificationId = 'homework-a__student-1__1790000000000';
   const notificationRef = doc(teacherDb, 'ogrenciOdevDurumBildirimleri', notificationId);
-  const batch = writeBatch(teacherDb);
 
-  batch.update(doc(teacherDb, 'odevler', 'homework-a'), {
+  await assertSucceeds(updateDoc(doc(teacherDb, 'odevler', 'homework-a'), {
     ogrenciDurumlari: { 'student-a': 'yapildi' },
-  });
-  batch.set(notificationRef, {
+  }));
+  await assertSucceeds(setDoc(notificationRef, {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
     ogrenciUid: 'student-1',
@@ -1552,8 +1551,7 @@ test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güv
     bildirimAnahtari: '1790000000000',
     bildirimTarihi: '2026-09-21T00:00:00.000Z',
     okundu: false,
-  });
-  await assertSucceeds(batch.commit());
+  }));
 
   const studentDb = testEnv.authenticatedContext('student-1').firestore();
   await assertSucceeds(getDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId)));
