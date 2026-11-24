@@ -193,26 +193,17 @@ export default function KayitEkrani({ navigation, route }) {
                 placeholder="ornek@mail.com"
                 value={eposta}
                 onChangeText={setEposta}
+                editable={!(devamEt && !!auth.currentUser)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <Text style={styles.etiket}>Şifre</Text>
-              <TextInput
-                style={styles.girdi}
-                placeholder="En az 6 karakter"
-                value={sifre}
-                onChangeText={setSifre}
-                secureTextEntry
-              />
-              <Text style={styles.etiket}>Şifre Tekrar</Text>
-              <TextInput
-                style={styles.girdi}
-                placeholder="Şifrenizi tekrar girin"
-                value={sifreTekrar}
-                onChangeText={setSifreTekrar}
-                secureTextEntry
-              />
+              {!(devamEt && !!auth.currentUser) && <>
+                <Text style={styles.etiket}>Şifre</Text>
+                <TextInput style={styles.girdi} placeholder="En az 6 karakter" value={sifre} onChangeText={setSifre} secureTextEntry />
+                <Text style={styles.etiket}>Şifre Tekrar</Text>
+                <TextInput style={styles.girdi} placeholder="Şifrenizi tekrar girin" value={sifreTekrar} onChangeText={setSifreTekrar} secureTextEntry />
+              </>}
             </>
           )}
 
@@ -229,7 +220,7 @@ export default function KayitEkrani({ navigation, route }) {
               {yukleniyor ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.butonMetni}>Kayıt Ol ✓</Text>
+                <Text style={styles.butonMetni}>{devamEt && auth.currentUser ? 'Profili tamamla ✓' : 'Kayıt Ol ✓'}</Text>
               )}
             </TouchableOpacity>
           )}
