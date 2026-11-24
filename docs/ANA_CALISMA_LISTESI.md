@@ -122,6 +122,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Ozel ders, etut ve soru cozumu takvim etkinlikleri/PDF yansimasi kullanici tarafindan APK sonrasi kontrol edilecek.
 - Takvim yeniden tasarlanmayacak; kullanici tarafindan dogrulanan davranislar korunacak.
 - Durum: Ders konusu düzenleme kaynakta doğrulandı; diğer ders/ödev/yoklama/kitap/rapor ilişkileri bütünsel kod incelemesi ve cihaz doğrulaması 12. bölümde.
+- **Kullanıcı bildirimi — sonraki iş listesi (24.11.2026):** Bir sınıfın ders notu/konu kayıtları zaman zaman eksilmiş gibi görünüyor ve listede yalnızca tek kayıt kalıyor; kullanıcı birden fazla ders girişi yaptığını belirtiyor. APK ve güvenli ilk kullanım kontrollerinden sonra sınıf/UID bilgisi alınarak ilgili kayıt koleksiyonu, belge kimlikleri, ekleme-güncelleme akışı ve sınıf/dönem listeleme sorgusu **salt okunur** incelenecek. Eski kayıtların üzerine yazma, yanlış belge kimliği, dönem/sınıf filtresi veya sıralama sorunu birbirinden ayrıştırılacak. İnceleme sırasında canlı veriye yazma, silme, taşıma veya düzeltme yapılmayacak.
 
 ### P7 — KVKK ve yayin oncesi bilgilendirme
 
@@ -165,7 +166,9 @@ Bu asama tum P0 engelleri ve kaynak duzeltmeleri kapandiktan sonra baslar:
 8. Tablet testleri basarili olduktan sonra mevcut telefon APK imza parmak iziyle EAS imzasi karsilastirilir.
 9. Eslesme dogrulanirsa telefon guncellemesi hazirlanir; dogrulanmazsa kurulu uygulamanin uzerine yukleme yapilmaz.
 
-Durum: TEST 12. BOLUMDE; su an baslatilmayacak.
+Durum: Bölüm 12 CI doğrulamasının ilk paketi tamamlandı; gerçek Firebase/canlı Rules, indeks karşılaştırması, gerçek hesap ve cihaz testleri ile APK hâlâ bekliyor.
+
+**24.11.2026 CI kanıtı:** GitHub Actions #700 (`26f7f24`) başarılı. Firestore Emulator + statik/navigasyon testleri 79/79; Cloud Functions politika testleri 46/46; Android bundle 888 modülle başarıyla üretildi. Bu sonuçlar canlı Firebase Rules dağıtımı veya gerçek cihaz doğrulaması değildir. Functions bağımlılık kurulumu ayrıca 9 orta düzey npm audit uyarısı verdi; paketler tek tek incelenmeden otomatik `npm audit fix` uygulanmayacak.
 - `scripts/prepare-spark-apk.ps1` su anda eski `release/pre-apk-2026-11-22` dalini bekliyor. 12. bolumden once bu betik guncel entegre kaynak dalina gore yenilenmeli; su an calistirilmayacak.
 
 ## 4. Is sirasi ve tamamlanma kapilari
