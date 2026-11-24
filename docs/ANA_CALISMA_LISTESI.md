@@ -108,7 +108,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 
 ### P6 — Ders, odev, yoklama, kitap ve rapor
 
-- Ders konusu kaydedildikten sonra duzenlenebilir olmali; bu davranis kaynak kodda ve gercek cihazda dogrulanmali.
+- Ders konusu kaydedildikten sonra duzenlenebilir: `DersNotuEkrani.js` içinde kullanıcıya ait not için düzenleme düğmesi, `konuGuncelle` ve `updateDoc` akışı kaynakta mevcut. Yetki ve dönem kontrolü uygulanıyor; gerçek cihaz/regresyon doğrulaması 12. bölümde.
 - Odev, yoklama, kitap atama ve ogrenci ilerleme akislari korunmali.
 - Ortak kitap kutuphanesi ve ogrenci bazinda bagimsiz ilerleme; kitap > konu basligi > sayfa araligi modeli korunmali.
 - Sinif gelisim raporu PDF'i kaynakta eklenmis olarak belgelenmis; icerik ve cihaz cikti testi 12. bolumde.
