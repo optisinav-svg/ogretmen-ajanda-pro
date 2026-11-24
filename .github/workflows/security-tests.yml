@@ -11,6 +11,7 @@ on:
       - fix/spark-retention-and-apk-readiness-2026-11-22
       - work/section7-safe-delete-retention
       - work/section8-account-period-management
+      - work/section9-calendar-usability
   pull_request:
     branches:
       - work/section5-homework-attendance-reports
@@ -22,6 +23,7 @@ on:
       - fix/spark-retention-and-apk-readiness-2026-11-22
       - work/section6-student-calendar-activities
       - work/section7-safe-delete-retention
+      - work/section8-account-period-management
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
