@@ -16,6 +16,18 @@ Bu klasördeki betikler canlı Firebase projesine erişebilir. Varsayılan olara
 node .\scripts\audit-missing-periods.js
 ```
 
+### `audit-rules-compatibility.js`
+- Mevcut belgelerin yeni Firestore Rules ile veri yapısı ve referans uyumluluğunu salt okunur denetler.
+- Okul/sınıf/öğrenci, dönem, ders/ödev/yoklama/kitap/konu ilişkilerini ve kitap kütüphanesi alan şemasını kontrol eder.
+- Yalnızca sayaç ve dönem dağılımı üretir; öğrenci adı, e-posta, belge kimliği veya içerik yazdırmaz.
+- Hiçbir belgeyi oluşturmaz, güncellemez veya silmez.
+- Çıktı incelenmeden canlı Rules dağıtımı yapılmamalıdır.
+
+Çalıştırma:
+```powershell
+node .\scripts\audit-rules-compatibility.js
+```
+
 ### `firestore-backup.js`
 - Firestore verisini salt okunur dışa aktarır.
 - Arşiv ve manifest oluşturur; manifest içine arşivin SHA-256 değerini yazar.
