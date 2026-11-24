@@ -216,3 +216,15 @@ Bu ana liste bir takip belgesidir; canli sistemde islem yapma izni degildir. Her
 - Test, Android bundle, APK veya cihaz dogrulamasi bu asamada yapilmadi; hepsi 12. bolumde.
 - Takvim dosyasi degistirilmedi.
 - Bu ana liste canli sisteme islem yapma izni degildir. Rules dagitimi, Auth claim atamasi, veri tasima/silme ve APK adimlari kendi asamasinda ayri onay gerektirir.
+
+
+## 7. 24.11.2026 tablet APK güvenli hazırlığı
+
+- Sabit APK dalı: `release/tablet-apk-2026-11-24`; Bölüm 11 güncel dalından türetildi.
+- EAS build için ayrı `scripts/build-tablet-apk.ps1` hazırlandı. Betik Firebase Rules/Functions deploy etmez, Firestore'a yazmaz ve veri silmez; proje kimliklerini, dalı, temiz çalışma ağacını, Node sürümünü, Android bundle ve EAS hesabını doğrular. EAS build'i yalnızca kullanıcı `BUILD` onayı girerse başlatır.
+- Eski `scripts/prepare-spark-apk.ps1` birleşik deploy/build betiği yanlışlıkla çalıştırılmaması için fail-closed hale getirildi.
+- Yeni `tests/apkBuildSafety.test.js` güvenlik sınırlarını regresyon testi olarak korur.
+- Yeni release dalının CI sonucu bekleniyor; CI geçmeden APK hazırlığına geçilmeyecek.
+- Canlı Rules dağıtımı ayrı onay kapısıdır. Yeni APK, Rules canlıda doğrulanmadan kurulup kullanılmayacak.
+- Sonraki adımlar: CI sonucu → salt okunur canlı Firebase yapılandırma/indeks karşılaştırması → Rules için yedek ve geri dönüş doğrulaması → kullanıcıya ayrı DEPLOY onayı → Rules doğrulaması → EAS APK build → tablet kurulumu/testi.
+- Kullanıcı tarafından bildirilen sınıf ders notlarının eksilmesi sorunu bu APK/ilk kullanım kapılarından sonra salt okunur olarak incelenecek; sınıf UID'si o aşamada istenecek.
