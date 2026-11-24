@@ -97,3 +97,12 @@ Hesap kapatma ve yeniden etkinlestirme de kendi profil belgesi + ayni batch'teki
 Buna ragmen callable bagimliliklari tum uygulamadan kalkmadi. Kalan ekranlar: Profil (rol talebi), RolDuzeltmeTalepleri (karar), OgrenciEkrani (sinif/kayitsiz tasima ve silme), OkulSinifEkrani (okul kaldirma sirasinda kayitsiz ogrenci verilerini silme), DonemAktarimEkrani (buyuk aktarim), IstatistikPaneli (kapali hesap listeleme/imha ve donem temizligi). Bu islemler guvenli rules/transaction tasarimi veya acik guvenli devre disi birakma karari olmadan APK'ya hazir sayilmaz.
 
 Yeni degisiklikler icin Emulator/unit testleri calistirilmadi; canlı Firestore rules dagitilmadi; canlı veri ve Auth hesaplari degistirilmedi. Bu nedenle bu belge bir dagitim onayi degildir.
+
+
+## 24.11.2026 — Callable kapisi guncel sonucu
+
+Depodaki 38 uygulama JS/JSX/TS/TSX dosyasi tarandi; uygulama kaynaklarinda artik `httpsCallable(` cagrisi yok. E-posta alias SHA-256 rezervasyonu, dogrulanmis kayit/giris, profil ad-soyad/e-posta senkronizasyonu ve hesap kapatma/yeniden etkinlestirme Spark istemci + Firestore Rules akislari olarak kaynakta uygulandi.
+
+Cloud Functions'a bagli kalmis riskli ekranlarin guvenli Spark karsiligi tamamlanmadigi icin bu ozellikler acik uyarilarla devre disi birakildi: e-posta degisikligi, rol duzeltme talep/karari, ogrenci sinif/kayitsiz tasima ve kalici silme, okul kaldirma, akademik donem aktarimi, kapali hesap listeleme/imhasi ve yillik cok koleksiyonlu donem temizligi. Bu nedenle "uygulama callable bagimliligi kalmadi" dogrudur; ancak "tum ozellikler Spark'a tasindi" dogru degildir.
+
+Testler henuz calistirilmadi. Canli Firestore Rules dagitilmadi. Canli veri/Auth hesabi degistirilmedi. Bu belge APK veya canli dagitim onayi degildir.
