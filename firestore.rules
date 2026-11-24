@@ -19,9 +19,9 @@ service cloud.firestore {
 
     function isRetentionCleanupWindow(periodYear) {
       let istanbulNow = request.time + duration.value(3, 'h');
-      return istanbulNow.year() >= 2029
+      return istanbulNow.year() >= 2028
         && istanbulNow.month() == 7
-        && periodYear == istanbulNow.year() - 3;
+        && periodYear == istanbulNow.year() - 2;
     }
 
     function profilePath(userId) {
