@@ -80,6 +80,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
 
   const seenClasses = new Set();
   const globallySelectedStudents = new Set();
+  const globallySelectedBooks = new Set();
   const normalizedSelections = selections.map(item => {
     const sourceClassId = typeof item?.sourceClassId === 'string' ? item.sourceClassId.trim() : '';
     const studentIds = Array.isArray(item?.studentIds) ? [...new Set(item.studentIds.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()))] : [];
@@ -90,7 +91,12 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
       if (globallySelectedStudents.has(id)) throw new HttpsError('invalid-argument', 'Bir öğrenci aynı aktarımda birden fazla sınıfta seçilemez.');
       globallySelectedStudents.add(id);
     }
-    return { sourceClassId, studentIds, targetGrade: item.targetGrade };
+    const bookIds = Array.isArray(item?.bookIds) ? [...new Set(item.bookIds.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()))] : [];
+    for (const id of bookIds) {
+      if (globallySelectedBooks.has(id)) throw new HttpsError('invalid-argument', 'Bir kitap aktarımda birden fazla kez seçilemez.');
+      globallySelectedBooks.add(id);
+    }
+    return { sourceClassId, studentIds, bookIds, targetGrade: item.targetGrade };
   });
   const totalStudents = normalizedSelections.reduce((sum, item) => sum + item.studentIds.length, 0);
   if (totalStudents > MAX_STUDENTS) throw new HttpsError('resource-exhausted', 'Tek aktarımda en fazla 500 öğrenci seçilebilir.');
@@ -142,8 +148,18 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     db.collection('kitaplar').where('uid', '==', uid).where('donemYili', '==', sourceYear).get(),
     db.collection('konular').where('uid', '==', uid).where('donemYili', '==', sourceYear).get(),
   ]);
-  const selectedStudentIds = new Set([...studentIds]);
-  const books = bookSnap.docs.filter(s => selectedStudentIds.has(s.get('ogrenciId')));
+  const selectedBookIds = new Set(normalizedSelections.flatMap(x => x.bookIds));
+  const books = bookSnap.docs.filter(s => selectedBookIds.has(s.id));
+  if (books.length !== selectedBookIds.size) throw new HttpsError('failed-precondition', 'Seçilen kitaplardan biri kaynak dönemde bulunamadı.');
+  for (const selection of normalizedSelections) {
+    const studentSet = new Set(selection.studentIds);
+    for (const bookId of selection.bookIds) {
+      const book = books.find(x => x.id === bookId);
+      if (!book || !studentSet.has(book.get('ogrenciId')) || book.get('sinifId') !== selection.sourceClassId) {
+        throw new HttpsError('failed-precondition', 'Seçilen kitap, aynı sınıfta seçilmiş bir öğrenciye ait değil.');
+      }
+    }
+  }
   const bookIds = new Set(books.map(s => s.id));
   const topics = topicSnap.docs.filter(s => bookIds.has(s.get('kitapId')));
 
