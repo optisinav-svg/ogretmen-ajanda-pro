@@ -83,7 +83,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     const studentIds = Array.isArray(item?.studentIds) ? [...new Set(item.studentIds.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()))] : [];
     if (!sourceClassId || seenClasses.has(sourceClassId)) throw new HttpsError('invalid-argument', 'Sınıf seçimleri boş veya yinelenmiş olamaz.');
     seenClasses.add(sourceClassId);
-    if (!studentIds.length || studentIds.length > MAX_STUDENTS) throw new HttpsError('invalid-argument', 'Her sınıf için en az bir öğrenci seçin; tek aktarımda en fazla 500 öğrenci taşınabilir.');
+    if (studentIds.length > MAX_STUDENTS) throw new HttpsError('invalid-argument', 'Tek aktarımda en fazla 500 öğrenci seçilebilir.');
     for (const id of studentIds) {
       if (globallySelectedStudents.has(id)) throw new HttpsError('invalid-argument', 'Bir öğrenci aynı aktarımda birden fazla sınıfta seçilemez.');
       globallySelectedStudents.add(id);
