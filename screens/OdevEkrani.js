@@ -121,6 +121,7 @@ export default function OdevEkrani({route}){
   if(d==='yapildi'&&teslimTarihiGectiMi(o)){Alert.alert('Teslim tarihi geçti','Bu ödev artık Yapıldı olarak işaretlenemez. Geç getirdi veya Yapılmadı seçebilirsiniz.');return;}
   const oncekiDurum=(o.ogrenciDurumlari||{})[id]||'bekliyor';
   if(oncekiDurum===d){setDurum(null);return;}
+  let durumKaydedildi=false;
   try{
     const bildirimAnahtari=String(Date.now());
     const tarih=new Date(Number(bildirimAnahtari)).toISOString();
@@ -133,6 +134,7 @@ export default function OdevEkrani({route}){
       &&link.donemYili===o.donemYili&&link.izinler?.odevler===true
       &&(o.hedefOgrenciIds||[]).includes(id));
     await updateDoc(doc(db,'odevler',o.id),{ogrenciDurumlari:durumlar,durumGecmisi:gecmis,durum:d});
+    durumKaydedildi=true;
     if(links.length){
       const notificationBatch=writeBatch(db);
       links.forEach(link=>{
@@ -147,7 +149,10 @@ export default function OdevEkrani({route}){
       await notificationBatch.commit();
     }
     setDurum(null);yukle(secili);
-  }catch(e){Alert.alert('Durum güncelleme/bildirim hatası','Ödev durumu kaydedilmiş olabilir; bildirimler yüklenemedi. Lütfen ödev listesini yenileyip durumu kontrol edin. '+(e?.message||''));}
+  }catch(e){
+    if(durumKaydedildi){setDurum(null);yukle(secili);Alert.alert('Ödev durumu güncellendi','Ödev durumu kaydedildi ancak öğrenci bildirimi oluşturulamadı. Ödev kaydı korunuyor; bağlantıyı kontrol edip yeniden deneyebilirsiniz. '+(e?.message||''));}
+    else Alert.alert('Hata','Ödev durumu güncellenemedi. '+(e?.message||''));
+  }
  };
  const okulGruplari=()=>{const m={};siniflar.forEach(x=>{const k=x.okulId||x.okulAd||'okulsuz';if(!m[k])m[k]={okulId:x.okulId,okulAd:x.okulAd||'Okul belirtilmemiş',siniflar:[]};m[k].siniflar.push(x)});return Object.values(m).sort((a,b)=>String(a.okulAd).localeCompare(String(b.okulAd),'tr'))};const uygunKitaplar=hedef==='bireysel'?kitaplar.filter(k=>ids.includes(k.ogrenciId)):kutuphaneKitaplari;const odevSil=async o=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev kayıtları silinemez.');Alert.alert('Ödevi Sil','Bu ödevi silmek istediğinize emin misiniz?', [{text:'Vazgeç',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,'odevler',o.id));try{await cancelHomeworkNotifications(o.id)}catch(e){Alert.alert('Ödev silindi','Öğrenci bildirimleri iptal edilemedi. Bağlantıyı kontrol edip tekrar deneyin.')}yukle(secili)}catch(e){Alert.alert('Hata','Ödev silinemedi.')}}}]);};
  const duzenle=o=>{
