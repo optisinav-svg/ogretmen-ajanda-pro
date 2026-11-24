@@ -195,7 +195,8 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
             const o = ogrenciBul(t.ogrenciKayitId);
             return (
               <View key={t.id} style={s.card}>
-                <Text style={s.name}>{o?.adSoyad || 'Öğrenci kaydı'} · {o?.sinifAd || ''}</Text>
+                <Text style={s.name}>{o?.adSoyad || 'Öğrenci kaydı'} · {b.sinifAd || 'Sınıf belirtilmemiş'}</Text>
+                {!!o && o.sinifId !== b.sinifId && <Text style={s.sub}>Geçmiş sınıf bağlantısı. Güncel sınıf: {o.sinifAd || 'Belirtilmemiş'}. Yeni sınıf için yeni eşleştirme kodu oluşturun.</Text>}
                 <Text style={s.sub}>Hesap: {t.ogrenciHesapAdi || 'Ad bilgisi yok'}</Text>
                 <Text style={s.sub}>E-posta: {t.ogrenciEposta || 'E-posta bilgisi yok'}</Text>
                 <Text style={s.sub}>Eşleşecek kayıt: {t.ogrenciKayitId}</Text>
