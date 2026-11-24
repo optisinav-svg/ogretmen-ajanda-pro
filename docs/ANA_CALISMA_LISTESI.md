@@ -38,11 +38,12 @@ Spark istemci + Firestore Rules kaynak akislari:
 - Ogretmen profili e-posta dogrulanmadan olusturulmaz.
 - Kendi profilinde ad/soyad ve dogrulanmis Auth e-postasi senkronizasyonu.
 - Kendi hesabini kapatma/yeniden etkinlestirme ve ayni batch'teki audit kaydi.
+- Normal sinif degisikligi ve kayitsiz sinifa tasima; kilitli, tekrar baslatilabilir batch akisi ve eski uygulama baglantisini tarihce icin koruyup yeni sinifta yeni kodla eslestirme.
 
 Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - E-posta degisikligi.
 - Rol duzeltme talebi/karari (bekleyen talepler owner ekraninda salt okunur).
-- Ogrenci sinif/kayitsiz tasima ve kalici silme.
+- Ogrenci kalici silme.
 - Okul kaldirma.
 - Akademik donem aktarimi.
 - Kapali hesap listeleme/imhasi.
@@ -51,12 +52,12 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 **Kaynak gecidi icin yapilanlar:**
 1. Callable adlari, parametreleri ve veri etkileri envanterlendi.
 2. Guvenli profil/alias/hesap akislari Spark istemciye tasindi.
-3. Yetki veya atomiklik riski olan islemler istemciye tasinmadi; acik uyariyla devre disi birakildi.
+3. Yetki veya atomiklik riski olan islemler istemciye tasinmadi; acik uyariyla devre disi birakildi. Ogrenci tasima icin ayri, resumable Spark akis yazildi.
 4. Tarihsel e-posta alias kayitlari hash yapisiyla korundu.
 5. Tum uygulama kaynaklarinda callable taramasi sifir sonuc verdi.
 6. Canli Rules dagitimi, veri migrasyonu, silme veya Auth degisikligi yapilmadi.
 
-**Durum:** Uygulama kaynak callable bagimliligi kapandi; kapatilan ozellikler kaybolmadi, guvenli Spark yeniden tasarimi icin bekliyor. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Bu nedenle APK'ya gecis henuz onayli degil.
+**Durum:** Uygulama kaynak callable bagimliligi kapandi. Ogrenci sinif/kayitsiz tasima kaynakta Spark'a tasindi; rol duzeltme, kalici silme, okul kaldirma, donem aktarimi ve imha/temizlik akislari guvenli karsilik bulunana kadar kapali. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Bu nedenle APK'ya gecis henuz onayli degil.
 
 ### P1 — Donem, arsiv ve veri saklama
 
