@@ -119,7 +119,12 @@ function validateStudentReference(report, collection, record, students) {
     return null;
   }
   if (student.uid !== record.uid) addIssue(report, collection, 'student_owner_mismatch');
-  if (student.sinifId !== record.sinifId) addIssue(report, collection, 'student_class_mismatch');
+  if (student.sinifId !== record.sinifId) {
+    const historicalReadOnly = ['yoklamalar', 'bireyselEtkinlikler', 'bireyselDersOturumlari'].includes(collection);
+    const pendingTransfer = Boolean(student.sinifTasiIslemi || student.kayitsizTasiIslemi);
+    addIssue(report, collection, 'student_class_mismatch',
+      historicalReadOnly || pendingTransfer ? 'warning' : 'error');
+  }
   if (!samePeriod(student, record)) addIssue(report, collection, 'student_period_mismatch');
   if (student.sinifTasiIslemi || student.kayitsizTasiIslemi) {
     addIssue(report, collection, 'student_transfer_pending', 'warning');
@@ -223,7 +228,7 @@ function validateData(report, docsByCollection) {
       }
       if (name === 'bireyselDersOturumlari') {
         const event = events.get(data.bireyselEtkinlikId);
-        if (!event) addIssue(report, name, 'referenced_event_missing');
+        if (!event) addIssue(report, name, 'referenced_event_missing', 'warning');
         else {
           if (event.uid !== data.uid) addIssue(report, name, 'event_owner_mismatch');
           if (event.ogrenciId !== data.ogrenciId) addIssue(report, name, 'event_student_mismatch');
@@ -233,16 +238,9 @@ function validateData(report, docsByCollection) {
     }
   }
 
-  for (const { data } of docsByCollection.ogrenciler || []) {
-    const klass = typeof data.sinifId === 'string' ? classes.get(data.sinifId) : null;
-    if (klass && (klass.uid !== data.uid || !samePeriod(klass, data))) {
-      addIssue(report, 'ogrenciler', 'student_class_period_mismatch');
-    }
-  }
-
   for (const { data } of docsByCollection.konular || []) {
     const book = books.get(data.kitapId);
-    if (!book) addIssue(report, 'konular', 'assigned_book_missing');
+    if (!book) addIssue(report, 'konular', 'assigned_book_missing', 'warning');
     else {
       if (book.uid !== data.uid) addIssue(report, 'konular', 'assigned_book_owner_mismatch');
       if (book.ogrenciId !== data.ogrenciId) addIssue(report, 'konular', 'assigned_book_student_mismatch');
