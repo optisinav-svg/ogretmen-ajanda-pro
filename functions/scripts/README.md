@@ -49,13 +49,6 @@ node .\scripts\audit-account-ownership.js hesap1@example.com hesap2@example.com
 - `--apply` ve ekranda istenen açık onay olmadan değişiklik yapmaz.
 - Gerçek UID/e-posta eşleşmesi ayrıca doğrulanmalıdır.
 
-## Devre dışı / kullanılmaması gereken betik
-
-### `configure-existing-accounts.js`
-- Eski hesap yapılandırma yaklaşımı güvenlik nedeniyle devre dışıdır.
-- Çalıştırmayın; betik bilerek hata vererek durur.
-
-
 ### `manual-period-cleanup.js`
 - Spark uyumlu yerel Admin SDK betiğidir; Cloud Functions veya Blaze kullanmaz.
 - Varsayılan çalışma biçimi yoktur; `--preview` açıkça seçilirse salt okunur sayım yapar.
@@ -65,6 +58,14 @@ node .\scripts\audit-account-ownership.js hesap1@example.com hesap2@example.com
 - Silme için son 24 saatte alınmış tam yedeği, arşiv dosyasını ve SHA-256 özetini doğrular; hedef, toplam belge sayısı ve yedek özeti ayrı ayrı açıkça onaylanmalıdır.
 - Alt koleksiyonu olan belgeler varsa silmeye başlamadan durur. 400'lük partiler, işlem kilidi ve kesinti sonrası ilk yedeğe bağlı devam mekanizması kullanır.
 - Çalıştırma ve onay örnekleri `docs/SECTION12_SPARK_RETENTION_CLEANUP.md` içindedir. Betik canlı projede çalıştırılmadan önce CI ve ayrı kod incelemesi tamamlanmalıdır.
+
+## Devre dışı / kullanılmaması gereken betik
+
+### `configure-existing-accounts.js`
+- Eski hesap yapılandırma yaklaşımı güvenlik nedeniyle devre dışıdır.
+- Çalıştırmayın; betik bilerek hata vererek durur.
+
+
 
 ## Cloud Functions
 
