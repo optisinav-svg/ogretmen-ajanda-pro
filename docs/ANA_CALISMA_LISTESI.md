@@ -164,6 +164,7 @@ Bu asama tum P0 engelleri ve kaynak duzeltmeleri kapandiktan sonra baslar:
 9. Eslesme dogrulanirsa telefon guncellemesi hazirlanir; dogrulanmazsa kurulu uygulamanin uzerine yukleme yapilmaz.
 
 Durum: TEST 12. BOLUMDE; su an baslatilmayacak.
+- `scripts/prepare-spark-apk.ps1` su anda eski `release/pre-apk-2026-11-22` dalini bekliyor. 12. bolumden once bu betik guncel entegre kaynak dalina gore yenilenmeli; su an calistirilmayacak.
 
 ## 4. Is sirasi ve tamamlanma kapilari
 
