@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, reload, signOut } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { auth, db, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { reserveCurrentEmailAlias } from '../services/sparkEmailAliases';
+import { reactivateOwnAccount } from '../services/sparkAccountLifecycle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const EMAIL_KEY='@ogretmenAjandaPro_hatirlananEposta';
@@ -32,7 +32,7 @@ if (profile.get('hesapDurumu') === 'kapali') {
     { text: 'Hesabı yeniden etkinleştir', onPress: async () => { try {
       await reload(credential.user);
       if (!credential.user.emailVerified) throw new Error('Önce e-posta adresinizi doğrulayın.');
-      await httpsCallable(functions, 'hesabiYenidenEtkinlestir')({});
+      await reactivateOwnAccount(credential.user);
       const refreshed = await getDoc(doc(db,'kullanicilar',credential.user.uid));
       if (refreshed.get('rol') === 'ogrenci') navigation.replace('OgrenciAnaSayfa');
       else navigation.replace('AnaSayfa');
