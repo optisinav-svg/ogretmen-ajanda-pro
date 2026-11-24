@@ -140,11 +140,21 @@ exports.uygulamaSahibiKapaliHesabiImhaEt = onCall({ region: REGION, timeoutSecon
   const lockRef = db.collection('hesapImhaKayitlari').doc(targetUid);
   const token = randomBytes(24).toString('hex');
   await db.runTransaction(async tx => {
-    const lock = await tx.get(lockRef);
-    if (lock.exists && lock.get('status') === 'completed') throw new HttpsError('already-exists', 'Bu hesap için imha daha önce tamamlandı.');
-    if (lock.exists && lock.get('status') === 'running' && (lock.get('leaseExpiresAt')?.toMillis?.() || 0) > Date.now()) {
-      throw new HttpsError('aborted', 'Bu hesap için başka bir imha işlemi devam ediyor.');
+    const [lock, currentProfile] = await Promise.all([tx.get(lockRef), tx.get(profileRef)]);
+    if (!currentProfile.exists || currentProfile.get('hesapDurumu') !== 'kapali'
+      || expiryMillis(currentProfile.data()) > Date.now()) {
+      throw new HttpsError('failed-precondition', 'Hesap kapatma durumu veya saklama süresi değişti; imha başlatılamaz.');
     }
+    if (lock.exists && lock.get('status') === 'completed') throw new HttpsError('already-exists', 'Bu hesap için imha daha önce tamamlandı.');
+    const leaseExpiry = lock.get('leaseExpiresAt')?.toMillis?.() || 0;
+    const activeLease = lock.exists && lock.get('status') === 'running' && leaseExpiry > Date.now();
+    if (activeLease) throw new HttpsError('aborted', 'Bu hesap için başka bir imha işlemi devam ediyor.');
+    const previousToken = lock.get('leaseToken');
+    if (currentProfile.get('hesapImhaKilidi')
+      && !(lock.exists && currentProfile.get('hesapImhaKilidi') === previousToken && !activeLease)) {
+      throw new HttpsError('aborted', 'Hesapta başka bir imha kilidi bulunuyor.');
+    }
+    tx.update(profileRef, { hesapImhaKilidi: token, hesapImhaBaslangic: FieldValue.serverTimestamp() });
     tx.set(lockRef, {
       targetUid, role: preview.role, status: 'running', leaseToken: token,
       leaseExpiresAt: new Date(Date.now()+10*60*1000),
@@ -183,11 +193,19 @@ exports.uygulamaSahibiKapaliHesabiImhaEt = onCall({ region: REGION, timeoutSecon
     // Historical email aliases intentionally remain reserved; they are not reassigned to another UID.
     return { durum: 'tamamlandi', deletedCounts: preview.counts, totalDeleted: preview.total };
   } catch (error) {
-    await lockRef.set({
-      status: 'failed', failedAt: FieldValue.serverTimestamp(),
-      errorCode: error.code || 'unknown', leaseToken: FieldValue.delete(),
-      leaseExpiresAt: FieldValue.delete(),
-    }, { merge: true }).catch(() => {});
+    await db.runTransaction(async tx => {
+      const [currentProfile, currentLock] = await Promise.all([tx.get(profileRef), tx.get(lockRef)]);
+      if (currentProfile.exists && currentProfile.get('hesapImhaKilidi') === token) {
+        tx.update(profileRef, { hesapImhaKilidi: FieldValue.delete(), hesapImhaBaslangic: FieldValue.delete() });
+      }
+      if (currentLock.exists && currentLock.get('leaseToken') === token) {
+        tx.set(lockRef, {
+          status: 'failed', failedAt: FieldValue.serverTimestamp(),
+          errorCode: error.code || 'unknown', leaseToken: FieldValue.delete(),
+          leaseExpiresAt: FieldValue.delete(),
+        }, { merge: true });
+      }
+    }).catch(() => {});
     throw error;
   }
 });
