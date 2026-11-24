@@ -21,6 +21,17 @@ node .\scripts\audit-missing-periods.js
 - Arşiv ve manifest oluşturur; manifest içine arşivin SHA-256 değerini yazar.
 - Yedek dosyaları gizli tutulmalı; GitHub'a veya herkese açık depoya eklenmemelidir.
 
+### `audit-account-ownership.js`
+- Yalnızca komut satırında verilen e-posta adreslerini Auth'ta arar.
+- Her hesap için Auth UID'si, Firestore profilinin varlığı ve ilgili koleksiyonlardaki `uid` / `ogretmenUid` / `ogrenciUid` sahiplik referans sayılarını gösterir.
+- Öğrenci adları, e-postaları veya belge içerikleri listelenmez; sadece sayımlar raporlanır.
+- Auth veya Firestore'a yazmaz; hesap silmez ve rol değiştirmez.
+
+Çalıştırma (karşılaştırılacak adresleri açıkça yazarak):
+```powershell
+node .\scripts\audit-account-ownership.js hesap1@example.com hesap2@example.com
+```
+
 ## Açık onay gerektiren betikler
 
 ### `migrate-missing-periods-2026.js`
