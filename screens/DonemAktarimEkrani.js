@@ -62,7 +62,7 @@ export default function DonemAktarimEkrani({route}){
   const chosen=classes.filter(x=>(selected[x.id]||[]).length>0);
   if(!chosen.length)return Alert.alert('Seçim gerekli','Aktarılacak sınıflardan en az bir öğrenci seçin.');
   if(selectedCount>500)return Alert.alert('Seçim sınırı','Tek aktarımda en fazla 500 öğrenci seçilebilir.');
-  if(!donemDuzenlemeyeAcik(targetYear))return Alert.alert('Hedef dönem kapalı',`\u001b[0m${targetYear}/${targetYear+1} dönemi henüz başlamadı veya düzenlemeye kapalı. Aktarım hedef dönemin 1 Haziran–30 Haziran düzenleme aralığında yapılabilir.`);
+  if(!donemDuzenlemeyeAcik(targetYear))return Alert.alert('Hedef dönem kapalı',`${targetYear}/${targetYear+1} dönemi henüz başlamadı veya düzenlemeye kapalı. Aktarım hedef dönemin 1 Haziran–30 Haziran düzenleme aralığında yapılabilir.`);
   Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${chosen.length} sınıf ve ${selectedCount} öğrenci aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi kopyalanmayacak. Yalnızca seçtiğiniz öğrenci kitapları ve konu sayfa aralıkları aktarılacak; yeni dönem ilerlemesi sıfırdan başlayacak. Öğretmenin ortak kitap kütüphanesi zaten dönemden bağımsızdır. Devam edilsin mi?`,[
    {text:'Vazgeç',style:'cancel'},
    {text:'Aktarımı başlat',onPress:async()=>{
@@ -71,7 +71,7 @@ export default function DonemAktarimEkrani({route}){
      const call=httpsCallable(functions,'ogretmenDonemAktariminiBaslat');
      const result=await call({sourceYear,targetYear,classes:chosen.map(cls=>({sourceClassId:cls.id,targetGrade:grades[cls.id]||nextGrade(cls.kademe),studentIds:selected[cls.id],bookIds:selectedBooks[cls.id]||[]}))});
      setDone(result.data);
-     Alert.alert('Aktarım tamamlandı',`${result.data.okulSayisi} okul, ${result.data.sinifSayisi} sınıf, ${result.data.ogrenciSayisi} öğrenci, ${result.data.kitapSayisi} kitap ve ${result.data.konuSayisi} konu kaydı yeni döneme aktarıldı.`);
+     Alert.alert('Aktarım tamamlandı',`${result.data.okulSayisi} okul, ${result.data.sinifSayisi} sınıf, ${result.data.ogrenciSayisi} öğrenci, ${result.data.kitapSayisi} kitap, ${result.data.konuSayisi} konu ve ${result.data.baglantiSayisi||0} öğrenci hesap bağlantısı yeni döneme aktarıldı.`);
     }catch(e){Alert.alert('Aktarım tamamlanamadı',e?.message||'İşlem sırasında hata oluştu. Tamamlanan kayıtlar korunur; aynı seçimlerle tekrar denendiğinde aktarım kimlikleri yinelenen kayıt oluşturmaz.')}
     finally{setSending(false)}
    }}
