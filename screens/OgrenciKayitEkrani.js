@@ -36,6 +36,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
         Alert.alert('E-posta doğrulanmadı', 'Önce e-posta kutunuza gönderilen doğrulama bağlantısını açın. Ardından tekrar deneyin.');
         return;
       }
+      await httpsCallable(functions, 'epostaAliasiniRezerveEt')({});
       await submitStudentPairingRequest(temizKod, adSoyad.trim());
       navigation.replace('OgrenciAnaSayfa');
     } catch (e) {
