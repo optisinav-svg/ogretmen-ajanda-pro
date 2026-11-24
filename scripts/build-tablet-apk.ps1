@@ -54,11 +54,11 @@ if ($firebaseRc.projects.$firebaseAlias -ne $expectedProjectId) {
   throw "Firebase '$firebaseAlias' takma adı beklenen projeye bağlı değil."
 }
 
-Write-Host '1/4 — Bağımlılıklar kilit dosyasına göre kuruluyor...' -ForegroundColor Cyan
+Write-Host '1/5 — Bağımlılıklar kilit dosyasına göre kuruluyor...' -ForegroundColor Cyan
 npm ci
 Assert-LastExitCode 'npm ci'
 
-Write-Host '2/4 — Android JavaScript paketi doğrulanıyor...' -ForegroundColor Cyan
+Write-Host '2/5 — Android JavaScript paketi doğrulanıyor...' -ForegroundColor Cyan
 $validationDir = Join-Path $env:TEMP 'ogretmen-ajanda-tablet-validation'
 if (Test-Path $validationDir) {
   Remove-Item -Path $validationDir -Recurse -Force
