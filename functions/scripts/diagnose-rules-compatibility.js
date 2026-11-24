@@ -79,6 +79,7 @@ function groupMissingReferences(docsByCollection, targetCollection, referenceFie
         records: 0,
         ownerCount: 0,
         periodYears: new Set(),
+        _owners: new Set(),
         firstDate: null,
         lastDate: null,
       });
@@ -86,8 +87,6 @@ function groupMissingReferences(docsByCollection, targetCollection, referenceFie
     const aggregate = signatures.get(signature);
     aggregate.distinctMissingReferences += 1;
     aggregate.records += group.records;
-    for (const owner of group.owners) aggregate._owners.add ? aggregate._owners.add(owner) : null;
-    if (!aggregate._owners) aggregate._owners = new Set();
     for (const owner of group.owners) aggregate._owners.add(owner);
     for (const year of group.periods) aggregate.periodYears.add(year);
     addDateRange(aggregate, group.firstDate);
