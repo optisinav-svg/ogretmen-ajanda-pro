@@ -537,6 +537,22 @@ test('Silinmiş ders programına bağlı tarihsel not düzenlenebilir', async ()
 });
 
 
+test('Öğretmen kendi ders konusunu sonradan düzenleyebilir; öğrenci yalnızca okuyabilir', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+
+  await assertSucceeds(updateDoc(doc(teacherDb, 'dersNotlari', 'note-a'), {
+    not: 'Sonradan düzenlenen konu',
+  }));
+  await assertFails(updateDoc(doc(studentDb, 'dersNotlari', 'note-a'), {
+    not: 'Öğrenci tarafından değiştirilmemeli',
+  }));
+
+  const saved = await getDoc(doc(teacherDb, 'dersNotlari', 'note-a'));
+  assert.equal(saved.get('not'), 'Sonradan düzenlenen konu');
+});
+
+
 test('Öğretmen kendi profilini Spark üzerinde oluşturabilir ancak uygulama sahibi yetkisi veremez', async () => {
   const db = testEnv.authenticatedContext('teacher-new', {
     email: 'teacher-new@example.com',
