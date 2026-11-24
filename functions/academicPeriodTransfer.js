@@ -111,7 +111,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
   const schoolPlans = new Map();
   for (const selection of normalizedSelections) {
     const sourceClass = classById.get(selection.sourceClassId);
-    if (!sourceClass?.exists || sourceClass.get('uid') !== uid || Number(sourceClass.get('donemYili')) !== sourceYear || sourceClass.get('ozelTur') || sourceClass.get('arsivlendi')) {
+    if (!sourceClass?.exists || sourceClass.get('uid') !== uid || Number(sourceClass.get('donemYili')) !== sourceYear || sourceClass.get('ozelTur') || sourceClass.get('arsivlendi') || sourceClass.get('arsivDurumu') === 'isleniyor') {
       throw new HttpsError('failed-precondition', 'Seçilen kaynak sınıf öğretmene ait, etkin ve kaynak döneme kayıtlı olmalıdır.');
     }
     const source = sourceClass.data();
@@ -134,7 +134,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
   const schoolById = new Map(sourceSchoolSnaps.map(s => [s.id, s]));
   for (const id of sourceSchoolIds) {
     const snap = schoolById.get(id);
-    if (!snap?.exists || snap.get('uid') !== uid || Number(snap.get('donemYili')) !== sourceYear || snap.get('arsivlendi')) {
+    if (!snap?.exists || snap.get('uid') !== uid || Number(snap.get('donemYili')) !== sourceYear || snap.get('arsivlendi') || snap.get('arsivDurumu') === 'isleniyor') {
       throw new HttpsError('failed-precondition', 'Aktarılacak sınıflardan birinin okulu kaynak dönemde etkin değil.');
     }
     schoolPlans.set(id, { source: snap.data(), targetId: stableId('school', targetYear, id) });
