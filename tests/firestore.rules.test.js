@@ -1272,6 +1272,23 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     olusturulma: serverTimestamp(),
     sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
   }));
+  const activeIndexRef = doc(teacherDb, 'ogrenciKayitEslesmeleri', 'teacher-a__student-a');
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'ogrenciKayitEslesmeleri', 'teacher-a__student-a'), {
+      ogretmenUid: 'teacher-a', ogrenciKayitId: 'student-a', durum: 'active',
+    });
+  });
+  await assertFails(setDoc(doc(teacherDb, 'ogrenciEslesmeKodlari', 'A'.repeat(64)), {
+    uid: 'teacher-a', ogretmenUid: 'teacher-a', ogretmenHesapAdi: 'Öğretmen A',
+    ogrenciKayitId: 'student-a', ogrenciAdSoyad: 'Test Öğrencisi',
+    eposta: 'student-new@example.com', sinifId: 'class-a', sinifAd: '9-A',
+    okulAd: 'A Okulu', donemYili: 2026, kademe: '9', ders: '',
+    kullanildi: false, olusturulma: serverTimestamp(),
+    sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await deleteDoc(doc(context.firestore(), 'ogrenciKayitEslesmeleri', 'teacher-a__student-a'));
+  });
 
   const unrelatedStudentDb = testEnv.authenticatedContext('unrelated-student', {
     email: 'someone-else@example.com',
