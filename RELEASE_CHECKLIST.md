@@ -103,6 +103,9 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] KVKK bilgilendirme ekranının cihaz üzerinde görüntülenmesi ve nihai metnin hukuki onayı. (Taslak ekran, nihai yasal uygunluk onayı değildir.)
 - [ ] Sürüm, paket kimliği, EAS projesi, build profili ve imza kontrolü.
 
+
+
+**24.11.2026 CI notu:** GitHub Actions #700 başarılıdır. Functions bağımlılık kurulumu 9 orta düzey npm audit uyarısı üretmiştir; bunlar sürüm uyumu ve etki analizi yapılmadan otomatik güncellenmeyecektir.
 ## Aşama 5 — Kontrollü canlı dağıtım
 - [ ] Kullanıcıya canlıya geçiş özeti ve geri dönüş planı sunuldu.
 - [ ] Yedek alındı ve okunabilirliği/manifesti doğrulandı.
