@@ -1247,6 +1247,11 @@ test('Öğretmen yalnızca bağlantı kurulmuş ve ödev izni açık öğrenciye
 
 test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık kod ve öğretmen onayı gerektirir', async () => {
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const otherTeacherDb = testEnv.authenticatedContext('teacher-b').firestore();
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogretmenOgrenciBaglantilari', 'teacher-a__missing-student__class-a')));
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogrenciKayitEslesmeleri', 'teacher-a__missing-student')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogretmenOgrenciBaglantilari', 'teacher-a__missing-student__class-a')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogrenciKayitEslesmeleri', 'teacher-a__missing-student')));
   const code = 'ABCDEF0123456789';
   const codeId = '1c1181e7f8dece465e066361d49886efa49b372e3e029fcdf21b9621e4021366';
   const codeRef = doc(teacherDb, 'ogrenciEslesmeKodlari', codeId);
@@ -1273,6 +1278,7 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     email_verified: true,
   }).firestore();
   await assertFails(getDoc(doc(unrelatedStudentDb, 'ogrenciEslesmeKodlari', codeId)));
+  await assertSucceeds(getDoc(doc(unrelatedStudentDb, 'ogrenciEslesmeKodlari', 'A'.repeat(64))));
 
   const studentDb = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
