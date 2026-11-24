@@ -88,7 +88,9 @@ async function getOrCreateUnregisteredClass({ uid, sourceClass, periodYear }) {
     const data = item.data();
     return data.ozelTur === 'kayitsiz'
       && data.okulId === schoolId
-      && Number(data.donemYili) === Number(periodYear)
+      && typeof data.donemYili === 'number'
+      && Number.isInteger(data.donemYili)
+      && data.donemYili === Number(periodYear)
       && data.arsivlendi !== true
       && data.arsivDurumu !== 'isleniyor';
   });
@@ -432,7 +434,8 @@ export async function moveStudentToUnregistered({ studentId, sourceClass, period
   if (!studentSnap.exists() || !sourceSnap.exists()) throw new Error('Öğrenci veya kaynak sınıf bulunamadı.');
   const student = studentSnap.data();
   const source = { id: sourceSnap.id, ...sourceSnap.data() };
-  if (student.uid !== uid || student.sinifId !== source.id || Number(student.donemYili) !== period) {
+  if (student.uid !== uid || student.sinifId !== source.id
+    || typeof student.donemYili !== 'number' || !Number.isInteger(student.donemYili) || student.donemYili !== period) {
     throw new Error('Öğrenci seçilen kaynak sınıfta veya dönemde değil.');
   }
   if (!isWritableClass(source, uid, period)) throw new Error('Kaynak sınıf düzenlenebilir değil.');
