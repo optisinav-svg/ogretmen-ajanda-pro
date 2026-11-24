@@ -123,6 +123,16 @@ export default function OkulSinifEkrani({ navigation,route }) {
             await updateDoc(classRef,{arsivDurumu:deleteField()});
             return Alert.alert('Sınıf kaldırılamaz',`Bu sınıfta ${count} kayıtlı öğrenci var. Önce öğrencileri başka bir sınıfa veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.`);
           }
+          const allStudents=await getDocs(query(collection(db,'ogrenciler'),where('uid','==',uid)));
+          const pendingTransfer=allStudents.docs.some(item=>{
+            const data=item.data();
+            return data.sinifTasiIslemi?.hedefSinifId===sinifKaydi.id
+              || data.kayitsizTasiIslemi?.hedefSinifId===sinifKaydi.id;
+          });
+          if(pendingTransfer){
+            await updateDoc(classRef,{arsivDurumu:deleteField()});
+            return Alert.alert('Sınıf kaldırılamaz','Bu sınıfa devam eden bir öğrenci taşıma işlemi var. Önce taşıma işlemini tamamlayın.');
+          }
           await dersProgramlariniKaldir([sinifKaydi]);
           await updateDoc(classRef,{
             arsivlendi:true,arsivDurumu:'tamamlandi',arsivTarihi:new Date().toISOString(),
