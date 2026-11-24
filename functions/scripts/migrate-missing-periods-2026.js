@@ -191,6 +191,7 @@ async function main() {
     throw new Error('Yazma öncesi SHA-256 doğrulaması zorunlu. Güncel backup scriptiyle yedek alın veya eşleşen .sha256 sidecar dosyası sağlayın.');
   }
   console.log('Dönem verisi olmayan profil ve ortak kitap kütüphanesi tanımları bilerek kapsam dışıdır.');
+  console.log('UYARI: Bu script tarihleri yorumlamaz; yalnızca donemYili alanı bulunmayan hedef koleksiyon belgelerine 2026 yazar. Önce audit-missing-periods.js raporunu inceleyin; Haziran belirsizliği ve diğer dönem kayıtları çözülmeden --apply kullanmayın.');
   if (apply) console.log('Operatör onayı: tüm eksik donemYili kayıtlarının 2026 dönemine ait olduğu açıkça onaylandı.');
 
   // Always scan every collection before the first write. Existing but invalid
