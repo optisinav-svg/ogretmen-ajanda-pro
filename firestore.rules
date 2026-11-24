@@ -342,6 +342,7 @@ service cloud.firestore {
       return signedIn()
         && request.auth.uid == userId
         && request.auth.token.email is string
+        && request.auth.token.email_verified == true
         && data.eposta == request.auth.token.email
         && data.kullaniciAdi is string
         && data.kullaniciAdi.size() >= 2
