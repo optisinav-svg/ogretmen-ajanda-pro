@@ -22,11 +22,8 @@ function normalizedGrade(sourceGrade, requestedGrade) {
 function isEditablePeriod(period, date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Istanbul', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(date);
   const values = Object.fromEntries(parts.map(p => [p.type, p.value]));
-  const year = Number(values.year), month = Number(values.month), day = Number(values.day);
-  const start = year === period && (month > 6 || (month === 6 && day >= 1));
-  const end = year === period + 1 && (month < 7 || (month === 7 && day <= 0));
-  // The app's editable window ends on June 30 of the following year.
-  return start || end;
+  const today = values.year + '-' + String(values.month).padStart(2, '0') + '-' + String(values.day).padStart(2, '0');
+  return today >= period + '-06-01' && today <= (period + 1) + '-06-30';
 }
 function stripUndefined(data) {
   return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
@@ -233,6 +230,50 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
       aktarimKaynakId: book.id, aktarimKaynakDonem: sourceYear,
       olusturulma: new Date().toISOString(),
     } });
+  }
+
+  // Carry active student-account permissions to the newly created student record.
+  const activeIndexesSnap = await db.collection('ogrenciKayitEslesmeleri').where('ogretmenUid', '==', uid).get();
+  const selectedIndexByStudent = new Map(activeIndexesSnap.docs
+    .filter(index => selectedStudentIds.has(index.get('ogrenciKayitId')) && index.get('durum') === 'active')
+    .map(index => [index.get('ogrenciKayitId'), index]));
+  const sourceLinkRefs = [...selectedIndexByStudent.values()]
+    .map(index => db.collection('ogretmenOgrenciBaglantilari').doc(index.get('baglantiId')));
+  const sourceLinkSnaps = sourceLinkRefs.length ? await db.getAll(...sourceLinkRefs) : [];
+  const sourceLinkById = new Map(sourceLinkSnaps.filter(link => link.exists && link.get('durum') === 'active').map(link => [link.id, link]));
+  let transferredLinkCount = 0;
+  for (const [sourceStudentId, index] of selectedIndexByStudent) {
+    const sourceLink = sourceLinkById.get(index.get('baglantiId'));
+    const newStudentId = studentIdMap.get(sourceStudentId);
+    const plan = classPlans.find(item => item.students.some(student => student.id === sourceStudentId));
+    if (!sourceLink || !newStudentId || !plan || !['9','10','11','12','TYT','AYT'].includes(String(plan.targetGrade))) continue;
+    const linkData = sourceLink.data();
+    const targetLinkId = [uid, linkData.ogrenciUid, classIdMap.get(plan.sourceClassId)].join('__');
+    const targetLinkRef = db.collection('ogretmenOgrenciBaglantilari').doc(targetLinkId);
+    const targetIndexRef = db.collection('ogrenciKayitEslesmeleri').doc([uid, newStudentId].join('__'));
+    const [targetLinkSnap, targetIndexSnap] = await Promise.all([targetLinkRef.get(), targetIndexRef.get()]);
+    if (targetLinkSnap.exists && (targetLinkSnap.get('ogrenciUid') !== linkData.ogrenciUid || targetLinkSnap.get('ogrenciKayitId') !== newStudentId || targetLinkSnap.get('ogretmenUid') !== uid)) {
+      throw new HttpsError('already-exists', 'Hedef dönemde öğrenci hesap bağlantısı kimliğiyle çakışma var.');
+    }
+    if (targetIndexSnap.exists && (targetIndexSnap.get('ogrenciUid') !== linkData.ogrenciUid || targetIndexSnap.get('ogrenciKayitId') !== newStudentId || targetIndexSnap.get('ogretmenUid') !== uid)) {
+      throw new HttpsError('already-exists', 'Hedef dönemde öğrenci bağlantı indeksi kimliğiyle çakışma var.');
+    }
+    if (!targetLinkSnap.exists) operations.push({ type: 'create', ref: targetLinkRef, data: {
+      ...linkData,
+      uid, ogretmenUid: uid, ogrenciUid: linkData.ogrenciUid,
+      ogrenciKayitId: newStudentId, sinifId: classIdMap.get(plan.sourceClassId),
+      sinifAd: plan.sourceClass.ad || '', okulAd: schoolPlans.get(plan.schoolId).source.ad || '',
+      donemYili: targetYear, kademe: plan.targetGrade, ders: plan.sourceClass.ders || '',
+      ogrenciAd: studentById.get(sourceStudentId)?.get('adSoyad') || linkData.ogrenciAd || '',
+      durum: 'active', iptalTarihi: null, aktarimKaynakBaglantiId: index.get('baglantiId'),
+      olusturulma: FieldValue.serverTimestamp(),
+    }});
+    if (!targetIndexSnap.exists) operations.push({ type: 'create', ref: targetIndexRef, data: {
+      uid, ogretmenUid: uid, ogrenciKayitId: newStudentId, ogrenciUid: linkData.ogrenciUid,
+      sinifId: classIdMap.get(plan.sourceClassId), baglantiId: targetLinkId,
+      donemYili: targetYear, durum: 'active', guncellenme: FieldValue.serverTimestamp(),
+    }});
+    transferredLinkCount += 1;
   }
 
   const topicOps = [];
