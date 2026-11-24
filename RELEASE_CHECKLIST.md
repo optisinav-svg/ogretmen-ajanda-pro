@@ -125,6 +125,10 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Öğrenci hesabı oluşturma ve e-posta doğrulama.
 - [ ] Eşleştirme kodu, öğretmen onayı ve izinler.
 - [ ] Öğrenci tarafında yalnızca izinli ders/ödev/kitap verilerinin görünmesi.
+- [ ] Öğrenci normal sınıf değişikliği: dönem içi kitap/konu ilerlemesi hedef sınıfa taşınır; yoklama/ödev/ders geçmişi korunur; yarım kalan batch aynı hedefle sürdürülebilir.
+- [ ] Öğrenciyi Kayıtsız Öğrenciler sınıfına taşıma: öğrenci kaydı ve geçmişi silinmez; aynı okul/dönem Kayıtsız sınıfı kullanılır.
+- [ ] Bağlı öğrenci taşındığında eski sınıf uygulama bağlantısı geçmiş için korunur; bağlantı indeksi yeni kod oluşturulmasına izin verecek duruma gelir; yeni sınıf bağlantısı öğrenci talebi ve öğretmen onayıyla kurulur.
+- [ ] Taşıma kilidi varken yeni kitap/konu/yoklama kaydı ve eşleştirme engellenir; hedef sınıf arşivlenemez; dönem alanı eksik kayıt varsa taşıma veri karışmasını önlemek için durur.
 - [ ] Yeni ödev bildirimi ve telefon bildirimi.
 - [ ] Ödev tamamlama bildiriminin öğretmen ekranına ulaşması.
 - [ ] PDF raporunun içerik ve görünüm kontrolü.
