@@ -82,3 +82,18 @@ Dal: `work/section11-integration-2026-11-24`
 ## Degisiklik guvenligi
 
 Bu denetimde uygulama kodu, Firestore verisi, Auth kullanicilari, canli rules veya Firebase yapilandirmasi degistirilmedi. Yalnizca GitHub dalindaki bu dokumantasyon eklenecektir.
+
+
+## Firestore Rules ile capraz kontrol (24.11.2026)
+
+Kaynak kurallari ilgili bolumleri ayrica incelendi:
+
+- `kullanicilar/{uid}`: kullanici kendi belgesini okuyabilir ve `ad`, `soyad`, `kullaniciAdi`, ogretmen icin `brans`/`sezon` alanlarini guncelleyebilir. `rol` ve `eposta` alanlarini kendi kendine degistiremez. Bu nedenle `profilAdSoyadGuncelle` callable'i, mevcut rules dogrulamasi korunarak istemci yazimina cevrilebilecek en net adaydir.
+- `epostaAliaslari/{aliasId}`: okuma ve yazma tamamen kapali; yorumda yalnizca Admin SDK/Identity Platform yonetimi belirtilmis. Alias akisi, veri modeli ve kurallar birlikte yeniden tasarlanmadan istemciye tasinamaz.
+- `rolDuzeltmeTalepleri/{requestId}`: get/list kullaniciya ve uygulama sahibine acik; create/update/delete tamamen kapali. Talep olusturma ve owner karari icin kurallarda yeni, dar kapsamli kosullar gerekir.
+- `hesapYasamDongusuDenetimi/{auditId}`: yazma tamamen kapali. Hesap kapatma/yeniden acma akisinda denetim kaydi korunacaksa bu kayit guvenli bir istemci protokoluyle tasarlanmalidir; aksi halde ilgili panel islemi kapali kalir.
+- `donemTemizlikKayitlari/{cleanupId}`: okuma uygulama sahibine acik; create/update/delete kapali. Mevcut lease/kilit mantigi Admin SDK callable'a dayanir; Spark istemcisine dogrudan batch silme olarak cevrilemez.
+- `updatesOwnUserProfile` yardimcisi `ad` ve `soyad` degisikliklerine zaten izin verir; `eposta` alanini ayni yolla degistirmeye izin vermez.
+- Ogrenci baglama, talep, baglanti ve uygulama ici bildirim koleksiyonlarinda ise Spark istemci kurallari zaten tanimlidir. Bu, ogrenci baglama akisinin neden ayri callable taramasindan farkli oldugunu aciklar.
+
+Bu nedenle ilk uygulanacak kod degisikligi icin profil ad/soyad callable'inin kaldirilmasi en dusuk riskli adaydir. Alias, rol, hesap yasam dongusu, tasima ve toplu silme akislari icin once rules tasarimi ve guvenlik testi gerekir. Bu incelemede `firestore.rules` degistirilmedi ve canliya dagitilmadi.
