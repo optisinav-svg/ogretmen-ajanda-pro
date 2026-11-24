@@ -34,11 +34,13 @@ Bu belge, uygulamanın mevcut kaynak kodundaki eşleştirme ve bildirim akışı
 
 ## Bildirimler
 
-- Yeni ödev bildirimleri `functions/studentNotifications.js` içindeki Firestore belge tetikleyicileriyle oluşturulur ve `ogrenciYeniOdevBildirimleri` koleksiyonunda tutulur.
+- Öğretmen ödevi kaydettiğinde `OdevEkrani` içindeki `syncNewHomeworkNotifications` Spark uyumlu Firestore transaction/batch yazımıyla `ogrenciYeniOdevBildirimleri` belgelerini oluşturur veya hedef öğrenci çıkarıldığında iptal eder.
 - Öğrenci bu bildirimleri kendi ana sayfasında uygulama içi olarak görür ve okundu durumunu günceller.
+- Öğretmen ödevi sildiğinde `cancelHomeworkNotifications` ilgili öğrenci bildirimlerini `iptal` durumuna getirir.
 - Öğrenci “Ödevi tamamladım” dediğinde `services/sparkStudentAccounts.js` içindeki `notifyHomeworkCompleted` yalnızca `ogrenciOdevBildirimleri` belgesini oluşturur.
 - Tamamlandı bildirimi öğretmenin ödev durumunu, değerlendirmesini veya öğrenci geçmişini kendiliğinden değiştirmez. Öğretmen bildirimi öğrenci hesapları ekranında görür ve nihai kararı kendisi verir.
-- Bu sürümde uygulama istemcisi Expo push token kaydetmez. Test edilen kullanıcı akışı uygulama içi bildirimlerdir; telefon push bildirimi vaat edilmez.
+- Bu sürümde uygulama istemcisi Expo push token kaydetmez. Kullanıcı akışı uygulama içi bildirimlerle sınırlıdır; telefon push bildirimi etkin değildir.
+- `functions/studentNotifications.js` içindeki eski push/tetikleyici prototipi `functions/index.js` üzerinden dışa aktarılmaz; yeni ödev bildiriminin ikinci kez yazılmasını ve push altyapısına yanlışlıkla bağımlı olunmasını önlemek için kullanılmaz.
 
 ## Koleksiyonlar
 
@@ -62,7 +64,7 @@ Bu belge, uygulamanın mevcut kaynak kodundaki eşleştirme ve bildirim akışı
 - Firestore kuralları varsayılan olarak bilinmeyen koleksiyon ve yolları kapatır.
 - Öğretmen verileri UID sahipliğiyle korunur; sınıf, öğrenci, okul, ders, kitap ve konu ilişkileri ayrıca doğrulanır.
 - Öğrenci yalnızca kendi bağlantılarını ve izin verilmiş kayıtları okuyabilir.
-- Yeni ödev bildirimleri Admin SDK tetikleyicisiyle yazılır; tamamlandı bildirimi öğrenci tarafından yalnızca kendi etkin bağlantısı ve ödev hedefi için yazılabilir.
+- Yeni ödev bildirimleri öğretmen istemcisinden, Firestore kurallarıyla doğrulanan sahiplik/bağlantı kontrolleri üzerinden yazılır; tamamlandı bildirimi öğrenci tarafından yalnızca kendi etkin bağlantısı ve ödev hedefi için yazılabilir.
 - Bu PR ile hiçbir Cloud Function veya Firestore kuralı canlıya dağıtılmaz. Gerçek öğrenci hesabı ve cihaz testi 11. bölümde kullanıcı onayıyla yapılır.
 
 ## İndeks uyarısı
