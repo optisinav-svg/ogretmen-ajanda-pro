@@ -1,5 +1,5 @@
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore');
-const { setEmailAliasRetention } = require('./emailAliases');
+const { setEmailAliasRetention, reserveEmailAlias } = require('./emailAliases');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 
 const REGION = 'europe-west1';
@@ -45,6 +45,9 @@ exports.hesapKapatmaTalebiOlustur = onCall({ region: REGION }, async request => 
   if (request.auth.token.uygulamaSahibi === true) throw new HttpsError('failed-precondition', 'Uygulama sahibi hesabı kapatılmadan önce sahiplik yetkisi güvenli biçimde devredilmelidir.');
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Hesap kapatma öncesinde e-posta doğrulanmalıdır.');
   const { ref, data } = await getProfile(uid);
+  const verifiedEmail = typeof request.auth.token.email === 'string' ? request.auth.token.email.trim().toLowerCase() : '';
+  if (!verifiedEmail) throw new HttpsError('failed-precondition', 'Hesapta doğrulanmış e-posta adresi bulunamadı.');
+  await reserveEmailAlias(verifiedEmail, uid);
   if (data.hesapDurumu === 'kapali') {
     const expiry = data.hesapSaklamaSonu?.toDate?.();
     if (expiry) await setEmailAliasRetention(uid, expiry);
