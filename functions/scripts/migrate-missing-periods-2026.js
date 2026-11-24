@@ -201,6 +201,7 @@ async function main() {
     totalMissing += result.missing;
     totalInvalid += result.invalid;
     console.log('ÖN KONTROL ' + name + ': taranan=' + result.scanned + ', eksik=' + result.missing + ', geçersiz-mevcut=' + result.invalid);
+    if (result.samples.length) console.log('ÖRNEKLER ' + name + ': ' + JSON.stringify(result.samples));
   }
   console.log('ÖN KONTROL TOPLAM:', JSON.stringify({ totalScanned, totalMissing, totalInvalid, targetPeriod: TARGET_PERIOD }));
   if (apply && totalInvalid > 0) {
