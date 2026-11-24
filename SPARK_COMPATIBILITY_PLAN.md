@@ -72,7 +72,7 @@ Normal sinif degisikligi ve kayitsiz sinifa tasima bu listede degildir; bunlar k
 
 - 24.11.2026 taramasinda uygulamanin 38 JS/JSX/TS/TSX dosyasi incelendi; uygulama ekranlarinda `httpsCallable(` cagrisi kalmadi.
 - `firebaseConfig.js` artik Firebase Functions istemci baslatmasi yapmiyor.
-- Functions kaynak dosyalari depoda bulunabilir; kaynakta bulunmalari Spark'ta calistiklari anlamina gelmez.
+- Legacy Functions kaynak dosyalari depoda bulunabilir; `functions/index.js` bilerek bos export eder, bu dalda hicbir Cloud Function dagitima acik degildir.
 - Riskli islemler ya dogrudan Spark kurallariyla guvenli hale getirildi (ogrenci tasima gibi) ya da acik uyariyla kapatildi.
 - Eski iki-profil varsayan `functions/scripts/configure-existing-accounts.js` devre disi birakildi.
 - `functions/scripts/set-application-owner-claim.js` guvenli dry-run/apply araci olarak hazir; Auth claim henuz atanmadı. Script Firestore profilini degistirmez ve `--apply` + acik onay gerektirir.
