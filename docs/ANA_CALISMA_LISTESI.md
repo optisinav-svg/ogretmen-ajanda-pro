@@ -29,31 +29,34 @@ Bu belge, onceki bolum planlarini, Spark uyumluluk kararlarini, surum kontrol li
 
 ## 3. Oncelikli is paketleri
 
-### P0 — APK oncesi Spark ve guvenli istemci akislari (ENGELLEYICI)
+### P0 — APK oncesi Spark ve guvenli istemci akislari (KAYNAK GECIDI KAPANDI)
 
-24.11.2026 kaynak taramasinda dokuz ekranda Cloud Functions callable cagrilari goruldu. Spark plani belgesinde bu cagrilarin tamamen kaldirildigi yazan onceki ifade artik guncel degildir. Her cagri tek tek adlandirilip kullanim yeri, guvenlik gereksinimi ve veri etkisiyle siniflandirilmalidir.
+24.11.2026 tarihinde dokuz ekranda Cloud Functions callable cagrilari bulundu; tam envanter `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` icine yazildi. Sonraki duzeltmelerden sonra 38 uygulama JS/JSX/TS/TSX dosyasinin tamami yeniden tarandi ve uygulama kaynaklarinda `httpsCallable(` cagrisi kalmadigi dogrulandi.
 
-Etkilenen ekranlar:
-- `GirisEkrani.js`: e-posta alias kontrol/rezervasyon, kapali hesap yeniden etkinlestirme, profil e-posta senkronizasyonu.
-- `KayitEkrani.js`: e-posta kayit kontrolu ve alias rezervasyonu.
-- `OgrenciKayitEkrani.js`: ogrenci e-posta kontrolu ve alias rezervasyonu.
-- `ProfilEkrani.js`: ad-soyad, e-posta degisikligi, rol duzeltme talebi, hesap kapatma.
-- `RolDuzeltmeTalepleriEkrani.js`: rol duzeltme karari.
-- `OgrenciEkrani.js` ve `OkulSinifEkrani.js`: ogrenci tasima / kalici silme.
-- `DonemAktarimEkrani.js`: akademik donem aktarimi.
-- `IstatistikPaneliEkrani.js`: kapali hesaplari listeleme/silme ve donem temizligi onizleme/onay.
+Spark istemci + Firestore Rules kaynak akislari:
+- SHA-256 e-posta alias rezervasyonu ve dogrulanmis kayit/giris.
+- Ogretmen profili e-posta dogrulanmadan olusturulmaz.
+- Kendi profilinde ad/soyad ve dogrulanmis Auth e-postasi senkronizasyonu.
+- Kendi hesabini kapatma/yeniden etkinlestirme ve ayni batch'teki audit kaydi.
 
-Yapilacaklar:
-1. Her callable'in tam fonksiyon adini, parametrelerini, donusunu ve ilgili Firestore belgelerini cikart.
-2. Islevleri risklerine gore ayir: salt okuma, kullaniciya ait profil islemi, benzersiz e-posta/alias butunlugu, yetkili rol islemi, bagli kayit tasima/silme, donem bazli toplu silme.
-3. Her islev icin Spark'ta Firestore Rules ile guvenli uygulanabilir mi karar ver. Atomiklik veya guvenilir yetki kontrolu saglanamiyorsa istemciye tasima; guvenli sekilde devre disi birak veya alternatif is akisina cevir.
-4. E-posta alias gecmisinin tekrar kullanilmasini engelleyen butunlugu koru.
-5. Ogrenci tasima/silme ve donem aktarimi islemlerinde yarim yazim/veri kaybi riskini ortadan kaldir.
-6. Uygulama sahibi yetkisi istemciden atanamaz; custom claim ve guvenilir yonetim yolu korunur.
-7. Kullaniciya kapatilan ozelliklerde anlasilir aciklama goster.
-8. Callable kalmadigi veya bilincli olarak devre disi birakildigi kaynak taramasi ve testlerle kanitlanmadan APK asamasina gecme.
+Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
+- E-posta degisikligi.
+- Rol duzeltme talebi/karari (bekleyen talepler owner ekraninda salt okunur).
+- Ogrenci sinif/kayitsiz tasima ve kalici silme.
+- Okul kaldirma.
+- Akademik donem aktarimi.
+- Kapali hesap listeleme/imhasi.
+- Cok koleksiyonlu yillik donem temizligi.
 
-**Mevcut durum:** ENGELLI. Callable taramasi yapildi; ayrintili fonksiyon bazli tasarim ve duzeltmeler tamamlanmadi. Canli Functions varligi hakkinda kaynak koddan sonuc cikarilmayacak.
+**Kaynak gecidi icin yapilanlar:**
+1. Callable adlari, parametreleri ve veri etkileri envanterlendi.
+2. Guvenli profil/alias/hesap akislari Spark istemciye tasindi.
+3. Yetki veya atomiklik riski olan islemler istemciye tasinmadi; acik uyariyla devre disi birakildi.
+4. Tarihsel e-posta alias kayitlari hash yapisiyla korundu.
+5. Tum uygulama kaynaklarinda callable taramasi sifir sonuc verdi.
+6. Canli Rules dagitimi, veri migrasyonu, silme veya Auth degisikligi yapilmadi.
+
+**Durum:** Uygulama kaynak callable bagimliligi kapandi; kapatilan ozellikler kaybolmadi, guvenli Spark yeniden tasarimi icin bekliyor. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Bu nedenle APK'ya gecis henuz onayli degil.
 
 ### P1 — Donem, arsiv ve veri saklama
 
