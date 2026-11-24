@@ -47,3 +47,6 @@ const emailAliases = require('./emailAliases');
 exports.epostaAliasiniRezerveEt = emailAliases.epostaAliasiniRezerveEt;
 exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
 exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
+
+const academicPeriodTransfer = require('./academicPeriodTransfer');
+exports.ogretmenDonemAktariminiBaslat = academicPeriodTransfer.ogretmenDonemAktariminiBaslat;
