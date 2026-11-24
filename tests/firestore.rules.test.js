@@ -1472,3 +1472,10 @@ test('email alias registry is inaccessible to client accounts', async () => {
   await assertFails(getDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id')));
   await assertFails(setDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id'), { ownerUid: 'teacher-a' }));
 });
+
+
+test('closed-account deletion locks are server-only', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDoc(doc(db, 'hesapImhaKayitlari', 'closed-account')));
+  await assertFails(setDoc(doc(db, 'hesapImhaKayitlari', 'closed-account'), { status: 'completed' }));
+});
