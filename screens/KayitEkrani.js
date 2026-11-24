@@ -66,6 +66,7 @@ export default function KayitEkrani({ navigation, route }) {
       await reload(user);
       if (!user.emailVerified) {
         await sendEmailVerification(user);
+        navigation.setParams({ devamEt: true });
         Alert.alert('E-posta doğrulaması gerekli', 'E-posta adresinize doğrulama bağlantısı gönderdik. Bağlantıyı açtıktan sonra bu ekrana dönüp Kaydı Tamamla düğmesine yeniden basın. Profiliniz doğrulama tamamlanmadan oluşturulmayacak.');
         return;
       }
