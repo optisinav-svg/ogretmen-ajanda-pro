@@ -18,7 +18,7 @@ const profile = await getDoc(doc(db,'kullanicilar',credential.user.uid));
 if (!profile.exists()) {
   Alert.alert('Mevcut hesabı tamamlama', 'Bu e-posta adresiyle bir giriş hesabınız var ancak profil tamamlanmamış. Yeni hesap açılmayacak. Hesap türünüzü seçerek mevcut hesabınızı tamamlayın.', [
     { text: 'Vazgeç', style: 'cancel', onPress: async () => { await signOut(auth); } },
-    { text: 'Öğretmen', onPress: () => navigation.replace('Kayit', { devamEt: true }) },
+    { text: 'Öğretmen', onPress: () => navigation.replace('Kayit', { devamEt: true, eposta: credential.user.email || e }) },
     ...(ACCOUNT_LINKING_ENABLED ? [{ text: 'Öğrenci', onPress: () => navigation.replace('OgrenciKayit', { devamEt: true }) }] : []),
   ]);
   return;
