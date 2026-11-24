@@ -326,23 +326,26 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
   const student = studentSnap.data();
   const source = { id: sourceSnap.id, ...sourceSnap.data() };
   const target = { id: targetSnap.id, ...targetSnap.data() };
-  if (student.uid !== uid || student.sinifId !== source.id || Number(student.donemYili) !== period) {
-    throw new Error('Öğrenci seçilen kaynak sınıfta veya dönemde değil.');
-  }
   if (!isWritableClass(source, uid, period) || !isWritableClass(target, uid, period)) {
     throw new Error('Kaynak veya hedef sınıf bu dönem için düzenlenebilir değil.');
   }
   if (target.ozelTur === 'kayitsiz') {
     throw new Error('Kayıtsız sınıfa taşıma için ayrı işlem kullanılmalı.');
   }
+  if (student.uid !== uid || Number(student.donemYili) !== period) {
+    throw new Error('Öğrenci seçilen öğretmene veya döneme ait değil.');
+  }
+  if (student.sinifId === target.id && !student.sinifTasiIslemi) {
+    return { alreadyMoved: true, needsRelink: hasActiveLink };
+  }
+  if (student.sinifId !== source.id) {
+    throw new Error('Öğrenci seçilen kaynak sınıfta değil.');
+  }
   if (student.sinifTasiIslemi
     && (student.sinifTasiIslemi.hedefSinifId !== target.id
       || student.sinifTasiIslemi.kaynakSinifId !== source.id
       || Number(student.sinifTasiIslemi.donemYili) !== period)) {
     throw new Error('Öğrencinin başka hedefli yarım kalmış taşıması var; önce onu tamamlayın.');
-  }
-  if (student.sinifId === target.id && !student.sinifTasiIslemi) {
-    return { alreadyMoved: true, needsRelink: hasActiveLink };
   }
 
   const marker = {
@@ -375,11 +378,8 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
     });
     return { ...result, alreadyMoved: false };
   } catch (error) {
-    // A marker created in this attempt can be safely cleared only if no progress
-    // batch has committed. Otherwise it is retained so the same move can resume.
-    if (marked.created && !progressChanged) {
-      try { await updateDoc(studentRef, { sinifTasiIslemi: deleteField() }); } catch (_) {}
-    }
+    // Keep the transfer marker. Repeating the same target resumes idempotently;
+    // clearing it after a partial batch could orphan moved progress records.
     throw error;
   }
 }
@@ -449,9 +449,7 @@ export async function moveStudentToUnregistered({ studentId, sourceClass, period
     });
     return { ...result, alreadyMoved: false };
   } catch (error) {
-    if (marked.created) {
-      try { await updateDoc(studentRef, { kayitsizTasiIslemi: deleteField() }); } catch (_) {}
-    }
+    // The marker is a resumable lock; retrying the same operation completes it.
     throw error;
   }
 }
