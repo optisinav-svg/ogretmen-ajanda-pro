@@ -196,7 +196,7 @@ export default function OgrenciHesaplariEkrani({ navigation, route }) {
             return (
               <View key={t.id} style={s.card}>
                 <Text style={s.name}>{o?.adSoyad || 'Öğrenci kaydı'} · {b.sinifAd || 'Sınıf belirtilmemiş'}</Text>
-                {!!o && o.sinifId !== b.sinifId && <Text style={s.sub}>Geçmiş sınıf bağlantısı. Güncel sınıf: {o.sinifAd || 'Belirtilmemiş'}. Yeni sınıf için yeni eşleştirme kodu oluşturun.</Text>}
+                {!!o && o.sinifId !== b.sinifId && <Text style={s.sub}>Geçmiş sınıf bağlantısı. Güncel öğrenci sınıfı: {o.sinifAd || 'Belirtilmemiş'}. Bu bağlantı eski sınıf geçmişini korur.</Text>}
                 <Text style={s.sub}>Hesap: {t.ogrenciHesapAdi || 'Ad bilgisi yok'}</Text>
                 <Text style={s.sub}>E-posta: {t.ogrenciEposta || 'E-posta bilgisi yok'}</Text>
                 <Text style={s.sub}>Eşleşecek kayıt: {t.ogrenciKayitId}</Text>
