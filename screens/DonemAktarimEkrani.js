@@ -35,8 +35,8 @@ export default function DonemAktarimEkrani({route}){
     getDocs(query(collection(db,'ogrenciler'),where('uid','==',uid))),
     getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
    ]);
-   const ss=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi);
-   const cs=b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi&&!x.ozelTur);
+   const ss=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi&&x.arsivDurumu!=='isleniyor');
+   const cs=b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi&&x.arsivDurumu!=='isleniyor'&&!x.ozelTur);
    const os=c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear));
    const bs=d.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,sourceYear));
    setSchools(ss);setClasses(cs);setStudents(os);setBooks(bs);
