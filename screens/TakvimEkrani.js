@@ -3,7 +3,7 @@ import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,K
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {collection,addDoc,getDocs,deleteDoc,doc,query,where,updateDoc,writeBatch,arrayUnion,getDoc,setDoc}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
-import {pad,isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';
+import {isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemTarihAraliginda,donemDuzenlemeyeAcik}from'../utils/donem';
 import cyclicTime from '../utils/cyclicTime';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
