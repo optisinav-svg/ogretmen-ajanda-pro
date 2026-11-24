@@ -62,8 +62,9 @@ function validateBackupManifest(manifest, now = new Date()) {
     throw new Error('Yedek manifestinde koleksiyon sayımları bulunamadı.');
   }
   for (const name of RETENTION_COLLECTIONS) {
-    if (!Number.isInteger(manifest.collections[name]) || manifest.collections[name] < 0) {
-      throw new Error('Yedek manifestinde ' + name + ' koleksiyonu eksik.');
+    if (Object.prototype.hasOwnProperty.call(manifest.collections, name)
+      && (!Number.isInteger(manifest.collections[name]) || manifest.collections[name] < 0)) {
+      throw new Error('Yedek manifestinde ' + name + ' koleksiyonunun sayımı geçersiz.');
     }
   }
   return true;
@@ -352,7 +353,7 @@ async function main() {
 
   const backup = await loadLatestVerifiedBackup(now);
   for (const name of RETENTION_COLLECTIONS) {
-    if (backup.manifest.collections[name] < Number(plan.plannedCounts[name] || 0)) {
+    if (Number(backup.manifest.collections[name] || 0) < Number(plan.plannedCounts[name] || 0)) {
       throw new Error('Yedekte ' + name + ' koleksiyonu sayısı temizleme planını karşılamıyor.');
     }
   }
