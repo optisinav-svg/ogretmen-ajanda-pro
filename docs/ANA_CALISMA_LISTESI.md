@@ -64,9 +64,9 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - 2026/2027 secili donem modeli; sezon 1 Haziran'da baslar ve sonraki yil 30 Haziran'da biter. Haziran cakismasi secilen `donemYili` ile cozulur.
 - Eski donem 30 Haziran'a kadar duzenlenebilir; 1 Temmuz'dan itibaren salt okunur arsiv olur.
 - Yalnizca son uc sezon tutulur; 2026 kayitlari Temmuz 2028'de, 2027 kayitlari Temmuz 2029'da vb. ilgili yil kuralina gore ele alinacak.
-- Silme kapsamindaki koleksiyonlar ve bagli belge iliskileri mevcut kararlara gore tek tek dogrulanacak; okul/sinif/ogrenci/kullanici profili gibi ana kayitlar yanlislikla silinmeyecek.
+- Yillik temizleme allowlist'i yalnizca `dersNotlari`, `dersler`, `yoklamalar`, `odevler`, `kitaplar`, `konular` koleksiyonlaridir. `ogrenciler`, `siniflar`, `okullar`, `kullanicilar`, ogretmen-ogrenci baglantilari, eslestirme talepleri/kodlari, bildirimler, bireysel etkinlikler ve ortak kitap kutuphanesi silinmez.
 - Gunluk zamanlanmis silme yoktur. Spark nedeniyle yillik islem, Temmuz'da uygulama sahibi tarafindan onizleme ve acik onayla baslatilacak.
-- Mevcut kaynak kodda donem temizligi ve kurallari icin Emulator testleri oldugu belirtiliyor; canli rules dagitimi yapilmadi. Bu nedenle durum: KAYNAKTA VAR / CANLI DEGIL.
+- Allowlist'teki tehlikeli genisletme 24.11.2026'da alti koleksiyona daraltildi ve test beklentisi duzeltildi. Bu degisiklik icin test henuz calistirilmadi; canli rules dagitimi ve veri silme yapilmadi.
 - Eksik `donemYili` kayitlari icin onceki dry-run sayilari tarihsel bilgidir; canli veriye tekrar dokunmadan once salt okunur yeni envanter ve fark raporu gerekir. Onceki yedek/manifest korunur.
 
 ### P2 — Okul, sinif, ogrenci ve bagli kayit yasam dongusu
