@@ -121,6 +121,8 @@ function summarizeLessonClassMismatches(docsByCollection) {
   const periods = new Set();
   const missingRecordClass = new Set();
   const existingRecordClass = new Set();
+  let recordsWithMissingRecordClass = 0;
+  let recordsWithExistingRecordClass = 0;
   const missingLessonClass = new Set();
   const dateRange = { firstDate: null, lastDate: null };
   let totalRecords = 0;
@@ -143,8 +145,13 @@ function summarizeLessonClassMismatches(docsByCollection) {
       mismatchPairs.add(String(data.sinifId || '<missing>') + '=>' + String(lesson.sinifId || '<missing>'));
       if (typeof data.uid === 'string' && data.uid) owners.add(data.uid);
       if (Number.isInteger(data.donemYili)) periods.add(data.donemYili);
-      if (classes.has(data.sinifId)) existingRecordClass.add(data.sinifId);
-      else if (data.sinifId) missingRecordClass.add(data.sinifId);
+      if (classes.has(data.sinifId)) {
+        existingRecordClass.add(data.sinifId);
+        recordsWithExistingRecordClass += 1;
+      } else if (data.sinifId) {
+        missingRecordClass.add(data.sinifId);
+        recordsWithMissingRecordClass += 1;
+      }
       if (!classes.has(lesson.sinifId) && lesson.sinifId) missingLessonClass.add(lesson.sinifId);
       if (lesson.uid !== data.uid) ownerMismatchRecords += 1;
       if (lesson.donemYili !== data.donemYili) periodMismatchRecords += 1;
@@ -159,8 +166,10 @@ function summarizeLessonClassMismatches(docsByCollection) {
     distinctRecordClassReferences: recordClassIds.size,
     distinctLessonClassReferences: lessonClassIds.size,
     distinctMismatchPairs: mismatchPairs.size,
-    recordsWhoseReferencedClassStillExists: [...existingRecordClass].length,
-    recordsWhoseReferencedClassIsMissing: [...missingRecordClass].length,
+    recordsWhoseReferencedClassStillExists: recordsWithExistingRecordClass,
+    recordsWhoseReferencedClassIsMissing: recordsWithMissingRecordClass,
+    distinctExistingRecordClassReferences: existingRecordClass.size,
+    distinctMissingRecordClassReferences: missingRecordClass.size,
     distinctMissingLessonClassReferences: missingLessonClass.size,
     ownerMismatchRecords,
     periodMismatchRecords,
