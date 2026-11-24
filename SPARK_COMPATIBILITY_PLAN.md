@@ -106,3 +106,14 @@ Depodaki 38 uygulama JS/JSX/TS/TSX dosyasi tarandi; uygulama kaynaklarinda artik
 Cloud Functions'a bagli kalmis riskli ekranlarin guvenli Spark karsiligi tamamlanmadigi icin bu ozellikler acik uyarilarla devre disi birakildi: e-posta degisikligi, rol duzeltme talep/karari, ogrenci sinif/kayitsiz tasima ve kalici silme, okul kaldirma, akademik donem aktarimi, kapali hesap listeleme/imhasi ve yillik cok koleksiyonlu donem temizligi. Bu nedenle "uygulama callable bagimliligi kalmadi" dogrudur; ancak "tum ozellikler Spark'a tasindi" dogru degildir.
 
 Testler henuz calistirilmadi. Canli Firestore Rules dagitilmadi. Canli veri/Auth hesabi degistirilmedi. Bu belge APK veya canli dagitim onayi degildir.
+
+
+## 24.11.2026 — Saklama tarihi kod uyumu
+
+Kaynak kodda bulunan eski `2029 / yıl - 3` temizleme kuralı, kullanıcının kararı olan `Temmuz 2028 -> 2026; Temmuz 2029 -> 2027; devamında Temmuz ayında yıl - 2` kuralına göre güncellendi:
+- `functions/retentionPolicy.js`
+- `firestore.rules`
+- `screens/IstatistikPaneliEkrani.js`
+- `functions/test/retentionPolicy.test.js` beklenen tarihleri
+
+Bu güncellemeden sonra Emulator testleri çalıştırılmadı. Dönem temizleme arayüzü Spark'ta güvenli çok-batch istemci akışı tamamlanana kadar kapalıdır. Canlı rules dağıtımı veya veri silme yapılmadı.
