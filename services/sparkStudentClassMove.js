@@ -42,6 +42,17 @@ function classFields(target, current = {}) {
   };
 }
 
+async function ensureSchoolWritable(classData, uid) {
+  if (!classData.okulId) return;
+  const schoolSnap = await getDoc(doc(db, 'okullar', classData.okulId));
+  if (!schoolSnap.exists()
+    || schoolSnap.data().uid !== uid
+    || schoolSnap.data().arsivlendi === true
+    || schoolSnap.data().arsivDurumu === 'isleniyor') {
+    throw new Error('Hedef okul yeni kayıt kabul etmiyor.');
+  }
+}
+
 function fieldsDiffer(data, fields) {
   return Object.keys(fields).some(key => (data?.[key] ?? '') !== (fields[key] ?? ''));
 }
@@ -344,6 +355,7 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
   if (target.ozelTur === 'kayitsiz') {
     throw new Error('Kayıtsız sınıfa taşıma için ayrı işlem kullanılmalı.');
   }
+  await ensureSchoolWritable(target, uid);
   if (student.uid !== uid || Number(student.donemYili) !== period) {
     throw new Error('Öğrenci seçilen öğretmene veya döneme ait değil.');
   }
@@ -436,6 +448,7 @@ export async function moveStudentToUnregistered({ studentId, sourceClass, period
   if (target.ozelTur !== 'kayitsiz' || target.okulId !== source.okulId) {
     throw new Error('Aynı okula ait kayıtsız öğrenci sınıfı bulunamadı.');
   }
+  await ensureSchoolWritable(target, uid);
 
   const marker = {
     kaynakSinifId: source.id,
