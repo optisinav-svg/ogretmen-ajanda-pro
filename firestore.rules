@@ -395,7 +395,7 @@ service cloud.firestore {
       let indexPath = studentRecordIndexPath(request.auth.uid + '__' + data.ogrenciKayitId);
       return isTeacher()
         && codeId.size() == 64
-        && codeId.matches('^[A-Fa-f0-9]+')
+        && codeId.matches('[A-Fa-f0-9]{64}')
         && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.keys().hasAll(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.uid == request.auth.uid
@@ -780,7 +780,7 @@ service cloud.firestore {
     match /ogretmenOgrenciBaglantilari/{linkId} {
       allow get: if signedIn()
         && (
-          (resource == null && isTeacher() && linkId.startsWith(request.auth.uid + '__'))
+          (resource == null && isTeacher() && linkId.matches('^' + request.auth.uid + '__.*'))
           || (resource != null
             && (isApplicationOwner()
               || resource.data.ogretmenUid == request.auth.uid
@@ -808,7 +808,7 @@ service cloud.firestore {
     match /ogrenciKayitEslesmeleri/{indexId} {
       allow get: if isTeacher()
         && (
-          (resource == null && indexId.startsWith(request.auth.uid + '__'))
+          (resource == null && indexId.matches('^' + request.auth.uid + '__.*'))
           || (resource != null && resource.data.ogretmenUid == request.auth.uid)
         );
       allow list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
@@ -835,7 +835,7 @@ service cloud.firestore {
     match /ogrenciOdevBildirimleri/{notificationId} {
       allow get: if signedIn()
         && (
-          (resource == null && isStudent() && notificationId.startsWith(request.auth.uid + '__'))
+          (resource == null && isStudent() && notificationId.matches('^' + request.auth.uid + '__.*'))
           || (resource != null
             && (resource.data.ogretmenUid == request.auth.uid
               || resource.data.ogrenciUid == request.auth.uid))
@@ -850,7 +850,7 @@ service cloud.firestore {
     match /ogrenciYeniOdevBildirimleri/{notificationId} {
       allow get: if signedIn()
         && (
-          (resource == null && isTeacher() && notificationId.contains('__' + request.auth.uid + '__'))
+          (resource == null && isTeacher() && notificationId.matches('.*__' + request.auth.uid + '__.*'))
           || (resource != null
             && (resource.data.ogrenciUid == request.auth.uid
               || resource.data.ogretmenUid == request.auth.uid))
