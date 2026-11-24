@@ -11,6 +11,12 @@ service cloud.firestore {
       return signedIn() && request.auth.token.uygulamaSahibi == true;
     }
 
+    function matchesCurrentEmailAlias(aliasId) {
+      return signedIn()
+        && request.auth.token.email is string
+        && aliasId == hashing.sha256(request.auth.token.email.lower().trim().utf8()).toHexString();
+    }
+
     function isRetentionCleanupWindow(periodYear) {
       let istanbulNow = request.time + duration.value(3, 'h');
       return istanbulNow.year() >= 2029
@@ -948,8 +954,25 @@ service cloud.firestore {
     }
 
     match /epostaAliaslari/{aliasId} {
-      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
-      allow read, write: if false;
+      // Verified users may inspect only the hash of their own Auth email; collection enumeration stays closed.
+      allow get: if matchesCurrentEmailAlias(aliasId) && request.auth.token.email_verified == true;
+      allow list: if false;
+      allow create: if matchesCurrentEmailAlias(aliasId)
+        && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly(['ownerUid', 'emailHash', 'rezerveEdilme', 'sonKullanim'])
+        && request.resource.data.keys().hasAll(['ownerUid', 'emailHash', 'rezerveEdilme', 'sonKullanim'])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.emailHash == aliasId
+        && request.resource.data.rezerveEdilme == request.time
+        && request.resource.data.sonKullanim == request.time;
+      allow update: if matchesCurrentEmailAlias(aliasId)
+        && request.auth.token.email_verified == true
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.emailHash == aliasId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['sonKullanim'])
+        && request.resource.data.sonKullanim == request.time;
+      allow delete: if false;
     }
 
     match /rolDuzeltmeTalepleri/{requestId} {
