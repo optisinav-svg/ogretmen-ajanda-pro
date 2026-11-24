@@ -5,7 +5,7 @@ Bu klasördeki betikler canlı Firebase projesine erişebilir. Varsayılan olara
 ## Salt okunur betikler
 
 ### `audit-missing-periods.js`
-- Dokuz dönemli koleksiyonu salt okunur tarar.
+- Dönemle ilişkili 15 koleksiyonu salt okunur tarar (okul/sınıf/öğrenci, ders/ödev/yoklama/kitap, bireysel etkinlikler ve öğrenci bağlantı kayıtları).
 - Açık `donemYili` değerlerini, eksik/geçersiz alanları, tarih alanlarına göre olası dönemi ve Haziran belirsizliğini raporlar.
 - Haziran tarihlerini otomatik olarak bir döneme atamaz.
 - Tam belge kimliği, öğrenci adı veya e-posta yazdırmaz.
@@ -37,7 +37,7 @@ node .\scripts\audit-account-ownership.js hesap1@example.com hesap2@example.com
 ### `migrate-missing-periods-2026.js`
 - Varsayılanı DRY-RUN'dır; `--apply` olmadan yazma yapmaz.
 - Yalnızca dokuz hedef koleksiyonda `donemYili` alanı tamamen bulunmayan belgeleri hedefler; var olan değerleri değiştirmez.
-- Tarihten dönem çıkarmaz; eksik alanların hepsini 2026 yapar. Bu nedenle önce `audit-missing-periods.js` raporu incelenmeli ve tüm eksik belgelerin gerçekten 2026'ya ait olduğu teyit edilmelidir.
+- Tarihten dönem çıkarmaz; yalnızca kendi dokuz hedef koleksiyonundaki eksik alanların hepsini 2026 yapar. Bireysel etkinlik ve öğrenci bağlantı koleksiyonları bu otomatik migration betiğinin dışındadır. Bu nedenle önce `audit-missing-periods.js` raporu incelenmeli ve tüm eksik belgelerin gerçekten 2026'ya ait olduğu teyit edilmelidir.
 - Geçersiz mevcut `donemYili` değerleri bulunursa yazmaya başlamadan durur.
 - Yazma için birlikte şu parametreler gerekir: `--apply --confirm-period=2026 --confirm-all-missing-are-2026`.
 - SHA-256 doğrulanmış, proje kimliği ve dokuz hedef koleksiyonu içeren tam yedek olmadan yazma moduna geçmez.
