@@ -1,6 +1,5 @@
 import { getIdTokenResult, reload } from 'firebase/auth';
 import {
-  collection,
   deleteField,
   doc,
   getDoc,
@@ -18,24 +17,25 @@ async function requireVerifiedUser(user = auth.currentUser) {
   if (token.claims.email_verified !== true) {
     throw new Error('Bu işlemden önce e-posta adresinizi doğrulayın.');
   }
-  return user;
+  return { user, claims: token.claims };
 }
 
 export async function closeOwnAccount(user = auth.currentUser) {
-  await requireVerifiedUser(user);
+  const verified = await requireVerifiedUser(user);
+  user = verified.user;
+  if (verified.claims.uygulamaSahibi === true) {
+    throw new Error('Uygulama sahibi hesabı sahiplik yetkisi devredilmeden kapatılamaz.');
+  }
   await reserveCurrentEmailAlias(user);
 
   const profileRef = doc(db, 'kullanicilar', user.uid);
   const profileSnap = await getDoc(profileRef);
   if (!profileSnap.exists()) throw new Error('Kullanıcı profili bulunamadı.');
   if (profileSnap.get('hesapDurumu') === 'kapali') return { status: 'already_closed' };
-  if (profileSnap.get('rol') === 'uygulama_sahibi') {
-    throw new Error('Uygulama sahibi hesabı sahiplik yetkisi devredilmeden kapatılamaz.');
-  }
 
   const retentionEnd = new Date();
   retentionEnd.setFullYear(retentionEnd.getFullYear() + 3);
-  const auditRef = doc(collection(db, 'hesapYasamDongusuDenetimi'));
+  const auditRef = doc(db, 'hesapYasamDongusuDenetimi', user.uid);
   const batch = writeBatch(db);
   batch.update(profileRef, {
     hesapDurumu: 'kapali',
@@ -56,7 +56,8 @@ export async function closeOwnAccount(user = auth.currentUser) {
 }
 
 export async function reactivateOwnAccount(user = auth.currentUser) {
-  await requireVerifiedUser(user);
+  const verified = await requireVerifiedUser(user);
+  user = verified.user;
   await reserveCurrentEmailAlias(user);
 
   const profileRef = doc(db, 'kullanicilar', user.uid);
@@ -69,7 +70,7 @@ export async function reactivateOwnAccount(user = auth.currentUser) {
     throw new Error('Hesabın üç yıllık saklama ve yeniden etkinleştirme süresi sona ermiş. Destekle iletişime geçin.');
   }
 
-  const auditRef = doc(collection(db, 'hesapYasamDongusuDenetimi'));
+  const auditRef = doc(db, 'hesapYasamDongusuDenetimi', user.uid);
   const batch = writeBatch(db);
   batch.update(profileRef, {
     hesapDurumu: 'aktif',
