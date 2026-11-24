@@ -4,10 +4,10 @@ import {
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload, deleteUser } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
+import { auth, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { submitStudentPairingRequest } from '../services/sparkStudentAccounts';
+import { reserveCurrentEmailAlias } from '../services/sparkEmailAliases';
 
 export default function OgrenciKayitEkrani({ navigation, route }) {
   const insets=useSafeAreaInsets();
@@ -38,7 +38,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
         Alert.alert('E-posta doğrulanmadı', 'Önce e-posta kutunuza gönderilen doğrulama bağlantısını açın. Ardından tekrar deneyin.');
         return;
       }
-      await httpsCallable(functions, 'epostaAliasiniRezerveEt')({});
+      await reserveCurrentEmailAlias(auth.currentUser);
       await submitStudentPairingRequest(temizKod, adSoyad.trim());
       navigation.replace('OgrenciAnaSayfa');
     } catch (e) {
@@ -58,12 +58,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     if (sifre !== sifreTekrar) return Alert.alert('Şifreler eşleşmiyor', 'İki şifre alanını aynı şekilde doldurun.');
     setYukleniyor(true);
     try {
-      await httpsCallable(functions, 'epostaKaydiKontrolEt')({ email: eposta.trim().toLowerCase() });
       const result = await createUserWithEmailAndPassword(auth, eposta.trim().toLowerCase(), sifre);
-      try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
-        await deleteUser(result.user).catch(() => {});
-        throw aliasError;
-      }
       await updateProfile(result.user, { displayName: adSoyad.trim() });
       await sendEmailVerification(result.user);
       setHesapHazir(true);
