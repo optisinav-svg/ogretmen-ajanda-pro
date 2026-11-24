@@ -632,7 +632,7 @@ service cloud.firestore {
       let linkPath = studentLinkDocPath(data.baglantiId);
       let link = get(linkPath).data;
       let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
-      let homework = getAfter(homeworkPath).data;
+      let homework = get(homeworkPath).data;
       return isTeacher()
         && notificationId == data.odevId + '__' + data.ogrenciUid + '__' + data.bildirimAnahtari
         && data.keys().hasOnly([
