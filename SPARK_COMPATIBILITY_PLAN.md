@@ -66,6 +66,8 @@ Normal sinif degisikligi ve kayitsiz sinifa tasima bu listede degildir; bunlar k
 - `ogrenciler`, `siniflar`, `okullar`, `kullanicilar`, ogretmen-ogrenci baglantilari, eslestirme talepleri/kodlari, bildirimler, bireysel etkinlikler ve ortak kitap kutuphanesi bu yillik temizligin disindadir.
 - Gunluk zamanlayici yoktur. Temizlik Spark'ta guvenli istemci batch + kilit + onizleme + acik onay akisi tamamlanana kadar kapali kalir.
 - `functions/section7DataLifecycle.js` icindeki Admin callable kodu Spark'ta calismaz ve bu dalda dagitilmayacaktir. `functions/retentionPolicy.js` allowlist'i alti koleksiyona daraltildi; test beklentisi duzeltildi, ancak test calistirilmadi.
+- Eksik `donemYili` migrasyon scripti 2026 hedeflidir; yazma modu `--apply --confirm-period=2026` ve SHA-256 dogrulanmis tam yedek ister. Script tarihten hedef donemi cikarmadan tum eksik alanlari 2026 yapar; dry-run sonucundaki her kaydin 2026 oldugu teyit edilmeden calistirilmayacak.
+- `utils/donem.js` halen donem/tarih alanlari eksik kayitlar icin bugunun donemini varsayabilen fallback iceriyor. Haziran cakismasi nedeniyle bu fallback'in etkisi salt okunur envanterle degerlendirilmeden degistirilmeyecek; donem karisimi riski ana listede acik tutuluyor.
 - Bu dalda canli veri silme veya donem temizligi yapilmadi.
 
 ## 6. Uygulama kaynaklarinda callable durumu
