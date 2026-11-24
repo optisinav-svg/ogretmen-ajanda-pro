@@ -1,6 +1,6 @@
 # Operasyon betikleri — güvenli kullanım notları
 
-Bu klasördeki betikler canlı Firebase projesine erişebilir. Varsayılan olarak salt okunur/dry-run davranışı tercih edilir. Hiçbir betik, kullanıcıdan ayrı onay alınmadan çalıştırılmamalıdır.
+Bu klasördeki betikler canlı Firebase projesine erişebilir. Varsayılan olarak salt okunur/dry-run davranışı tercih edilir. Hiçbir betik, kullanıcıdan ayrı onay alınmadan çalıştırılmamalıdır. Komut örnekleri depo kökünden değil, `functions` klasörünün içinden çalıştırılacak şekilde yazılmıştır.
 
 ## Salt okunur betikler
 
