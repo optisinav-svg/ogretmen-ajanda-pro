@@ -166,6 +166,7 @@ service cloud.firestore {
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciId);
       return data.ogrenciId is string
         && data.sinifId is string
+        && (!exists(linkIndexPath) || get(linkIndexPath).data.durum != 'active')
         && exists(studentPath)
         && get(studentPath).data.uid == request.auth.uid
         && get(studentPath).data.donemYili == data.donemYili
@@ -391,6 +392,7 @@ service cloud.firestore {
       let data = request.resource.data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciKayitId);
       let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
+      let linkIndexPath = /databases/$(database)/documents/ogrenciKayitEslesmeleri/$(request.auth.uid + '__' + data.ogrenciKayitId);
       return isTeacher()
         && codeId.matches('^[A-Fa-f0-9]{64}$')
         && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
