@@ -35,11 +35,14 @@ Bu belge, uygulamanın mevcut kaynak kodundaki eşleştirme ve bildirim akışı
 ## Bildirimler
 
 - Öğretmen ödevi kaydettiğinde `OdevEkrani` içindeki `syncNewHomeworkNotifications` Spark uyumlu Firestore transaction/batch yazımıyla `ogrenciYeniOdevBildirimleri` belgelerini oluşturur veya hedef öğrenci çıkarıldığında iptal eder.
-- Öğrenci bu bildirimleri kendi ana sayfasında uygulama içi olarak görür ve okundu durumunu günceller.
+- Öğrenci bu bildirimleri kendi ana sayfasında uygulama içi olarak görür. Bildirime dokununca ilgili öğretmenin ödev bölümüne kaydırılır ve bildirim okundu olarak işaretlenir.
 - Öğretmen ödevi sildiğinde `cancelHomeworkNotifications` ilgili öğrenci bildirimlerini `iptal` durumuna getirir.
+- Öğretmen öğrencinin ödev durumunu değiştirdiğinde, ödev kaydıyla aynı Firestore batch içinde yalnızca o öğrenciye ait `ogrenciOdevDurumBildirimleri` belgesi oluşturulur. Kurallar; etkin bağlantıyı, açık ödev iznini, öğrenci/ödev eşleşmesini ve güncellenmiş durumu birlikte doğrular. Aynı durum yeniden seçilirse gereksiz bildirim oluşturulmaz.
+- Öğrenci durum bildirimine dokunduğunda ilgili ödev bölümüne kaydırılır ve yalnızca okundu bilgisi değiştirilebilir.
 - Öğrenci “Ödevi tamamladım” dediğinde `services/sparkStudentAccounts.js` içindeki `notifyHomeworkCompleted` yalnızca `ogrenciOdevBildirimleri` belgesini oluşturur.
 - Tamamlandı bildirimi öğretmenin ödev durumunu, değerlendirmesini veya öğrenci geçmişini kendiliğinden değiştirmez. Öğretmen bildirimi öğrenci hesapları ekranında görür ve nihai kararı kendisi verir.
-- Bu sürümde uygulama istemcisi Expo push token kaydetmez. Kullanıcı akışı uygulama içi bildirimlerle sınırlıdır; telefon push bildirimi etkin değildir.
+- Eşleştirme talepleri öğretmenin onay bekleyen taleplerinde; onay/ret sonucu ve iptal edilmiş bağlantı öğrencinin eşleştirme geçmişinde görünür. Böylece öğrenci erişimi onaydan önce açılmaz, bağlantı iptal edilince geçmiş korunurken erişim kapanır.
+- Bu sürümde uygulama istemcisi Expo push token kaydetmez. Kullanıcı akışı uygulama içi bildirimlerle sınırlıdır; telefon push bildirimi etkin değildir. Spark planı ve dağıtılmayan Cloud Functions prototipi nedeniyle uzaktan push bu bölümde etkinleştirilmez.
 - `functions/studentNotifications.js` içindeki eski push/tetikleyici prototipi `functions/index.js` üzerinden dışa aktarılmaz; yeni ödev bildiriminin ikinci kez yazılmasını ve push altyapısına yanlışlıkla bağımlı olunmasını önlemek için kullanılmaz.
 
 ## Koleksiyonlar
