@@ -89,6 +89,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Sifre degistirme korunacak; ad-soyad degistirme desteklenecek.
 - Ayni gorunen ad serbest; yanlis rol icin guvenli duzeltme talep/onay sureci Spark'ta henuz guvenli degil ve gecici kapali; owner talepleri salt okunur gorur.
 - E-posta alias rezervasyonu ve eski alias'in tekrar kullanilmamasi kritik butunluk kosuludur.
+- Daha once karsilastirilmasi istenen iki Auth hesabi icin salt okunur Auth/Firestore sahiplik envanteri betigi eklendi; e-posta parametreleri kullanici tarafindan verilir, hesap silmez ve belge icerigi/ogrenci bilgisi listelemez. Henuz calistirilmadi; herhangi bir hesabı iptal etmeden once sonuc incelenmeli.
 - Hesap kapatma/yeniden etkinlestirme kendi profil + ayni batch audit kaydi olarak Spark istemci akisi seklinde kaynakta uygulandi; Rules testleri 12. bolumde.
 - Kaynak kod akislari ve Auth/Firestore canli hesap eslesmesi ayri dogrulanmali. KOD INCELEMESI GEREKLI.
 
