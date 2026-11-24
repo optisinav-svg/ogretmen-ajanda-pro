@@ -415,7 +415,7 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
       hasActiveLink,
     });
     return { ...result, alreadyMoved: false };
-  } catch (error) {
+  } catch {
     // Keep the transfer marker. Repeating the same target resumes idempotently;
     // clearing it after a partial batch could orphan moved progress records.
     throw error;
@@ -488,7 +488,7 @@ export async function moveStudentToUnregistered({ studentId, sourceClass, period
       hasActiveLink,
     });
     return { ...result, alreadyMoved: false };
-  } catch (error) {
+  } catch {
     // The marker is a resumable lock; retrying the same operation completes it.
     throw error;
   }
