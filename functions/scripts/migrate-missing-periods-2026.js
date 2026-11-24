@@ -28,6 +28,10 @@ function hasApplyFlag(argv) {
   return argv.includes('--apply');
 }
 
+function hasTargetConfirmation(argv) {
+  return argv.includes('--confirm-period=' + TARGET_PERIOD);
+}
+
 function verifyBackup() {
   const root = path.resolve(__dirname, '../..');
   const backupDir = path.join(root, 'firestore-backups');
@@ -43,9 +47,15 @@ function verifyBackup() {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const archiveName = name.replace(/\.manifest\.json$/, '.jsonl.gz');
     const archivePath = path.join(backupDir, archiveName);
+    const manifestCollections = manifest.collections && typeof manifest.collections === 'object'
+      ? manifest.collections : {};
+    const missingCollections = COLLECTIONS.filter(name => !Object.prototype.hasOwnProperty.call(manifestCollections, name));
     if (
       manifest.projectId === PROJECT_ID &&
+      manifest.readOnly === true &&
+      manifest.archive === archiveName &&
       Number(manifest.totalDocuments) >= 1 &&
+      missingCollections.length === 0 &&
       fs.existsSync(archivePath) &&
       fs.statSync(archivePath).size > 0
     ) {
@@ -99,7 +109,11 @@ async function verifyCollection(db, name) {
 }
 
 async function main() {
-  const apply = hasApplyFlag(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const apply = hasApplyFlag(argv);
+  if (apply && !hasTargetConfirmation(argv)) {
+    throw new Error('Yazma için hem --apply hem de --confirm-period=2026 parametreleri zorunludur.');
+  }
   const backup = verifyBackup();
   initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
   const db = getFirestore();
@@ -135,7 +149,7 @@ async function main() {
     console.log('MIGRATION VERIFIED: kapsam içindeki tüm dönemsiz belgelere 2026 dönemi yazıldı.');
   } else {
     console.log('DRY-RUN tamamlandı. Hiçbir Firestore belgesi değiştirilmedi.');
-    console.log('Önizleme doğrulandıktan sonra aynı komutu --apply ile çalıştırın.');
+    console.log('Önizleme doğrulandıktan ve açık karar verildikten sonra --apply --confirm-period=2026 parametreleri birlikte kullanılmalıdır.');
   }
 }
 
