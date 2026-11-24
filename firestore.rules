@@ -163,6 +163,7 @@ service cloud.firestore {
         && ownsDocument('ogrenciler', data.ogrenciId)
         && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.sinifId == data.sinifId
         && get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.donemYili == data.donemYili
+        && !get(/databases/$(database)/documents/ogrenciler/$(data.ogrenciId)).data.keys().hasAny(['sinifTasiIslemi', 'kayitsizTasiIslemi'])
         && classBelongsToTeacher(data);
     }
 
@@ -314,6 +315,7 @@ service cloud.firestore {
         && get(studentPath).data.uid == invite.ogretmenUid
         && get(studentPath).data.sinifId == invite.sinifId
         && get(studentPath).data.donemYili == invite.donemYili
+        && !get(studentPath).data.keys().hasAny(['sinifTasiIslemi', 'kayitsizTasiIslemi'])
         && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == requestData.ogrenciHesapAdi
         && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == request.auth.token.email.lower().trim()
         && exists(classPath)
@@ -500,6 +502,7 @@ service cloud.firestore {
         && (!exists(indexPath) || get(indexPath).data.durum != 'active')
         && exists(studentPath)
         && get(studentPath).data.uid == request.auth.uid
+        && !get(studentPath).data.keys().hasAny(['sinifTasiIslemi', 'kayitsizTasiIslemi'])
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
         && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
@@ -573,6 +576,7 @@ service cloud.firestore {
         && isEditablePeriod(data.donemYili)
         && exists(studentPath)
         && get(studentPath).data.uid == request.auth.uid
+        && !get(studentPath).data.keys().hasAny(['sinifTasiIslemi', 'kayitsizTasiIslemi'])
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
         && exists(classPath)
