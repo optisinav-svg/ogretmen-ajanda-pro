@@ -107,3 +107,11 @@ Bu nedenle ilk uygulanacak kod degisikligi icin profil ad/soyad callable'inin ka
 - Firebase Auth `displayName` esitlemesi ayrica yapiliyor; bu esitleme basarisiz olursa Firestore'a kaydedilmis profil bilgisinin basarili oldugu kullaniciya bildiriliyor.
 - `functions/index.js` icindeki eski callable export'u simdilik kaldirilmadi; eski kurulu telefon uygulamasiyla geriye donuk uyumluluk riski olusturmamak icin korunuyor. Yeni kaynak ekran bu callable'a bagimli degil.
 - Kod degisikligi GitHub dalina yazildi. Test, bundle ve cihaz kontrolu henuz yapilmadi; bunlar 12. bolum kapisinda.
+
+
+## Ikinci dusuk riskli Spark kod duzeltmesi
+
+- Giris sonrasi Auth e-postasi ile Firestore profilindeki `eposta` farkliysa artik `epostaDegisikliginiProfileYansit` callable'i yerine kullanicinin kendi profil belgesine `updateDoc` yazimi yapiliyor.
+- `firestore.rules` icindeki `updatesOwnUserProfile` kosulu, e-posta alaninin yalnizca Auth token'indaki e-posta dogrulanmis oldugunda ve yeni deger token e-postasiyla birebir eslestiginde degistirilmesine izin verecek sekilde dar kapsamli guncellendi. Diger alan/rol kisitlari korundu.
+- Bu degisiklik kaynak rules dosyasindadir; canli Firestore rules dagitilmadi. Testler 12. bolumde calistirilacak.
+- Eski callable export'u geriye donuk uyumluluk icin silinmedi. E-posta alias rezervasyon callable'i hala GirisEkrani tarafinda cagrildigindan Spark callable engeli devam ediyor.
