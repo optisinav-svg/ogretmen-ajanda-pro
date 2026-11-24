@@ -8,6 +8,7 @@ on:
       - feature/group4-student-app
       - integration/pre-apk-2026-11-21
       - release/pre-apk-2026-11-22
+      - release/tablet-apk-2026-11-24
       - fix/spark-retention-and-apk-readiness-2026-11-22
       - work/section7-safe-delete-retention
       - work/section8-account-period-management
@@ -22,6 +23,7 @@ on:
       - feature/group3-firestore-security-hardening
       - feature/group4-student-app
       - release/pre-apk-2026-11-22
+      - release/tablet-apk-2026-11-24
       - fix/spark-retention-and-apk-readiness-2026-11-22
       - work/section6-student-calendar-activities
       - work/section7-safe-delete-retention
