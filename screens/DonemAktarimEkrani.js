@@ -48,6 +48,7 @@ export default function DonemAktarimEkrani({route}){
  };
  const schoolMap=useMemo(()=>new Map(schools.map(x=>[x.id,x])),[schools]);
  const selectedCount=Object.values(selected).reduce((n,ids)=>n+ids.length,0);
+ const selectedBookCount=Object.values(selectedBooks).reduce((n,ids)=>n+ids.length,0);
  const toggleStudent=(classId,studentId)=>{
   const removing=(selected[classId]||[]).includes(studentId);
   setSelected(prev=>{const current=prev[classId]||[];const next=removing?current.filter(x=>x!==studentId):[...current,studentId];return {...prev,[classId]:next};});
@@ -72,7 +73,8 @@ export default function DonemAktarimEkrani({route}){
   if(!chosen.length)return Alert.alert('Seçim gerekli','Aktarılacak en az bir sınıf seçin.');
   if(selectedCount>500)return Alert.alert('Seçim sınırı','Tek aktarımda en fazla 500 öğrenci seçilebilir.');
   if(!donemDuzenlemeyeAcik(targetYear))return Alert.alert('Hedef dönem kapalı',`${targetYear}/${targetYear+1} dönemi henüz başlamadı veya düzenlemeye kapalı. Aktarım hedef dönemin 1 Haziran–30 Haziran düzenleme aralığında yapılabilir.`);
-  Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${chosen.length} sınıf ve ${selectedCount} öğrenci aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi kopyalanmayacak. Yalnızca seçtiğiniz öğrenci kitapları ve konu sayfa aralıkları aktarılacak; yeni dönem ilerlemesi sıfırdan başlayacak. Öğretmenin ortak kitap kütüphanesi zaten dönemden bağımsızdır. Devam edilsin mi?`,[
+  const schoolCount=new Set(chosen.map(x=>x.okulId).filter(Boolean)).size;
+  Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${schoolCount} okul, ${chosen.length} sınıf, ${selectedCount} öğrenci ve ${selectedBookCount} kitap ataması aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi kopyalanmayacak. Yalnızca seçtiğiniz öğrenci kitapları ve konu sayfa aralıkları aktarılacak; yeni dönem ilerlemesi sıfırdan başlayacak. Öğretmenin ortak kitap kütüphanesi zaten dönemden bağımsızdır. Devam edilsin mi?`,[
    {text:'Vazgeç',style:'cancel'},
    {text:'Aktarımı başlat',onPress:async()=>{
     setSending(true);setDone(null);
@@ -114,7 +116,7 @@ export default function DonemAktarimEkrani({route}){
      {fixed&&<Text style={s.fixed}>12. sınıf, TYT ve AYT kaynak grupları TYT olarak aktarılır.</Text>}
      <View style={s.row}>
       <Text style={s.label}>Öğrenciler ({chosen.length}/{list.length})</Text>
-      <TouchableOpacity onPress={()=>toggleAll(cls,list)}><Text style={s.selectAll}>{chosen.length===list.length?'Seçimi kaldır':'Tümünü seç'}</Text></TouchableOpacity>
+      <TouchableOpacity onPress={()=>toggleAll(cls,list)}><Text style={s.selectAll}>{selectedClasses.includes(cls.id)&&chosen.length===list.length?'Seçimi kaldır':'Tümünü seç'}</Text></TouchableOpacity>
      </View>
      {list.map(st=>{const assignedBooks=books.filter(b=>b.ogrenciId===st.id&&b.sinifId===cls.id);return <View key={st.id} style={s.studentBlock}>
       <TouchableOpacity style={s.student} onPress={()=>toggleStudent(cls.id,st.id)}>
@@ -134,7 +136,7 @@ export default function DonemAktarimEkrani({route}){
    {done&&<View style={s.done}><Text style={s.doneTitle}>Son aktarım tamamlandı</Text><Text style={s.doneText}>{done.okulSayisi} okul • {done.sinifSayisi} sınıf • {done.ogrenciSayisi} öğrenci • {done.kitapSayisi} kitap • {done.konuSayisi} konu</Text></View>}
   </ScrollView>
   <View style={s.footer}>
-   <Text style={s.counter}>{selectedClasses.length} sınıf • {selectedCount} öğrenci seçildi</Text>
+   <Text style={s.counter}>{selectedClasses.length} sınıf • {selectedCount} öğrenci • {selectedBookCount} kitap seçildi</Text>
    <TouchableOpacity style={[s.button,(!targetOpen||!selectedClasses.length||sending)&&s.buttonOff]} disabled={!targetOpen||!selectedClasses.length||sending} onPress={start}>
     {sending?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Seçilenleri yeni döneme aktar</Text>}
    </TouchableOpacity>
