@@ -6,7 +6,9 @@ import {
 } from 'react-native';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, runTransaction } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { deleteUser } from 'firebase/auth';
+import { auth, db, functions } from '../firebaseConfig';
 
 const buYil = new Date().getFullYear();
 const SEZONLAR = [
@@ -56,6 +58,10 @@ export default function KayitEkrani({ navigation }) {
       if (!user) {
         const sonuc = await createUserWithEmailAndPassword(auth, normalizedEmail, sifre);
         user = sonuc.user;
+      }
+      try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
+        if (!auth.currentUser || auth.currentUser.uid === user.uid) await deleteUser(user).catch(() => {});
+        throw aliasError;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
       const profileRef = doc(db, 'kullanicilar', user.uid);
