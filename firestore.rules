@@ -368,8 +368,11 @@ service cloud.firestore {
         && request.auth.uid == userId
         && resource.data.keys().hasAny(['rol'])
         && data.rol == resource.data.rol
-        && data.get('eposta', '') == resource.data.get('eposta', '')
-        && changed.hasOnly(['kullaniciAdi', 'ad', 'soyad', 'brans', 'sezon'])
+        && (!changed.hasAny(['eposta'])
+          || (request.auth.token.email_verified == true
+            && data.eposta is string
+            && data.eposta == request.auth.token.email))
+        && changed.hasOnly(['kullaniciAdi', 'ad', 'soyad', 'brans', 'sezon', 'eposta'])
         && (!changed.hasAny(['kullaniciAdi'])
           || (data.kullaniciAdi is string
             && data.kullaniciAdi.size() >= 2
