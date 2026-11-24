@@ -6,7 +6,6 @@ import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
 import { syncNewHomeworkNotifications } from '../services/sparkStudentAccounts';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const renk={yapildi:'#2E7D32',yapilmadi:'#C62828',gec:'#F57F17',bekliyor:'#1565C0'},ikon={yapildi:'✅',yapilmadi:'❌',gec:'⏰',bekliyor:'📋'};
 const sayfaAdedi=k=>Math.max(0,(parseInt(k?.bitisSayfa,10)||0)-(parseInt(k?.baslangicSayfa,10)||0)+1);
 const odevKontrolEdildiMi=o=>{const ids=o.hedefOgrenciIds||[];if(!ids.length)return false;return ids.every(id=>['yapildi','yapilmadi','gec'].includes((o.ogrenciDurumlari||{})[id]))};const odevBekliyorMu=o=>!odevKontrolEdildiMi(o);const teslimTarihiGectiMi=o=>!!o?.teslimTarihi&&o.teslimTarihi<bugun();
