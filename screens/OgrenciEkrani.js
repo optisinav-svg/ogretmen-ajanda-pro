@@ -35,7 +35,7 @@ export default function OgrenciEkrani({route,navigation}){
        :'Öğrenci kayıtsız sınıfa taşındı. Geçmiş kayıtları silinmedi.');
      }catch(e){
       await ogrencileriYukle();
-      Alert.alert('Taşıma tamamlanamadı',e?.message||'Kayıtlar değiştirilmedi veya işlem güvenli biçimde durduruldu. Aynı işlemi tekrar deneyebilirsiniz.');
+      Alert.alert('Taşıma tamamlanamadı',e?.message||'Taşıma tamamlanamadı. Kitap/konu kayıtlarının bir kısmı taşınmış olabilir; aynı hedef sınıfı yeniden seçerek işlemi sürdürebilirsiniz. Yoklama ve ödev geçmişi korunur.');
      }
     }},
    ]
