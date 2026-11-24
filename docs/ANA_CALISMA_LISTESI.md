@@ -228,3 +228,5 @@ Bu ana liste bir takip belgesidir; canli sistemde islem yapma izni degildir. Her
 - Canlı Rules dağıtımı ayrı onay kapısıdır. Yeni APK, Rules canlıda doğrulanmadan kurulup kullanılmayacak.
 - Sonraki adımlar: CI sonucu → salt okunur canlı Firebase yapılandırma/indeks karşılaştırması → Rules için yedek ve geri dönüş doğrulaması → kullanıcıya ayrı DEPLOY onayı → Rules doğrulaması → EAS APK build → tablet kurulumu/testi.
 - Kullanıcı tarafından bildirilen sınıf ders notlarının eksilmesi sorunu bu APK/ilk kullanım kapılarından sonra salt okunur olarak incelenecek; sınıf UID'si o aşamada istenecek.
+
+- APK build betiğinde ek güvenlik kapısı: `npm audit --omit=dev --json`; üretim bağımlılığında yüksek/kritik bulgu varsa EAS build başlamaz. Orta/düşük bulgular raporlanır; otomatik `npm audit fix` uygulanmaz.
