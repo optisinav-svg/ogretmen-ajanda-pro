@@ -163,3 +163,16 @@ Guncel kullaniciya gorunen durum:
 - Kapali islevlerde kullaniciya neden aciklamasi gosterilir; hicbir callable cagrisi veya gizli arka plan silme islemi yapilmaz.
 
 **Durum:** Uygulama kaynak kodunda Cloud Functions callable bagimliligi kalmadi. Bu, kapatilan islevlerin Spark'ta yeniden tasarlandigi anlamina gelmez; bu islevler guvenli uygulama hazir olana kadar ertelemeye alinmistir. Emulator/unit/bundle testleri henuz calistirilmadi; canli rules dagitilmadi; canli veri degistirilmedi.
+
+
+## 24.11.2026 — Ogrenci sinif/kayitsiz tasima icin Spark akisi eklendi
+
+`services/sparkStudentClassMove.js` eklendi:
+- Normal sinif degisikliginde ogrenci belgesine hedef sinif kilidi yazilir. Firestore Rules, kilit varken yeni kitap/konu/yoklama kaydi ve eslestirme baslatilmasini engeller.
+- Mevcut donemin kitap atamalari ve konu ilerlemeleri, kitaplar once ve konular ilgili kitap bazinda olacak sekilde 400 kayitlik batch'lerle hedef sinifa tasinir. Islem tekrarlandiginda ayni hedefe idempotent devam eder.
+- Son asamada ogrenci sinif/okul alanlari ve sinif gecmisi tek transaction'da guncellenir. Eger aktif eslestirme indeksi varsa indeks `revoked` yapilir; eski baglanti belgesi silinmez veya kapatilmaz, ogrenci eski sinif gecmisini gormeye devam eder.
+- Yeni sinifta ogrenci uygulama hesabini baglamak icin yeni tek kullanimlik kod olusturulur; ogrenci talep gonderir ve ogretmen onaylar. Eski ve yeni sinif baglantilari boylece ayri kalir.
+- Kayıtsız sınıfa taşıma, aynı okul ve dönem için mevcut Kayıtsız Öğrenciler sınıfını kullanır; yoksa deterministik kimlikle oluşturur. Öğrenci geçmişi silinmez ve eski uygulama bağlantısı geçmiş için korunur.
+- Hata durumunda taşıma kilidi korunur; aynı hedef yeniden seçilerek işlem sürdürülebilir. Kalıcı silme ve okul kaldırma halen devre dışıdır.
+
+**Test durumu:** Yeni service ve Rules degisiklikleri icin Emulator/unit/device testi calistirilmadi. Canli Rules dagitilmadi; gercek ogrenci kaydi tasinmadi.
