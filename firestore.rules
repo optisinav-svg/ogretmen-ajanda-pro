@@ -394,6 +394,7 @@ service cloud.firestore {
       return isTeacher()
         && codeId.matches('^[A-Fa-f0-9]{64}$')
         && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
+        && data.keys().hasAll(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
         && data.ogrenciKayitId is string
@@ -424,7 +425,7 @@ service cloud.firestore {
         && data.eposta is string && data.eposta.size() >= 3 && data.eposta.size() <= 254
         && data.sinifAd is string && data.sinifAd.size() <= 80
         && data.okulAd is string && data.okulAd.size() <= 120
-        && data.kademe is string && data.kademe.size() <= 10
+        && data.kademe == get(classPath).data.kademe
         && data.ders is string && data.ders.size() <= 80;
     }
 
