@@ -9,7 +9,8 @@ const legacyScript = fs.readFileSync(path.join(root, 'scripts', 'prepare-spark-a
 
 test('tablet APK build script cannot deploy Firebase or mutate Firestore', () => {
   assert.doesNotMatch(buildScript, /firebase\s+deploy|firestore:rules|firestore:delete|migrate-missing-periods/i);
-  assert.match(buildScript, /npm audit --omit=dev --json/);\n  assert.match(buildScript, /vuln\.critical -gt 0 -or \$vuln\.high -gt 0/);\n  assert.match(buildScript, /BUILD yazın/);
+  assert.match(buildScript, /npm audit --omit=dev --json/);
+  assert.match(buildScript, /vuln\.critical -gt 0 -or \$vuln\.high -gt 0/);\n  assert.match(buildScript, /BUILD yazın/);
   assert.match(buildScript, /release\/tablet-apk-2026-11-24/);
 });
 
