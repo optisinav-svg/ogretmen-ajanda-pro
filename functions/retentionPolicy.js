@@ -3,23 +3,14 @@
 // mantıksal yıl arşivi olarak görür. Bu modül kendiliğinden silme yapmaz.
 const FIRST_CLEANUP_YEAR = 2028;
 const RETENTION_COLLECTIONS = Object.freeze([
+  // Yalnızca sezonluk çalışma kayıtları. Öğrenci/sınıf/okul/hesap/bağlantı
+  // belgeleri ve ortak kitap kütüphanesi saklama temizliğinin dışındadır.
   'dersNotlari',
   'dersler',
   'yoklamalar',
   'odevler',
   'kitaplar',
   'konular',
-  'bireyselEtkinlikler',
-  'bireyselDersOturumlari',
-  'ogrenciler',
-  'siniflar',
-  'okullar',
-  'ogretmenOgrenciBaglantilari',
-  'ogrenciKayitEslesmeleri',
-  'ogrenciEslesmeTalepleri',
-  'ogrenciEslesmeKodlari',
-  'ogrenciOdevBildirimleri',
-  'ogrenciYeniOdevBildirimleri',
 ]);
 function istanbulDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
