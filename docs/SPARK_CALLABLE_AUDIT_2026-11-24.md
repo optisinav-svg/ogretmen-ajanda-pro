@@ -177,3 +177,18 @@ Guncel kullaniciya gorunen durum:
 - Hata durumunda taşıma kilidi korunur; aynı hedef yeniden seçilerek işlem sürdürülebilir. Kalıcı silme ve okul kaldırma halen devre dışıdır.
 
 **Test durumu:** Yeni service ve Rules degisiklikleri icin Emulator/unit/device testi calistirilmadi. Canli Rules dagitilmadi; gercek ogrenci kaydi tasinmadi.
+
+
+## 24.11.2026 — Retention allowlist data-safety correction
+
+A second review found that `RETENTION_COLLECTIONS` had expanded beyond the agreed scope and included student, class, school, link, pairing and notification collections. This contradicted the release policy and could have caused destructive deletion if the Admin cleanup callable were ever used.
+
+The allowlist is now restricted to exactly:
+- `dersNotlari`
+- `dersler`
+- `yoklamalar`
+- `odevler`
+- `kitaplar`
+- `konular`
+
+Student records, classes, schools, user profiles, teacher-student links, pairing requests/codes, notifications, individual activities and the shared book library are excluded. The retention policy test was changed to assert this exact six-collection allowlist. Tests were not run; no live data was deleted and no rules were deployed.
