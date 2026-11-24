@@ -1,64 +1,82 @@
 # Bölüm 11 — Entegrasyon ve kod bütünlüğü incelemesi
 
-Tarih: 24.11.2026
+Tarih: 24.11.2026  
+Çalışma dalı: `work/section11-integration-2026-11-24`
 
 ## Çalışma tabanı ve güvenli dal
 
-- Kaynak depo: \`optisinav-svg/ogretmen-ajanda-pro\`
-- Taban dal: \`work/section10-notifications-linking\`
-- Taban commit: \`a5c9b2785c1e2d1ab91b762276923eb4414be472\`
-- Bölüm 11 çalışma dalı: \`work/section11-integration-2026-11-24\`
+- Kaynak depo: `optisinav-svg/ogretmen-ajanda-pro`
+- Taban dal: `work/section10-notifications-linking`
+- Taban commit: `a5c9b2785c1e2d1ab91b762276923eb4414be472`
+- Bölüm 11 çalışma dalı: `work/section11-integration-2026-11-24`
 - Ana dal ve canlı Firebase üzerinde değişiklik yapılmadı.
 
-Eski \`work/section11-tablet-apk\` dalı güncel Bölüm 10 dalının 21 commit gerisindeydi. Eski dal birleştirilmedi. Oradaki güvenli navigasyon düzeltmesi güncel Bölüm 10 tabanına yeniden uygulandı. Eski dalda bulunan EAS APK workflow'u Bölüm 12'ye ertelendi. Eski PR #29'a bu durum hakkında açıklama eklendi.
+Eski `work/section11-tablet-apk` dalı güncel Bölüm 10 dalının 21 commit gerisindeydi. Eski dal birleştirilmedi. Oradaki güvenli navigasyon düzeltmesi güncel Bölüm 10 tabanına yeniden uygulandı. EAS APK workflow'u Bölüm 12'ye ertelendi. Eski PR #29'a bu durum hakkında açıklama eklendi.
 
-## Tamamlanan statik düzeltmeler
+## Navigasyon ve statik bütünlük düzeltmeleri
 
-- \`App.js\` içinde \`Kayit\`, \`KVKKBilgilendirme\`, \`OgrenciKayit\` ve \`OgrenciAnaSayfa\` Stack.Screen tanımları arasında gerçek satır sonları yerine literal \`\\n\` metinleri bulunuyordu. Dört tanım ayrı JSX satırlarına ayrıldı.
-- Ekranların isimleri, sırası, component bağlantıları ve options değerleri değiştirilmedi.
-- \`App.js\` içindeki 21 ekran importu depo ağacında karşılaştırıldı; eksik import bulunmadı.
+- `App.js` içinde `Kayit`, `KVKKBilgilendirme`, `OgrenciKayit` ve `OgrenciAnaSayfa` Stack.Screen tanımları arasında gerçek satır sonları yerine literal `\n` metinleri bulunuyordu. Dört tanım ayrı JSX satırlarına ayrıldı.
+- Ekran isimleri, sırası, component bağlantıları ve options değerleri değiştirilmedi.
+- `App.js` içindeki 21 ekran importu depo ağacında karşılaştırıldı; eksik import bulunmadı.
 - 21 navigasyon rota adı karşılaştırıldı; yinelenen rota adı bulunmadı.
-- \`tests/appNavigation.test.js\` regresyon koruması eklendi. Bu dosya literal kaçışlı satır sonunu, ekran dosyalarının varlığını ve rota adı benzersizliğini denetleyecek.
-- Bölüm 10 dokümanındaki gerçek öğrenci/tablet testi yönlendirmesi Bölüm 12 olarak düzeltildi.
+- `tests/appNavigation.test.js` regresyon koruması eklendi. Test çalıştırılmadı.
+- Takvim ekranı ve dosyası değiştirilmedi; kullanıcının çalıştığını doğruladığı takvim davranışları korunuyor.
 
-Bu bölümde test komutları çalıştırılmadı. Kaynak taraması ve statik karşılaştırma yapıldı.
+## Spark callable incelemesi ve kaynakta yapılan düzeltmeler
 
-## Kritik entegrasyon engeli — Spark ve Cloud Functions
+Başlangıç taramasında dokuz ekranda Cloud Functions callable çağrıları bulundu. Her akış için güvenlik ve veri bütünlüğü incelemesi yapıldı.
 
-Kaynak kod taramasında Spark uyumluluk planıyla çelişen callable bağımlılıkları bulundu. \`firebaseConfig.js\` içinde Functions istemcisi tanımlı ve aşağıdaki ekranlar \`httpsCallable\` çağırıyor:
+Spark istemci + Firestore Rules olarak kaynakta uygulananlar:
+- SHA-256 hash belge kimliğini koruyan `services/sparkEmailAliases.js`; Rules kullanıcının yalnızca kendi doğrulanmış Auth e-posta hash'ini okuyabilir/oluşturabilir/güncelleyebilir. Listeleme ve silme kapalıdır.
+- Öğretmen profili e-posta doğrulanmadan oluşturulmaz; doğrulama sonrası alias rezervasyonu tamamlanır. Öğrenci hesabı da doğrulama sonrası alias servisini kullanır.
+- Giris, öğretmen kayıt ve öğrenci kayıt ekranlarından alias callable ve ön kontrol callable çağrıları kaldırıldı.
+- Profil ad/soyad kaydı, kendi UID profiline doğrudan alan sınırlı yazıma taşındı.
+- Doğrulanmış Auth e-postasının kendi Firestore profiline senkronizasyonu, token e-postası eşitliğini şart koşan Rules ile istemciye taşındı.
+- Hesap kapatma/yeniden etkinleştirme, kendi profil belgesi ve aynı batch içindeki audit kaydıyla istemciye taşındı. Rules uygulama sahibi istisnasını, üç yıllık saklama aralığını ve imha kilidi kontrollerini uygular.
 
-- \`GirisEkrani.js\`: e-posta alias rezervasyonu, kapalı hesabı yeniden etkinleştirme, e-posta değişikliğini profile yansıtma.
-- \`KayitEkrani.js\`: e-posta kaydı kontrolü ve alias rezervasyonu.
-- \`OgrenciKayitEkrani.js\`: öğrenci e-posta kontrolü ve alias rezervasyonu.
-- \`ProfilEkrani.js\`: ad-soyad güncelleme, e-posta alias kontrolü/değişikliği, rol düzeltme talebi, hesap kapatma.
-- \`RolDuzeltmeTalepleriEkrani.js\`: rol düzeltme talebini karara bağlama.
-- \`OgrenciEkrani.js\` ve \`OkulSinifEkrani.js\`: öğrenci taşıma ve kalıcı silme.
-- \`DonemAktarimEkrani.js\`: dönem aktarımı.
-- \`IstatistikPaneliEkrani.js\`: kapalı hesap listeleme/imha ve dönem temizliği önizleme/onay işlemleri.
+Güvenli Spark karşılığı henüz tamamlanmadığı için açık uyarıyla geçici olarak devre dışı bırakılanlar:
+- Profil e-posta değişikliği.
+- Rol düzeltme talebi/kararı; uygulama sahibi ekranında bekleyen talepler salt okunur.
+- Öğrenci sınıf/kayıtsız sınıf taşıma ve kalıcı silme.
+- Okul kaldırma (sınıf ve kayıtsız öğrenci verileri dahil).
+- Akademik dönem aktarımı.
+- Kapalı hesap listeleme ve Firebase Auth hesabını imha etme.
+- Çok koleksiyonlu yıllık dönem temizliği.
 
-Bu işlevlerin kaynak kodda \`functions/index.js\` tarafından dışa aktarılması, Firebase Spark projesinde canlı olarak çalıştıkları anlamına gelmez. Spark planında Cloud Functions dağıtımı yapılamaz. Bu nedenle ilgili kullanıcı akışlarının Spark üzerinde çalıştığı henüz doğrulanmış değildir.
+Bu kapatmalar kullanıcıya açıklanır; ilgili ekranlarda callable çağrısı veya gizli veri silme işlemi yapılmaz. İşlevlerin güvenli Spark uygulaması daha sonra ilgili iş paketinde tamamlanmalıdır.
 
-Bu işlemlerden bazıları hesap sahipliği, e-posta geçmişi, rol yetkisi, öğrenci verisi taşıma/silme ve dönemsel veri imhası içerir. Sadece hatayı gizlemek veya çağrıları kaldırmak güvenli değildir; istemciye taşınmaları da Firestore kurallarıyla yeniden tasarlanıp doğrulanmalıdır. Bu nedenle Bölüm 11 sırasında bu çağrılar gelişigüzel değiştirilmedi ve canlı sistemde hiçbir işlem yapılmadı.
+## Son callable taraması
 
-## Bölüm 12 öncesi zorunlu kod işleri
+Depo ağacındaki 38 uygulama JavaScript/JSX/TS/TSX dosyası tarandı. Uygulama kaynaklarında `httpsCallable(` çağrısı kalmadı. Functions kaynak modülleri ve eski export'lar geriye dönük kaynak uyumluluğu için depoda duruyor; uygulama ekranları bunlara bağlı değil.
 
-1. Yukarıdaki callable işlemlerinin her biri için Spark üzerinde güvenli istemci/Firestore karşılığı olup olmadığını ayrı ayrı belirle.
-2. Sunucu yetkisi gerektiren veya Firestore Rules ile güvenli biçimde yapılamayan işlemleri uygulama arayüzünde etkin göstermeme; güvenli bir çözüm olmadan çalıştırmama.
-3. E-posta alias geçmişi ve hesap kurtarma politikasını koruyacak bir Spark uyumlu model belirle. Tarihsel e-posta adreslerinin tekrar hesap açmak için kullanılmasına izin verme.
-4. Öğrenci taşıma/silme, dönem aktarımı ve dönem temizliği işlemlerinde kısmi yazma/veri kaybı riskini ortadan kaldır.
-5. Bu kod işleri tamamlanmadan Bölüm 12'de gerçek kullanıcı testi veya APK dağıtımı başlatma.
+Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
+
+## Bölüm 11 tamamlanmadan önce kalan kod işleri
+
+1. Ana çalışma listesindeki dönem temizliği tarih uyumsuzluğunu düzelt: kullanıcı kararı Temmuz 2028'de 2026 dönemini, Temmuz 2029'da 2027 dönemini temizlemek; mevcut retention kaynakları ilk tarihi 2029 ve hedefi yıl-3 tanımlıyor.
+2. Öğrenci taşıma ve okul kaldırma akışları için atomik/tekrar başlatılabilir Spark çözümünü tasarla; güvenli çözüm gelene kadar kapalı kalacak.
+3. Rol düzeltme ve dönem aktarımı için güvenli yetki/veri sahipliği çözümünü belirle; güvenli çözüm yoksa kapalı tut.
+4. Dönem temizliği ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
+5. Önceki bölümlerden devreden diğer açık maddeleri ana çalışma listesiyle eşleştir; çalışan takvimi ve doğrulanmış ekranları yeniden yazma.
 
 ## Bölüm 12'ye devredilen doğrulamalar
 
-- Güncel dalda Firestore Emulator ve Functions politika CI çalıştırmaları.
-- Android bundle ve EAS preview APK üretimi.
+- Yeni kaynak değişiklikleri için statik sözdizimi, Firestore Emulator, birim/regresyon ve indeks testleri.
+- Android bundle/export ve EAS preview APK.
 - Tablet kurulumu ve Android crash log incelemesi.
-- Gerçek öğretmen/öğrenci hesabıyla uçtan uca kullanım.
-- Canlı Firestore rules dağıtımı için ayrı açık onay ve geri dönüş planı.
+- Kullanıcının gerçek sınıfında, belirlenmiş güvenli sınırlar içinde öğretmen/öğrenci uçtan uca testi.
+- Canlı Firestore Rules dağıtımı için ayrı açık onay ve geri dönüş planı.
 - Telefon sürümüne güncelleme ancak tablet doğrulamasından sonra.
+
+## Güvenlik durumu
+
+- Bu dalda Firestore Rules kaynak dosyası değişti; canlı projeye dağıtılmadı.
+- Canlı Firestore verisi, Auth hesapları, alias kayıtları veya kullanıcı profilleri değiştirilmedi.
+- Hiçbir veri silme/taşıma/migrasyon çalıştırılmadı.
+- Test, bundle, APK veya cihaz doğrulaması yapılmadı.
 
 ## Sonuç ve durum
 
-Navigasyon kusuru düzeltildi; statik import/rota incelemesi ve regresyon koruması hazırlandı. Ancak Spark ile uyumsuz Cloud Functions çağrıları kritik entegrasyon engeli olarak kaldı.
+Navigasyon düzeltmesi ve callable kaynak bağımlılığı temizliği yapıldı. Spark'ta güvenli karşılığı tamamlanmayan riskli özellikler kullanıcıya açık biçimde devre dışı bırakıldı. Ancak dönem saklama tarih uyumsuzluğu ve diğer bölümlerden devreden entegrasyon işleri sürüyor.
 
-Bu nedenle Bölüm 11'in inceleme ve güvenli düzeltme kısmı tamamlandı, fakat **Bölüm 11 bütünüyle tamamlandı olarak işaretlenemez**. Önce callable bağımlılıklarının güvenli Spark uyumlu karşılıkları hazırlanmalı veya riskli işlemler güvenli biçimde kapatılmalıdır. Test aşaması yine Bölüm 12'ye ertelenmiştir.
+Bu nedenle **Bölüm 11 henüz tamamlandı olarak işaretlenmiyor**. Ana çalışma listesi esas alınarak kalan kod işleri tamamlanacak; test ve APK aşaması Bölüm 12'de kalacak.
