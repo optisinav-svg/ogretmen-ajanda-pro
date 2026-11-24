@@ -2,8 +2,8 @@ import React,{useState,useEffect}from'react';
 import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,ActivityIndicator,KeyboardAvoidingView,Platform}from'react-native';
 import {collection,addDoc,getDocs,doc,query,where,updateDoc}from'firebase/firestore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {auth,db,functions}from'../firebaseConfig';
-import {httpsCallable} from'firebase/functions';
+import {auth,db}from'../firebaseConfig';
+import { moveStudentToClass, moveStudentToUnregistered } from '../services/sparkStudentClassMove';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
 export default function OgrenciEkrani({route,navigation}){
  const insets=useSafeAreaInsets();
