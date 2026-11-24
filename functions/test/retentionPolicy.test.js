@@ -31,16 +31,16 @@ test('retention deletion fails closed for missing or invalid period label', () =
   assert.equal(isEligiblePeriodRecord(null, 2026), false);
 });
 
-test('retention includes local student data and teacher links but excludes global accounts', () => {
-  for (const included of [
+test('retention allowlist contains only the six approved seasonal collections', () => {
+  assert.deepEqual([...RETENTION_COLLECTIONS], [
     'dersNotlari', 'dersler', 'yoklamalar', 'odevler', 'kitaplar', 'konular',
-    'bireyselEtkinlikler', 'bireyselDersOturumlari', 'ogrenciler', 'siniflar',
-    'okullar', 'ogretmenOgrenciBaglantilari', 'ogrenciKayitEslesmeleri',
+  ]);
+  for (const excluded of [
+    'ogrenciler', 'siniflar', 'okullar', 'kullanicilar',
+    'ogretmenOgrenciBaglantilari', 'ogrenciKayitEslesmeleri',
     'ogrenciEslesmeTalepleri', 'ogrenciEslesmeKodlari',
     'ogrenciOdevBildirimleri', 'ogrenciYeniOdevBildirimleri',
-  ]) assert.equal(RETENTION_COLLECTIONS.includes(included), true, included);
-  for (const excluded of [
-    'kullanicilar', 'ogrenciPushTokenlari', 'kitapKutuphanesi',
-    'kitapKutuphanesiKonulari',
+    'bireyselEtkinlikler', 'bireyselDersOturumlari',
+    'kitapKutuphanesi', 'kitapKutuphanesiKonulari',
   ]) assert.equal(RETENTION_COLLECTIONS.includes(excluded), false, excluded);
 });
