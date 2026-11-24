@@ -74,7 +74,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Kayitli ogrencisi olan sinif silinemez.
 - Ogrenci silme davranisi: ogrenciyi okulun kayitsiz ogrenciler sinifina tasima; yoklama, odev, kitap ve ders gecmisini saklama.
 - Kayitsiz ogrenci kaydi silinirse ilgili bagli verinin kapsam ve geri donus kurali dogrulanmali.
-- Ogrenci tasima/kayitsiz sinifa alma ve kalici silme ekranlari guvenli Spark transaction tasarimi tamamlanana kadar acik uyariyla kapatildi; hicbir kayit degistirilmez.
+- Normal sinif degisikligi ve kayitsiz sinifa tasima `services/sparkStudentClassMove.js` ile Spark istemci akisina tasindi; tasima kilidi, 400'luk batch, sinif gecmisi ve eski baglantiyi koruyup yeni kodla yeniden eslestirme kullanilir. Testleri 12. bolumde. Ogrenci kalici silme ve okul kaldirma halen acik uyariyla kapali.
 - Ogretmen silme/hesap kapatma, ogretmene bagli kayitlari sahipsiz birakmayacak sekilde ele alinmali.
 - Bu maddeler kod ve gercek veri uzerinde ayri ayri dogrulanmadi: KOD INCELEMESI GEREKLI.
 
