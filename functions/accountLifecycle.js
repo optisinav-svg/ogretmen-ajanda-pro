@@ -161,6 +161,7 @@ exports.epostaDegisikliginiProfileYansit = onCall({ region: REGION }, async requ
   }
   const { ref, data } = await getProfile(uid);
   if (data.hesapDurumu === 'kapali') throw new HttpsError('failed-precondition', 'Kapalı hesapta e-posta değiştirilemez.');
+  await claimAlias(email, uid);
   await ref.update({ eposta: email, epostaGuncellenme: FieldValue.serverTimestamp() });
   return { durum: 'guncellendi' };
 });
