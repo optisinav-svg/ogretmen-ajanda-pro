@@ -13,6 +13,7 @@ on:
       - work/section8-account-period-management
       - work/section9-calendar-usability
       - work/section10-notifications-linking
+      - work/section11-tablet-apk
   pull_request:
     branches:
       - work/section5-homework-attendance-reports
@@ -26,6 +27,7 @@ on:
       - work/section7-safe-delete-retention
       - work/section8-account-period-management
       - work/section9-calendar-usability
+      - work/section10-notifications-linking
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
