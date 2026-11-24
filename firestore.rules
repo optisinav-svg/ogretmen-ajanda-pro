@@ -646,7 +646,7 @@ service cloud.firestore {
         && data.ogrenciKayitId is string
         && data.bildirimAnahtari is string
         && data.bildirimAnahtari.size() == 13
-        && data.bildirimAnahtari.matches('^[0-9]+')
+        && data.bildirimAnahtari.matches('^[0-9]{13}')
         && data.yeniDurum in ['yapildi', 'yapilmadi', 'gec']
         && data.oncekiDurum in ['bekliyor', 'yapildi', 'yapilmadi', 'gec']
         && data.okundu == false
