@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvo
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, reload, signOut } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -40,7 +40,7 @@ if (profile.get('hesapDurumu') === 'kapali') {
   return;
 }
 if (credential.user.emailVerified && profile.get('eposta') !== credential.user.email) {
-  await httpsCallable(functions, 'epostaDegisikliginiProfileYansit')({});
+  await updateDoc(doc(db,'kullanicilar',credential.user.uid), { eposta: credential.user.email });
 }
 const role = profile.get('rol');
 if (role === 'ogrenci') {
