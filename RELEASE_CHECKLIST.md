@@ -35,6 +35,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 
 ### Grup 3 — Firestore güvenliği ve backend
 - [ ] Öğretmen yalnızca kendi UID'si altında öğretmen profili oluşturabilir; öğrenci profili yalnızca doğrulanmış, tek kullanımlık kod talebiyle oluşur; uygulama sahibi claim'i istemciden atanamaz.
+- [ ] Uygulama sahibi `uygulamaSahibi == true` custom claim'i, UID/e-posta eşleşmesi doğrulandıktan ve ayrı açık onay alındıktan sonra `functions/scripts/set-application-owner-claim.js` ile atanır; oturum yenilenir ve istatistik paneli erişimi doğrulanır. Script henüz çalıştırılmadı.
 - [x] Firestore rules: kullanıcı/veri sahipliği, sınıf-öğrenci-ders-kitap ilişkileri, dönem tutarlılığı ve varsayılan reddetme Emulator testlerinden geçti.
 - [x] Spark eşleştirme akışı: SHA-256 belge kimlikli 16 karakter kod, 12 saat süre, tek kullanımlılık, doğrulanmış e-posta/ad/sınıf/dönem eşleşmesi ve öğretmen onayı Emulator'da denetlendi.
 - [ ] Uygulama sahibi dönem temizliği: kullanıcı kararına göre Temmuz 2028'de 2026, Temmuz 2029'da 2027 ve sonraki yıllarda iki yıl önceki dönem. Kaynak retention helper ve Firestore Rules bu takvime güncellendi; yeni kuralların Emulator testi Bölüm 12'de bekliyor. Temizlik ekranı Spark'ta güvenli çok-batch akışı tamamlanana kadar kapalı.
