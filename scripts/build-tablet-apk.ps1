@@ -66,7 +66,31 @@ if (Test-Path $validationDir) {
 npx expo export --platform android --output-dir $validationDir
 Assert-LastExitCode 'Expo Android export'
 
-Write-Host '3/4 — EAS hesabı doğrulanıyor...' -ForegroundColor Cyan
+Write-Host '3/5 — Üretim bağımlılıklarının güvenlik denetimi yapılıyor...' -ForegroundColor Cyan
+$auditPath = Join-Path $env:TEMP 'ogretmen-ajanda-runtime-audit.json'
+npm audit --omit=dev --json > $auditPath
+$auditExitCode = $LASTEXITCODE
+if (-not (Test-Path $auditPath)) {
+  throw 'npm audit raporu üretilemedi; EAS APK build başlatılmadı.'
+}
+try {
+  $audit = Get-Content -Path $auditPath -Raw | ConvertFrom-Json
+} catch {
+  throw "npm audit raporu okunamadı. Rapor: $auditPath"
+}
+if (-not $audit.metadata -or -not $audit.metadata.vulnerabilities) {
+  throw "npm audit raporunda güvenlik özeti bulunamadı. Rapor: $auditPath"
+}
+$vuln = $audit.metadata.vulnerabilities
+Write-Host "Üretim bağımlılıkları — kritik: $($vuln.critical), yüksek: $($vuln.high), orta: $($vuln.moderate), düşük: $($vuln.low)" -ForegroundColor Yellow
+if ($vuln.critical -gt 0 -or $vuln.high -gt 0) {
+  throw "Üretim bağımlılıklarında yüksek/kritik güvenlik uyarısı var. Önce raporu inceleyin: $auditPath"
+}
+if ($vuln.moderate -gt 0) {
+  Write-Host "Orta düzey uyarılar var; rapor incelenmeli: $auditPath" -ForegroundColor Yellow
+}
+
+Write-Host '4/5 — EAS hesabı doğrulanıyor...' -ForegroundColor Cyan
 npx eas-cli@latest whoami
 Assert-LastExitCode 'EAS hesap erişimi'
 
@@ -78,7 +102,7 @@ if ($approval -cne 'BUILD') {
   throw 'BUILD onayı verilmedi. EAS APK build başlatılmadı.'
 }
 
-Write-Host '4/4 — EAS preview Android APK build başlatılıyor...' -ForegroundColor Cyan
+Write-Host '5/5 — EAS preview Android APK build başlatılıyor...' -ForegroundColor Cyan
 npx eas-cli@latest build --profile preview --platform android --non-interactive
 Assert-LastExitCode 'EAS Android APK build'
 
