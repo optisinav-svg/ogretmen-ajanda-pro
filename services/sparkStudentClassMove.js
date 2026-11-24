@@ -48,16 +48,13 @@ function fieldsDiffer(data, fields) {
 
 async function getActiveLinkForStudent(uid, studentId) {
   const indexRef = doc(db, 'ogrenciKayitEslesmeleri', `${uid}__${studentId}`);
-  const [byTeacher, byLegacyUid, indexSnap] = await Promise.all([
+  const [linksSnapshot, indexSnap] = await Promise.all([
     getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('ogretmenUid', '==', uid))),
-    getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('uid', '==', uid))),
     getDoc(indexRef),
   ]);
-  const unique = new Map();
-  [...byTeacher.docs, ...byLegacyUid.docs].forEach(item => unique.set(item.id, item));
-  const hasActiveLink = [...unique.values()].some(item => {
+  const hasActiveLink = linksSnapshot.docs.some(item => {
     const data = item.data();
-    return (data.ogrenciKayitId || data.ogrenciId) === studentId && data.durum === 'active';
+    return data.ogrenciKayitId === studentId && data.durum === 'active';
   });
   if (indexSnap.exists() && indexSnap.data().durum === 'active') {
     const index = indexSnap.data();
