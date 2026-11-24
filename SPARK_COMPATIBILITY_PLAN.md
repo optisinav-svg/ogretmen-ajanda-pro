@@ -86,3 +86,14 @@ A static scan of the current application screens found that the statement above 
 These callables are present in the repository's Functions source, but source exports do not prove that they are deployed or available on the Spark project. A number of these operations are security- or data-destructive. They must not be replaced with unrestricted client writes or treated as working on Spark.
 
 Before a tablet APK or real-account test, each flow must either receive a Firestore-Rules-enforced Spark implementation or be safely disabled with a clear user-facing explanation. Email alias history must remain protected against reuse; student moves/deletions and period transfer/retention must not allow partial writes or data loss. No live deployment or data mutation was performed as part of this audit.
+
+
+## 24.11.2026 — Guncel Spark callable durumu
+
+Onceki statik tarama sonrasinda iki dusuk riskli alan daha Spark istemci akisina tasindi: profil ad/soyad kaydi ve dogrulanmis Auth e-postasinin kendi profile yazilmasi. Sonraki incelemede Firebase Security Rules SHA-256 hashing destegi dogrulandigi icin mevcut SHA-256 e-posta alias belge yapisi korunarak `services/sparkEmailAliases.js` eklendi; Rules yalnizca kullanicinin kendi dogrulanmis e-posta hash'ini okuyup olusturmasina/guncellemesine izin veriyor. Ogretmen profili e-posta dogrulanmadan olusturulmuyor; ogrenci alias rezervasyonu da dogrulama sonrasi yapiliyor.
+
+Hesap kapatma ve yeniden etkinlestirme de kendi profil belgesi + ayni batch'teki audit kaydi ile istemciye tasindi. E-posta degisikligi, yeni adresin alias uygunlugunu Spark'ta guvenli on kontrol etme akisi tamamlanana kadar gecici olarak kapatildi.
+
+Buna ragmen callable bagimliliklari tum uygulamadan kalkmadi. Kalan ekranlar: Profil (rol talebi), RolDuzeltmeTalepleri (karar), OgrenciEkrani (sinif/kayitsiz tasima ve silme), OkulSinifEkrani (okul kaldirma sirasinda kayitsiz ogrenci verilerini silme), DonemAktarimEkrani (buyuk aktarim), IstatistikPaneli (kapali hesap listeleme/imha ve donem temizligi). Bu islemler guvenli rules/transaction tasarimi veya acik guvenli devre disi birakma karari olmadan APK'ya hazir sayilmaz.
+
+Yeni degisiklikler icin Emulator/unit testleri calistirilmadi; canlı Firestore rules dagitilmadi; canlı veri ve Auth hesaplari degistirilmedi. Bu nedenle bu belge bir dagitim onayi degildir.
