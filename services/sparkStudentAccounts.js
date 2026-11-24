@@ -96,10 +96,16 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
   const requestRef = doc(collection(db, 'ogrenciEslesmeTalepleri'));
 
   await runTransaction(db, async transaction => {
-    const [codeSnap, profileSnap] = await Promise.all([
-      transaction.get(codeRef),
-      transaction.get(profileRef),
-    ]);
+    let codeSnap;
+    try {
+      codeSnap = await transaction.get(codeRef);
+    } catch (error) {
+      if (error?.code === 'permission-denied') {
+        throw new Error('Eşleştirme kodu süresi dolmuş, kullanılmış veya bu e-posta adresiyle eşleşmiyor.');
+      }
+      throw error;
+    }
+    const profileSnap = await transaction.get(profileRef);
     if (!codeSnap.exists()) throw new Error('Eşleştirme kodu geçersiz veya bulunamadı.');
     const invite = codeSnap.data();
     if (invite.kullanildi || !invite.sonaErme || invite.sonaErme.toMillis() <= Date.now()) {
