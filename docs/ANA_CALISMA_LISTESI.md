@@ -120,7 +120,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Sinif gelisim raporu PDF'i kaynakta eklenmis olarak belgelenmis; icerik ve cihaz cikti testi 12. bolumde.
 - Ozel ders, etut ve soru cozumu takvim etkinlikleri/PDF yansimasi kullanici tarafindan APK sonrasi kontrol edilecek.
 - Takvim yeniden tasarlanmayacak; kullanici tarafindan dogrulanan davranislar korunacak.
-- Durum: KOD INCELEMESI GEREKLI; cihaz testleri 12. bolumde.
+- Durum: Ders konusu düzenleme kaynakta doğrulandı; diğer ders/ödev/yoklama/kitap/rapor ilişkileri bütünsel kod incelemesi ve cihaz doğrulaması 12. bölümde.
 
 ### P7 — KVKK ve yayin oncesi bilgilendirme
 
