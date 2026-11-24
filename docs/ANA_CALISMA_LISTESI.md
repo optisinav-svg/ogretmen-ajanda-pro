@@ -104,7 +104,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Yeni odev uygulama ici bildirimi, okundu durumu ve hedef kaldirilinca bildirim iptali incelenecek.
 - Push bildirimleri Spark kisiti nedeniyle kapsam disi.
 - Ortaokul ogrenci hesap akisinin hukuki surec netlesene kadar kapali kalmasi release checklist'te yer aliyor; mevcut kaynak bayraklariyla celiski varsa acikliga kavusturulacak.
-- Onceki belgelerde kod/kurallar/Emulator testlerinin uygulandigi belirtilmis olsa da tam callable envanteriyle celiski var. Durum: KAYNAKTA VAR / ENTEGRASYON ENGELI; gercek hesap testi 12. bolumde.
+- `ACCOUNT_LINKING_ENABLED=true`; `services/sparkStudentAccounts.js` dogrudan Firestore transaction/batch kullanir: 16 karakter kriptografik rastgele kod, SHA-256 belge kimligi, 12 saat sure, tek kullanim, dogrulanmis e-posta/ad-soyad eslesmesi, ogretmen onayi ve allowlist izinleri. Ogrenci uygulama ici bildirimleri de dogrudan Firestore kullanir; push yok. Mevcut kaynakta bu akislara callable cagrisi yok. Son Rules degisiklikleriyle birlikte Emulator regresyonu ve gercek hesap testi 12. bolumde yapilacak.
 
 ### P6 — Ders, odev, yoklama, kitap ve rapor
 
