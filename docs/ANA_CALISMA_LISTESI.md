@@ -107,6 +107,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Tek kullanimlik, 12 saatlik kod; e-posta/ad-soyad eslesmesi; ogretmen onayi; baglanti basina izinler ve "Hepsi" karari korunacak.
 - Ogrenci yalnizca kendisine atanmis odev icin tamamlama bildirimi olusturabilir; ogretmen son karar merciidir.
 - Yeni odev uygulama ici bildirimi, okundu durumu ve hedef kaldirilinca bildirim iptali incelenecek.
+- Haziran donem hatirlatmasi kaynakta mevcut: ogretmene secili eski donem, ogrenciye eski donem baglantisi olup yeni donem baglantisi olmamasi halinde 5 gunde bir yerel hatirlatma gosterilir. Gercek cihaz davranisi 12. bolumde dogrulanacak.
 - Push bildirimleri Spark kisiti nedeniyle kapsam disi.
 - Ortaokul ogrenci hesap akisinin hukuki surec netlesene kadar kapali kalmasi release checklist'te yer aliyor; mevcut kaynak bayraklariyla celiski varsa acikliga kavusturulacak.
 - `ACCOUNT_LINKING_ENABLED=true`; `services/sparkStudentAccounts.js` dogrudan Firestore transaction/batch kullanir: 16 karakter kriptografik rastgele kod, SHA-256 belge kimligi, 12 saat sure, tek kullanim, dogrulanmis e-posta/ad-soyad eslesmesi, ogretmen onayi ve allowlist izinleri. Ogrenci uygulama ici bildirimleri de dogrudan Firestore kullanir; push yok. Mevcut kaynakta bu akislara callable cagrisi yok. Son Rules degisiklikleriyle birlikte Emulator regresyonu ve gercek hesap testi 12. bolumde yapilacak.
