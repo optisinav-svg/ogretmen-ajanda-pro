@@ -67,3 +67,15 @@ Veri kategorileri ve saklama gerekçeleri en az yılda bir gözden geçirilir. �
 - Cloud Functions dağıtımı, e-posta doğrulama şablonları, Firebase Auth ayarları ve indeksler ayrıca doğrulanmalıdır.
 - Eski hesapların UID/e-posta eşlemesi salt okunur envanterle kontrol edilmeden toplu migrasyon yapılmaz.
 - Dönem aktarımı, kaynak koleksiyon şemaları ve bütün ilişki alanları doğrulanmadan üretim kullanımına açılmaz.
+
+
+## Akademik dönem aktarımı — uygulama kapsamı
+
+- Öğretmen kaynak dönemdeki okul/sınıf kayıtlarını görür; aktarılacak sınıfları, öğrencileri, hedef kademeyi ve her öğrenci için aktarılacak kitap atamalarını tek tek seçer.
+- Ortak `kitapKutuphanesi` ve `kitapKutuphanesiKonulari` koleksiyonları zaten dönemden bağımsızdır; kopyalanmaz. Seçilen öğrenci kitap atamaları ve konu sayfa aralıkları yeni dönem kayıtları olarak kopyalanır.
+- Eski dönem yoklama, ders, ödev ve tamamlanma geçmişi yeni döneme taşınmaz. Yeni dönem konu/ödev ilerlemesi sıfırdan başlar. Eski kayıtlar değişmeden kalır.
+- Öğrenci hesap bağlantısı ve paylaşım izinleri varsa, yeni öğrenci kaydına ayrı bir dönem bağlantısı oluşturulur; eski bağlantı geçmişi korunur.
+- 12. sınıf, TYT ve AYT kaynak sınıfları hedefte TYT olarak açılır. Diğer kademeler öğretmen tarafından seçilir.
+- Aktarım kimlikleri kaynak kayıt + hedef dönem üzerinden deterministiktir. Aynı aktarım tekrar çalıştırılırsa aynı belge kimlikleri kullanılır; farklı bir kayıtla çakışma tespit edilirse işlem güvenli biçimde durur.
+- İlk sürüm bir çağrıda en fazla 500 öğrenci ve 100 sınıfı kabul eder. Daha büyük aktarım gruplara bölünerek yapılmalıdır.
+- Aktarım Admin SDK callable üzerinden çalışır; istemci doğrudan geçmiş dönemi değiştirmez. Canlıya alınmadan önce Firestore Emulator entegrasyon testi ve örnek veri üzerinde dry-run/önizleme gerekir.
