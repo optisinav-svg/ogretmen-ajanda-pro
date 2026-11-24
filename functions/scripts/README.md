@@ -28,6 +28,19 @@ node .\scripts\audit-missing-periods.js
 node .\scripts\audit-rules-compatibility.js
 ```
 
+
+### `diagnose-rules-compatibility.js`
+- İlk uyumluluk denetimindeki eksik sınıf/öğrenci referanslarını ve mevcut ders-sınıf uyuşmazlıklarını daha ayrıntılı, salt okunur şekilde gruplar.
+- Yalnızca koleksiyon adları, kayıt/farklı referans sayıları, farklı sahip hesabı sayısı, dönem yılları ve varsa tarih aralıklarını raporlar.
+- Belge kimliği, UID, ad, soyad, e-posta veya belge içeriği yazdırmaz.
+- Firestore'a hiçbir belge yazmaz, güncellemez veya silmez.
+- Yorumlama notları `docs/SECTION12_RULES_DATA_DIAGNOSTICS.md` içindedir.
+
+Çalıştırma:
+```powershell
+node .\scripts\diagnose-rules-compatibility.js
+```
+
 ### `firestore-backup.js`
 - Firestore verisini salt okunur dışa aktarır.
 - Arşiv ve manifest oluşturur; manifest içine arşivin SHA-256 değerini yazar.
