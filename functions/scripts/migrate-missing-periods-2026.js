@@ -30,7 +30,8 @@ function hasApplyFlag(argv) {
 }
 
 function hasTargetConfirmation(argv) {
-  return argv.includes('--confirm-period=' + TARGET_PERIOD);
+  return argv.includes('--confirm-period=' + TARGET_PERIOD)
+    && argv.includes('--confirm-all-missing-are-2026');
 }
 
 async function sha256File(filePath) {
@@ -171,7 +172,7 @@ async function main() {
   const argv = process.argv.slice(2);
   const apply = hasApplyFlag(argv);
   if (apply && !hasTargetConfirmation(argv)) {
-    throw new Error('Yazma için hem --apply hem de --confirm-period=2026 parametreleri zorunludur.');
+    throw new Error('Yazma için --apply, --confirm-period=2026 ve --confirm-all-missing-are-2026 parametreleri birlikte zorunludur.');
   }
   const backup = await verifyBackup();
   initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
@@ -190,6 +191,7 @@ async function main() {
     throw new Error('Yazma öncesi SHA-256 doğrulaması zorunlu. Güncel backup scriptiyle yedek alın veya eşleşen .sha256 sidecar dosyası sağlayın.');
   }
   console.log('Dönem verisi olmayan profil ve ortak kitap kütüphanesi tanımları bilerek kapsam dışıdır.');
+  if (apply) console.log('Operatör onayı: tüm eksik donemYili kayıtlarının 2026 dönemine ait olduğu açıkça onaylandı.');
 
   // Always scan every collection before the first write. Existing but invalid
   // period values are never overwritten; if any are found, abort before apply.
@@ -225,7 +227,7 @@ async function main() {
     console.log('MIGRATION VERIFIED: kapsam içindeki tüm dönemsiz belgelere 2026 dönemi yazıldı.');
   } else {
     console.log('DRY-RUN tamamlandı. Hiçbir Firestore belgesi değiştirilmedi.');
-    console.log('Önizleme doğrulandıktan ve açık karar verildikten sonra --apply --confirm-period=2026 parametreleri birlikte kullanılmalıdır.');
+    console.log('Önizleme doğrulandıktan ve açık karar verildikten sonra --apply --confirm-period=2026 --confirm-all-missing-are-2026 parametreleri birlikte kullanılmalıdır.');
   }
 }
 
