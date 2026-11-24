@@ -669,9 +669,12 @@ service cloud.firestore {
 
     function teacherCanUpdateHomeworkStatus() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return ownsEditablePeriodRecord()
-        && keepsOwner()
-        && keepsPeriod()
+      return isTeacher()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && resource.data.donemYili is int
+        && request.resource.data.donemYili == resource.data.donemYili
+        && isEditablePeriod(resource.data.donemYili)
         && request.resource.data.sinifId == resource.data.sinifId
         && changed.hasOnly(['ogrenciDurumlari', 'durumGecmisi', 'durum'])
         && request.resource.data.ogrenciDurumlari is map
