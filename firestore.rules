@@ -14,7 +14,7 @@ service cloud.firestore {
     function matchesCurrentEmailAlias(aliasId) {
       return signedIn()
         && request.auth.token.email is string
-        && aliasId == hashing.sha256(request.auth.token.email.lower().trim().utf8()).toHexString();
+        && aliasId == hashing.sha256(request.auth.token.email.lower().trim().toUtf8()).toHexString();
     }
 
     function isRetentionCleanupWindow(periodYear) {
