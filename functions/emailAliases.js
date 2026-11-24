@@ -49,6 +49,20 @@ async function claimAlias(emailValue, uid, { createIfMissing = true } = {}) {
   });
 }
 
+exports.epostaAliasDegisikliginiKontrolEt = onCall({ region: REGION }, async request => {
+  if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
+  const email = normalizeEmail(request.data?.email);
+  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
+  const snap = await aliasRef(email).get();
+  if (snap.exists) {
+    const expiry = snap.get('sonaErme')?.toMillis?.() || 0;
+    if (snap.get('ownerUid') !== request.auth.uid && (!expiry || expiry > Date.now())) {
+      throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce başka bir hesaba ait olarak rezerve edilmiş.');
+    }
+  }
+  return { kullanilabilir: true };
+});
+
 exports.epostaAliasiniRezerveEt = onCall({ region: REGION }, async request => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Mevcut e-posta adresi doğrulanmış olmalıdır.');
