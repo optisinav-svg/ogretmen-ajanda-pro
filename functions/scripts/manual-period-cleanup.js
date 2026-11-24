@@ -37,7 +37,7 @@ function parseArg(argv, name) {
   return item ? item.slice(prefix.length) : null;
 }
 
-function validateBackupManifest(manifest, now = new Date()) {
+function validateBackupManifest(manifest, now = new Date(), { requireFresh = true } = {}) {
   if (!manifest || manifest.projectId !== PROJECT_ID || manifest.readOnly !== true) {
     throw new Error('Yedek manifesti ogretmen-takip projesine ait salt okunur yedek değil.');
   }
@@ -45,8 +45,10 @@ function validateBackupManifest(manifest, now = new Date()) {
     throw new Error('Yedek oluşturulma zamanı doğrulanamadı.');
   }
   const age = now.getTime() - Date.parse(manifest.createdAt);
-  if (age < 0 || age > BACKUP_MAX_AGE_MS) {
-    throw new Error('Silme öncesi son 24 saat içinde alınmış yeni bir Firestore yedeği gerekiyor.');
+  if (age < 0 || (requireFresh && age > BACKUP_MAX_AGE_MS)) {
+    throw new Error(requireFresh
+      ? 'Silme öncesi son 24 saat içinde alınmış yeni bir Firestore yedeği gerekiyor.'
+      : 'Kayıtlı temizleme yedeğinin zamanı geçersiz.');
   }
   if (typeof manifest.archive !== 'string'
     || path.basename(manifest.archive) !== manifest.archive
@@ -133,6 +135,36 @@ async function loadLatestVerifiedBackup(now = new Date()) {
   };
 }
 
+async function loadStoredBackup(lock, now = new Date()) {
+  const manifestName = lock?.backupManifest;
+  const expectedHash = lock?.backupSha256;
+  if (typeof manifestName !== 'string' || path.basename(manifestName) !== manifestName
+    || !manifestName.endsWith('.manifest.json')
+    || typeof expectedHash !== 'string') {
+    throw new Error('Devam eden temizliğin ilk yedek bilgisi bulunamadı; işlem güvenli biçimde sürdürülemez.');
+  }
+  const manifestPath = path.join(BACKUP_DIR, manifestName);
+  if (!fs.existsSync(manifestPath)) throw new Error('İlk temizleme yedeğinin manifesti bulunamadı.');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  validateBackupManifest(manifest, now, { requireFresh: false });
+  if (manifest.archiveSha256.toLowerCase() !== expectedHash.toLowerCase()) {
+    throw new Error('Devam eden temizliğin yedek özeti kayıtla eşleşmiyor.');
+  }
+  const startedAt = lock.startedAt?.toDate?.();
+  if (!startedAt || Date.parse(manifest.createdAt) > startedAt.getTime()) {
+    throw new Error('İlk yedek, temizleme başlangıcından sonra oluşturulmuş; devam işlemi reddedildi.');
+  }
+  const archivePath = path.join(BACKUP_DIR, manifest.archive);
+  if (!fs.existsSync(archivePath) || fs.statSync(archivePath).size <= 0) {
+    throw new Error('İlk temizleme yedeğinin arşivi bulunamadı veya boş.');
+  }
+  const actualHash = await sha256File(archivePath);
+  if (actualHash.toLowerCase() !== expectedHash.toLowerCase()) {
+    throw new Error('İlk temizleme yedeğinin SHA-256 özeti doğrulanamadı.');
+  }
+  return { manifestPath, archivePath, manifest, sha256: actualHash };
+}
+
 async function getCleanupCounts(db, targetYear) {
   const entries = await Promise.all(RETENTION_COLLECTIONS.map(async name => {
     const result = await db.collection(name).where('donemYili', '==', targetYear).count().get();
@@ -209,7 +241,7 @@ async function readPlan(db, currentYear, targetYear) {
   };
 }
 
-async function acquireCleanupLock(db, plan, ownerUid, currentYear, targetYear) {
+async function acquireCleanupLock(db, plan, ownerUid, currentYear, targetYear, backup) {
   const runToken = crypto.randomUUID();
   const now = Date.now();
   const leaseExpiresAt = Timestamp.fromMillis(now + LEASE_MS);
@@ -225,6 +257,8 @@ async function acquireCleanupLock(db, plan, ownerUid, currentYear, targetYear) {
         startedAt: FieldValue.serverTimestamp(),
         plannedCounts: plan.plannedCounts,
         plannedTotal: sumCounts(plan.plannedCounts),
+        backupManifest: path.basename(backup.manifestPath),
+        backupSha256: backup.sha256,
         completedCollections: [],
         runToken,
         leaseExpiresAt,
@@ -235,7 +269,9 @@ async function acquireCleanupLock(db, plan, ownerUid, currentYear, targetYear) {
     const data = snap.data();
     if (data.status === 'completed') throw new Error('Bu yılın dönem temizliği zaten tamamlanmış.');
     if (data.targetYear !== targetYear || data.startedBy !== ownerUid
-      || Number(data.plannedTotal) !== sumCounts(plan.plannedCounts)) {
+      || Number(data.plannedTotal) !== sumCounts(plan.plannedCounts)
+      || data.backupSha256 !== backup.sha256
+      || data.backupManifest !== path.basename(backup.manifestPath)) {
       throw new Error('Mevcut temizleme kaydı bu hedef veya uygulama sahibi ile eşleşmiyor.');
     }
     const activeUntil = data.leaseExpiresAt?.toMillis?.() || 0;
@@ -351,7 +387,9 @@ async function main() {
     return;
   }
 
-  const backup = await loadLatestVerifiedBackup(now);
+  const backup = plan.status === 'resumable'
+    ? await loadStoredBackup(plan.lock, now)
+    : await loadLatestVerifiedBackup(now);
   for (const name of RETENTION_COLLECTIONS) {
     if (Number(backup.manifest.collections[name] || 0) < Number(plan.plannedCounts[name] || 0)) {
       throw new Error('Yedekte ' + name + ' koleksiyonu sayısı temizleme planını karşılamıyor.');
@@ -375,7 +413,7 @@ async function main() {
     }
   }
 
-  const runToken = await acquireCleanupLock(db, plan, ownerUid, target.currentYear, target.targetYear);
+  const runToken = await acquireCleanupLock(db, plan, ownerUid, target.currentYear, target.targetYear, backup);
   const executionPlan = { ...plan, lock: { ...(plan.lock || {}), targetYear: target.targetYear } };
   try {
     await deleteTargetPeriod(db, executionPlan, runToken);
