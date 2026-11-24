@@ -224,7 +224,7 @@ Bu ana liste bir takip belgesidir; canli sistemde islem yapma izni degildir. Her
 - EAS build için ayrı `scripts/build-tablet-apk.ps1` hazırlandı. Betik Firebase Rules/Functions deploy etmez, Firestore'a yazmaz ve veri silmez; proje kimliklerini, dalı, temiz çalışma ağacını, Node sürümünü, Android bundle ve EAS hesabını doğrular. EAS build'i yalnızca kullanıcı `BUILD` onayı girerse başlatır.
 - Eski `scripts/prepare-spark-apk.ps1` birleşik deploy/build betiği yanlışlıkla çalıştırılmaması için fail-closed hale getirildi.
 - Yeni `tests/apkBuildSafety.test.js` güvenlik sınırlarını regresyon testi olarak korur.
-- Yeni release dalının CI sonucu bekleniyor; CI geçmeden APK hazırlığına geçilmeyecek.
+- GitHub Actions #708 (`c9ebe44`) başarılı: Firestore Emulator/regresyon testleri 82/82, Functions politika testleri 46/46; Android bundle 888 modülle üretildi. EAS APK build, canlı Rules dağıtımı ve cihaz testi henüz yapılmadı.
 - Canlı Rules dağıtımı ayrı onay kapısıdır. Yeni APK, Rules canlıda doğrulanmadan kurulup kullanılmayacak.
 - Sonraki adımlar: CI sonucu → salt okunur canlı Firebase yapılandırma/indeks karşılaştırması → Rules için yedek ve geri dönüş doğrulaması → kullanıcıya ayrı DEPLOY onayı → Rules doğrulaması → EAS APK build → tablet kurulumu/testi.
 - Kullanıcı tarafından bildirilen sınıf ders notlarının eksilmesi sorunu bu APK/ilk kullanım kapılarından sonra salt okunur olarak incelenecek; sınıf UID'si o aşamada istenecek.
