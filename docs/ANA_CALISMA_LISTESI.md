@@ -191,3 +191,8 @@ Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasi
 - Istatistik ekraninin temel sayimlari dogrudan Firestore sorgulariyla yapiliyor; kapali hesap ve donem temizligi islemleri hala callable'a bagli.
 
 **Durum:** Callable envanteri tamamlandi; kod degisiklikleri ve guvenli Spark karsiliklari henuz tamamlanmadi. P0 engeli devam ediyor. Testler calistirilmadi; canli Firebase veya kullanici verisi degistirilmedi.
+
+
+### 24.11.2026 ilk kod duzeltmesi
+
+`ProfilEkrani.js` ad/soyad kaydetme akisi callable'dan cikarildi; kendi UID'sine ait profil belgesine `ad` ve `soyad` alanlari, mevcut Firestore Rules kisitlari altinda dogrudan yaziliyor. Eski callable export'u kurulu telefon uygulamasinin geriye donuk uyumlulugunu korumak icin silinmedi. Kaynak degisikligi yapildi; test ve cihaz dogrulamasi 12. bolume birakildi. P0 callable engeli diger akislardan dolayi devam ediyor.
