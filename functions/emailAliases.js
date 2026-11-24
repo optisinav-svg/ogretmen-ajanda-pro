@@ -83,6 +83,8 @@ exports.epostaAliasGirisKontrol = beforeUserSignedIn({ region: REGION }, async e
 
 // Account closure retains aliases for the same three-year account-retention window.
 // Reactivation clears the expiry while the account remains within that window.
+exports.reserveEmailAlias = claimAlias;
+
 exports.setEmailAliasRetention = async (uid, expiresAt = null) => {
   const snap = await db.collection('epostaAliaslari').where('ownerUid', '==', uid).get();
   for (let i = 0; i < snap.docs.length; i += 450) {
