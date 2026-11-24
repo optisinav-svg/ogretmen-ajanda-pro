@@ -5,11 +5,10 @@ import {
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
 import { doc, runTransaction } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { deleteUser } from 'firebase/auth';
-import { auth, db, functions } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
+import { reserveCurrentEmailAlias } from '../services/sparkEmailAliases';
 
 const buYil = new Date().getFullYear();
 const SEZONLAR = [
@@ -55,24 +54,22 @@ export default function KayitEkrani({ navigation, route }) {
     setYukleniyor(true);
     try {
       const normalizedEmail = eposta.trim().toLowerCase();
-      await httpsCallable(functions, 'epostaKaydiKontrolEt')({ email: normalizedEmail });
       let user = auth.currentUser;
-      let createdNewUser = false;
       if (user && (user.email || '').toLowerCase() !== normalizedEmail) {
         throw new Error('Önce açık olan hesaptan çıkış yapın, ardından yeni öğretmen hesabını oluşturun.');
       }
       if (!user) {
         const sonuc = await createUserWithEmailAndPassword(auth, normalizedEmail, sifre);
         user = sonuc.user;
-        createdNewUser = true;
-      }
-      try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
-        if (createdNewUser) await deleteUser(user).catch(() => {});
-        throw aliasError;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
-      const emailVerificationPending = !user.emailVerified;
-      if (emailVerificationPending) await sendEmailVerification(user);
+      await reload(user);
+      if (!user.emailVerified) {
+        await sendEmailVerification(user);
+        Alert.alert('E-posta doğrulaması gerekli', 'E-posta adresinize doğrulama bağlantısı gönderdik. Bağlantıyı açtıktan sonra bu ekrana dönüp Kaydı Tamamla düğmesine yeniden basın. Profiliniz doğrulama tamamlanmadan oluşturulmayacak.');
+        return;
+      }
+      await reserveCurrentEmailAlias(user);
       const profileRef = doc(db, 'kullanicilar', user.uid);
       await runTransaction(db, async transaction => {
         const existing = await transaction.get(profileRef);
@@ -86,12 +83,12 @@ export default function KayitEkrani({ navigation, route }) {
           olusturulmaTarihi: new Date().toISOString(),
         });
       });
-      if (emailVerificationPending) Alert.alert('E-posta doğrulaması', 'E-posta adresinize doğrulama bağlantısı gönderdik. Eski e-posta adreslerinin korunması için gelen kutunuzdan doğrulama yapın.');
       navigation.replace('AnaSayfa');
     } catch (hata) {
       let mesaj = 'Kayıt oluşturulamadı.';
       if (hata.code === 'auth/email-already-in-use') mesaj = 'Bu e-posta zaten kayıtlı. Giriş ekranından giriş yapın.';
       else if (hata.code === 'auth/invalid-email') mesaj = 'Geçersiz e-posta adresi.';
+      else if (hata.code === 'alias/already-reserved') mesaj = hata.message;
       else if (hata.code === 'functions/already-exists') mesaj = 'Bu hesap için kullanıcı profili zaten mevcut. Giriş ekranına dönün.';
       else if (hata.message) mesaj = hata.message;
       Alert.alert('Kayıt Hatası', mesaj);
