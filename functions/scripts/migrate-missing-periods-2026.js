@@ -77,7 +77,7 @@ async function verifyBackup() {
       const sidecars = [archivePath + '.sha256', manifestPath + '.sha256'];
       for (const sidecar of sidecars) {
         if (fs.existsSync(sidecar)) {
-          expectedHash = fs.readFileSync(sidecar, 'utf8').trim().split(/\\s+/)[0];
+          expectedHash = fs.readFileSync(sidecar, 'utf8').trim().split(/\s+/)[0];
           break;
         }
       }
