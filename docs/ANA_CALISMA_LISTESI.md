@@ -74,7 +74,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Kayitli ogrencisi olan sinif silinemez.
 - Ogrenci silme davranisi: ogrenciyi okulun kayitsiz ogrenciler sinifina tasima; yoklama, odev, kitap ve ders gecmisini saklama.
 - Kayitsiz ogrenci kaydi silinirse ilgili bagli verinin kapsam ve geri donus kurali dogrulanmali.
-- Ogrenci tasima/silme islemleri callable engelindeki en riskli akislardandir; guvenli Spark tasarimi olmadan acik tutulmayacak.
+- Ogrenci tasima/kayitsiz sinifa alma ve kalici silme ekranlari guvenli Spark transaction tasarimi tamamlanana kadar acik uyariyla kapatildi; hicbir kayit degistirilmez.
 - Ogretmen silme/hesap kapatma, ogretmene bagli kayitlari sahipsiz birakmayacak sekilde ele alinmali.
 - Bu maddeler kod ve gercek veri uzerinde ayri ayri dogrulanmadi: KOD INCELEMESI GEREKLI.
 
@@ -82,7 +82,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 
 - Ayni e-posta ile ikinci bir profil olusturulmamali; mevcut hesap/profil kurtarma veya devam akisi olmali.
 - Sifre degistirme korunacak; ad-soyad degistirme desteklenecek.
-- Ayni gorunen ad serbest; yanlis rol icin guvenli duzeltme talep/onay sureci.
+- Ayni gorunen ad serbest; yanlis rol icin guvenli duzeltme talep/onay sureci Spark'ta henuz guvenli degil ve gecici kapali; owner talepleri salt okunur gorur.
 - E-posta alias rezervasyonu ve eski alias'in tekrar kullanilmamasi kritik butunluk kosuludur.
 - Hesap kapatma/yeniden etkinlestirme kendi profil + ayni batch audit kaydi olarak Spark istemci akisi seklinde kaynakta uygulandi; Rules testleri 12. bolumde.
 - Kaynak kod akislari ve Auth/Firestore canli hesap eslesmesi ayri dogrulanmali. KOD INCELEMESI GEREKLI.
@@ -93,7 +93,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Yetki `uygulamaSahibi == true` custom claim ile verilir; Firestore rol alanini elle degistirmek bunun yerine gecmez.
 - `functions/scripts/set-application-owner-claim.js` guvenli dry-run/apply araci olarak eklendi. OWNER_UID ve OWNER_EMAIL eslesmesini, dogrulanmis e-postayi, etkin ogretmen profilini ve baska hesapta owner claim bulunmadigini kontrol eder; yalnizca Auth custom claim yazar, Firestore profilini degistirmez. Eski iki-profil varsayan `configure-existing-accounts.js` devre disi birakildi.
 - Istatistik paneli ogretmen sayisi/branslari ve ogrenci sayisi/ogretmen-brans iliskisini gereksiz kisisel bilgi gostermeden sunmali.
-- Callable kullanan istatistik/yonetim akislarinin Spark alternatifi ayri incelenecek.
+- Istatistik panelinin aggregate okumasi dogrudan Firestore'dan; kapali hesap listeleme/imhasi ve donem temizligi guvenli Admin Auth/cok-batch akisi olmadigindan gecici kapali.
 - Durum: SCRIPT HAZIR; canli Auth claim henuz atanmadı ve dogrulanmadi. Scriptin --apply adimi kullanici onayi olmadan calistirilmayacak.
 
 ### P5 — Ogrenci hesabi, eslestirme, izinler ve bildirimler
@@ -140,8 +140,9 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - 21 import dosya yolu ve 21 Stack route adi icin statik kontrol yapildi; bu test paketi calistirilmis degildir.
 - Regresyon koruma testi eklendi ancak calistirilmadi; testler 12. bolumde.
 - Takvim dosyasi/rotasi degistirilmedi.
-- Dokuz ekranda callable cagrilari kaldigi icin entegrasyon tamamlanmis degildir.
-- Durum: KISMEN TAMAMLANDI; P0 kapanmadan 11. bolum tamamlanmis sayilmaz.
+- 38 uygulama JS/JSX/TS/TSX dosyasinda callable cagrisi kalmadi; riskli Spark karsiligi olmayan ozellikler acik uyariyla devre disi birakildi.
+- SHA-256 alias, profil alanlari, hesap kapatma/yeniden etkinlestirme ve retention takvimi kaynakta guncellendi; owner claim icin guvenli script hazirlandi ama calistirilmadi.
+- Durum: KISMEN TAMAMLANDI; ogrenci tasima/okul kaldirma/rol duzeltme/donem aktarimi gibi gecici kapali ozelliklerin guvenli karari ve diger bolumlerden devreden isler tamamlanmadan 11. bolum kapanmaz.
 
 ### P10 — Test, APK, tablet ve telefon surumu (12. bolum)
 
