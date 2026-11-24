@@ -24,11 +24,9 @@ function WheelColumn({label,values,value,onChange}){
   const row=cyclicTime.rowIndexFromOffset(offset,WHEEL_ROW_HEIGHT);
   const index=cyclicTime.cyclicIndex(row,values.length);
   onChange(values[index]);
-  if(cyclicTime.shouldRecenter(row,values.length)){
-   const target=cyclicTime.centeredRowIndex(index,values.length)*WHEEL_ROW_HEIGHT;
-   offsetRef.current=target;
-   scrollRef.current?.scrollTo({y:target,animated:false});
-  }
+  const target=cyclicTime.centeredRowIndex(index,values.length)*WHEEL_ROW_HEIGHT;
+  offsetRef.current=target;
+  scrollRef.current?.scrollTo({y:target,animated:false});
  };
  useEffect(()=>{
   if(initialized.current){
