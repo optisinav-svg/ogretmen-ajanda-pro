@@ -315,7 +315,7 @@ service cloud.firestore {
         && get(studentPath).data.sinifId == invite.sinifId
         && get(studentPath).data.donemYili == invite.donemYili
         && get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', '')) == requestData.ogrenciHesapAdi
-        && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == request.auth.token.email
+        && get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', '')) == request.auth.token.email.lower().trim()
         && exists(classPath)
         && get(classPath).data.uid == invite.ogretmenUid
         && get(classPath).data.donemYili == invite.donemYili;
@@ -328,12 +328,12 @@ service cloud.firestore {
         && data.ogrenciUid == request.auth.uid
         && data.uid == data.ogretmenUid
         && isEditablePeriod(data.donemYili)
-        && data.ogrenciEposta == request.auth.token.email
+        && data.ogrenciEposta == request.auth.token.email.lower().trim()
         && data.durum == 'bekliyor'
         && data.kodId is string
         && validPairingInvite(data.kodId, data)
         && profileAfter.rol == 'ogrenci'
-        && profileAfter.eposta == request.auth.token.email
+        && profileAfter.eposta == request.auth.token.email.lower().trim()
         && profileAfter.kullaniciAdi == data.ogrenciHesapAdi;
     }
 
@@ -343,7 +343,7 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.auth.token.email is string
         && request.auth.token.email_verified == true
-        && data.eposta == request.auth.token.email
+        && data.eposta == request.auth.token.email.lower().trim()
         && data.kullaniciAdi is string
         && data.kullaniciAdi.size() >= 2
         && data.kullaniciAdi.size() <= 80
@@ -363,7 +363,7 @@ service cloud.firestore {
             && existsAfter(pairingRequestPath(data.ilkEslesmeTalepId))
             && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciUid == userId
             && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.durum == 'bekliyor'
-            && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciEposta == request.auth.token.email
+            && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciEposta == request.auth.token.email.lower().trim()
             && getAfter(pairingRequestPath(data.ilkEslesmeTalepId)).data.ogrenciHesapAdi == data.kullaniciAdi)
         );
     }
@@ -378,7 +378,7 @@ service cloud.firestore {
         && (!changed.hasAny(['eposta'])
           || (request.auth.token.email_verified == true
             && data.eposta is string
-            && data.eposta == request.auth.token.email))
+            && data.eposta == request.auth.token.email.lower().trim()))
         && changed.hasOnly(['kullaniciAdi', 'ad', 'soyad', 'brans', 'sezon', 'eposta'])
         && (!changed.hasAny(['kullaniciAdi'])
           || (data.kullaniciAdi is string
@@ -904,7 +904,7 @@ service cloud.firestore {
           || (resource != null
             && (resource.data.ogretmenUid == request.auth.uid
               || (request.auth.token.email_verified == true
-                && resource.data.eposta == request.auth.token.email
+                && resource.data.eposta == request.auth.token.email.lower().trim()
                 && resource.data.kullanildi == false
                 && resource.data.sonaErme > request.time)))
         );
