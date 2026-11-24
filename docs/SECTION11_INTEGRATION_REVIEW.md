@@ -53,7 +53,7 @@ Depo ağacındaki 38 uygulama JavaScript/JSX/TS/TSX dosyası tarandı. Uygulama 
 
 Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
-## Bölüm 11 tamamlanmadan önce kalan kod işleri
+## Bölüm 11 sonrası ana listede takip edilecek ertelenmiş işler
 
 1. Dönem saklama takvimi ve altı koleksiyonluk allowlist kaynakta düzeltildi. Öğrenci/sınıf/okul/profil/bağlantı/bildirim/bireysel etkinlik/ortak kitap kütüphanesi temizleme dışında. Spark istemci çok-batch + kilit + önizleme/onay akışı henüz yazılmadığı için temizleme ekranı kapalı; 2028 öncesi tamamlanmalı.
 2. Öğrenci sınıf/kayıtsız taşıma Spark akışı kaynakta eklendi; normal taşıma kitap/konu kayıtlarını taşır, eski bağlantıyı korur, yeni kodla yeniden eşleştirme ister. Taşıma kilidi, yeniden deneme ve sınıf arşiv koruması eklendi. Rules/Emulator regresyonu Bölüm 12'de.
