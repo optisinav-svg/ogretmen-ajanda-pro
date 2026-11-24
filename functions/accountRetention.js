@@ -95,7 +95,7 @@ exports.uygulamaSahibiKapaliHesaplariListele = onCall({ region: REGION }, async 
   const now = Date.now();
   return {
     accounts: snapshot.docs
-      .filter(item => item.id !== ownerUid && expiryMillis(item.data()) > 0 && expiryMillis(item.data()) <= now)
+      .filter(item => item.id !== ownerUid && ['ogretmen','ogrenci'].includes(item.get('rol')) && expiryMillis(item.data()) > 0 && expiryMillis(item.data()) <= now)
       .map(item => ({
         uid: item.id,
         role: item.get('rol') || 'unknown',
