@@ -393,7 +393,7 @@ service cloud.firestore {
       let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
       return isTeacher()
         && codeId.matches('^[A-Fa-f0-9]{64}$')
-        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogrenciKayitId', 'sinifId', 'donemYili', 'kullanildi', 'olusturulma', 'sonaErme'])
+        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
         && data.ogrenciKayitId is string
@@ -411,7 +411,21 @@ service cloud.firestore {
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
         && get(classPath).data.donemYili == data.donemYili
-        && get(classPath).data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12];
+        && get(classPath).data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12]
+        && data.ogretmenHesapAdi == get(profilePath(request.auth.uid)).data.get('kullaniciAdi', '')
+        && data.ogrenciAdSoyad == get(studentPath).data.get('adSoyad', get(studentPath).data.get('ad', '') + ' ' + get(studentPath).data.get('soyad', ''))
+        && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
+        && data.sinifAd == get(classPath).data.ad
+        && data.okulAd == get(studentPath).data.get('okulAd', get(classPath).data.get('okulAd', ''))
+        && data.kademe == get(classPath).data.kademe
+        && data.ders == get(classPath).data.get('ders', get(studentPath).data.get('brans', ''))
+        && data.ogretmenHesapAdi is string && data.ogretmenHesapAdi.size() <= 80
+        && data.ogrenciAdSoyad is string && data.ogrenciAdSoyad.size() >= 2 && data.ogrenciAdSoyad.size() <= 80
+        && data.eposta is string && data.eposta.size() >= 3 && data.eposta.size() <= 254
+        && data.sinifAd is string && data.sinifAd.size() <= 80
+        && data.okulAd is string && data.okulAd.size() <= 120
+        && data.kademe is string && data.kademe.size() <= 10
+        && data.ders is string && data.ders.size() <= 80;
     }
 
     function consumesPairingCode(codeId) {
