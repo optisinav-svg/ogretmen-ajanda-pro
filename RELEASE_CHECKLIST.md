@@ -129,7 +129,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Öğrenciyi Kayıtsız Öğrenciler sınıfına taşıma: öğrenci kaydı ve geçmişi silinmez; aynı okul/dönem Kayıtsız sınıfı kullanılır.
 - [ ] Bağlı öğrenci taşındığında eski sınıf uygulama bağlantısı geçmiş için korunur; bağlantı indeksi yeni kod oluşturulmasına izin verecek duruma gelir; yeni sınıf bağlantısı öğrenci talebi ve öğretmen onayıyla kurulur.
 - [ ] Taşıma kilidi varken yeni kitap/konu/yoklama kaydı ve eşleştirme engellenir; hedef sınıf arşivlenemez; dönem alanı eksik kayıt varsa taşıma veri karışmasını önlemek için durur.
-- [ ] Yeni ödev bildirimi ve telefon bildirimi.
+- [ ] Uygulama içi yeni ödev bildirimi ve okundu durumu; bu Spark sürümünde sunucu push/telefon bildirimi beklenmez.
 - [ ] Ödev tamamlama bildiriminin öğretmen ekranına ulaşması.
 - [ ] PDF raporunun içerik ve görünüm kontrolü.
 - [ ] Silme/geri alma testleri; yalnızca güvenli yedek ve açık onayla.
