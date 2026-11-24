@@ -87,3 +87,12 @@ Veri kategorileri ve saklama gerekçeleri en az yılda bir gözden geçirilir. �
 - `functions/scripts/backfill-email-aliases.js` mevcut Firebase Auth hesaplarının şu anki e-posta adreslerini tarar. Varsayılanı yalnızca dry-run'dır; `--apply` yazma yapar ve yalnızca ayrıca onaylanmış bakım adımında çalıştırılmalıdır. Auth kayıtlarında geçmişte değiştirilmiş eski adresler bulunmadığından bu script onları geriye dönük keşfedemez.
 - Mevcut Firebase Spark projesinde Identity Platform blocking trigger'ları etkin değildir. Uygulama içi callable kontrolleri standart kayıt akışını korur; Firebase Auth API'sini uygulama dışından doğrudan kullanan bir istemci bu kontrolleri atlayabilir. Atlatılamaz garanti için Identity Platform gereklidir; Spark sınırları ve maliyet etkisi kullanıcı onayı olmadan değiştirilmez.
 - Alias kayıtları otomatik olarak süre sonunda serbest bırakılmaz. Üç yıllık `sonaErme` yalnızca imha incelemesi için işarettir. İmha kararı verilene kadar başka UID'ye devredilmez. Hash kayıtları da kişisel veri/pseudonim veri sayılabileceğinden saklama hukuki dayanak ve süre bakımından ayrıca onaylanmalıdır.
+
+
+## Açık kalan teknik ve hukuki kararlar — Bölüm 8 tamamlanma engelleri
+
+- Hesap kapatıldığında üç yıllık saklama bitiş tarihi profile yazılır ve alias kayıtlarına inceleme tarihi eklenir. Ancak hesap kapanışına bağlı tüm öğretmen/öğrenci kayıtlarının sayımını, uygulama sahibi önizlemesini, açık imha onayını ve Firebase Auth hesabı silme adımını içeren ayrı imha akışı henüz tamamlanmamıştır. Bu akış kurulmadan hesap kapatma saklama süreci tamamlanmış sayılamaz.
+- Firebase Auth hesabı daha önce kalıcı olarak silinmişse aynı UID'nin otomatik kurtarımı garanti edilemez. Mevcut akış yalnızca Auth hesabı hâlâ bulunan ve profili kapalı olarak işaretlenen kullanıcıyı yeniden etkinleştirebilir.
+- Öğretmen/öğrenci rol dönüşümü, öğretmen verisi veya öğrenci bağlantısı bulunduğunda güvenlik gereği engellenir. Bu kayıtları kayıpsız taşıyan kontrollü dönüşüm henüz yoktur.
+- Identity Platform blocking trigger'ları mevcut Spark ortamında kapalıdır. Uygulama içi alias kontrolleri standart kayıt akışını korusa da doğrudan Firebase Auth API erişimini engellemez. Atlatılamaz güvence için plan/ürün kararı gerekir.
+- Alias backfill betiği yalnızca mevcut Auth e-posta adreslerini tarar. Geçmişte değiştirilmiş ve Auth'ta artık bulunmayan e-posta adresleri Firebase Auth listesinden geri çıkarılamaz.
