@@ -174,3 +174,20 @@ Durum: TEST 12. BOLUMDE; su an baslatilmayacak.
 - Eski PR #29'un dogrudan birlestirilmesi.
 
 Bu ana liste bir takip belgesidir; canli sistemde islem yapma izni degildir. Her riskli canli adim kendi asamasinda kullaniciya acikca sunulup ayri onay alinacaktir.
+
+
+## 6. 24.11.2026 callable envanter sonucu
+
+Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasiyla dogrulandi ve tam callable adlari `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` belgesine yazildi. Bu belge her cagrinin amacini, guvenlik riskini ve Spark icin ilk kararini icerir.
+
+- E-posta alias kontrol/rezervasyon akisi, eski alias'lari yeniden kullanima acmayacak guvenli bir model olmadan degistirilmeyecek.
+- Profil ad/soyad ve profil e-posta senkronizasyonu, kendi UID'siyle sinirli Firestore Rules yazimlariyla Spark'a tasinabilecek adaylardir.
+- Hesap kapatma/yeniden etkinlestirme ve rol duzeltme talebi, sahiplik/claim kosullariyla ayrica tasarlanacak.
+- Ogrenci sinif tasima ve donem aktarimi, transaction/kurallar ve devam ettirilebilirlik guvencesi olmadan acilmayacak.
+- Ogrenci kalici silme, kararlastirilan kayitsiz ogrenci akisina gore uygulama panelinden kapali tutulacak.
+- Kapali hesap imhasi Admin Auth yetkisi gerektirir; istemciye tasinmayacak.
+- Donem temizligi ilk gercek silme tarihinden (Temmuz 2028) once guvenli yeniden tasarim/prova gerektirir; bu denetim dagitim veya silme izni degildir.
+- `functions/accountLinks.js` callable'lari `functions/index.js` tarafindan export edilmiyor; mevcut Spark ogrenci baglama servisi dogrudan Firestore kullaniyor.
+- Istatistik ekraninin temel sayimlari dogrudan Firestore sorgulariyla yapiliyor; kapali hesap ve donem temizligi islemleri hala callable'a bagli.
+
+**Durum:** Callable envanteri tamamlandi; kod degisiklikleri ve guvenli Spark karsiliklari henuz tamamlanmadi. P0 engeli devam ediyor. Testler calistirilmadi; canli Firebase veya kullanici verisi degistirilmedi.
