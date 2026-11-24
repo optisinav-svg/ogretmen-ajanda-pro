@@ -22,7 +22,7 @@
 6. Yeni ödev bildirimlerinin öğrenci ekranında, tamamlandı bildirimlerinin öğretmen ekranında görünmesini doğrula.
 7. Bildirimin öğretmen değerlendirmesini veya ödev durumunu değiştirmediğini doğrula.
 8. Cloud Functions ve Firestore kuralları için testleri çalıştır.
-9. Canlı Firebase'e dağıtım yapma; gerçek öğrenci hesabı ve tablet testi 11. bölümde kullanıcı onayıyla yapılır.
+9. Canlı Firebase'e dağıtım yapma; gerçek öğrenci hesabı ve tablet testi 12. bölümde, kullanıcı onayıyla yapılır.
 
 ## Güvenli sınırlar
 
