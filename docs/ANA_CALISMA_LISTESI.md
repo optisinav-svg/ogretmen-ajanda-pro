@@ -219,3 +219,8 @@ Kullanici karari: Temmuz 2028'de 2026 donemini sil; Temmuz 2029'da 2027 donemini
 ### 24.11.2026 callable engeli kaynak durumu
 
 38 uygulama JS/JSX/TS/TSX dosyasinin tam taramasinda `httpsCallable(` cagrisi kalmadigi dogrulandi. Alias, kayit/giris, profil temel alanlari ve hesap kapatma/yeniden etkinlestirme Spark Rules akislari kaynakta yazildi. Guvenli Spark karsiligi tamamlanmayan e-posta degisikligi, rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve yillik donem temizligi kullaniciya acik mesajla devre disi birakildi. Bu ozellikler kaybolmadi; P0/P1 altinda guvenli yeniden tasarim icin bekliyor. Kaynak testleri henuz calistirilmadi ve canli rules dagitilmadi.
+
+
+### 24.11.2026 dönem saklama tarihi uyumsuzluğu düzeltildi
+
+Kullanıcı kararı ile kaynak kod arasındaki fark giderildi: Temmuz 2028'de 2026, Temmuz 2029'da 2027, sonraki yıllarda her Temmuz iki yıl önceki dönem hedefleniyor. `functions/retentionPolicy.js`, `firestore.rules`, `IstatistikPaneliEkrani.js` ve retention test beklentileri güncellendi. Testler çalıştırılmadı; canlı rules dağıtılmadı ve hiçbir veri silinmedi. Release checklist'teki Emulator doğrulaması bu yeni kurallar için yeniden açıldı.
