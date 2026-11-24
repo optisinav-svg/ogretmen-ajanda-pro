@@ -223,8 +223,8 @@ function validateData(report, docsByCollection) {
       if (['dersNotlari', 'odevler', 'yoklamalar'].includes(name)) {
         validateOptionalLesson(report, name, data, lessons);
       }
-      if (name === 'odevler' && data.hedefOgrenciIds !== undefined && !Array.isArray(data.hedefOgrenciIds)) {
-        addIssue(report, name, 'hedefOgrenciIds_not_array');
+      if (name === 'odevler' && !Array.isArray(data.hedefOgrenciIds)) {
+        addIssue(report, name, 'hedefOgrenciIds_missing_or_invalid', 'warning');
       }
       if (name === 'bireyselDersOturumlari') {
         const event = events.get(data.bireyselEtkinlikId);
