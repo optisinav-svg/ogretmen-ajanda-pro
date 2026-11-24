@@ -1446,3 +1446,36 @@ test('Kitap kütüphanesinden sınıfa verilen ödev öğrenci bazlı konu eşle
   assert.equal(saved.data().ogrenciDurumlari['student-a'], 'yapildi');
 });
 
+
+
+test('users may update their own display first and last name without changing role or email', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(updateDoc(doc(db, 'kullanicilar', 'teacher-a'), {
+    ad: 'Ahmet', soyad: 'Yılmaz', kullaniciAdi: 'Ahmet Yılmaz',
+  }));
+  await assertFails(updateDoc(doc(db, 'kullanicilar', 'teacher-a'), { rol: 'ogrenci' }));
+  await assertFails(updateDoc(doc(db, 'kullanicilar', 'teacher-a'), { eposta: 'new@example.com' }));
+});
+
+test('closed teacher account loses teacher data access while own profile remains readable', async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'kullanicilar', 'teacher-a'), { hesapDurumu: 'kapali' });
+  });
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertSucceeds(getDoc(doc(db, 'kullanicilar', 'teacher-a')));
+  await assertFails(getDoc(doc(db, 'okullar', 'school-a')));
+});
+
+
+test('email alias registry is inaccessible to client accounts', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id')));
+  await assertFails(setDoc(doc(db, 'epostaAliaslari', 'opaque-alias-id'), { ownerUid: 'teacher-a' }));
+});
+
+
+test('closed-account deletion locks are server-only', async () => {
+  const db = testEnv.authenticatedContext('teacher-a').firestore();
+  await assertFails(getDoc(doc(db, 'hesapImhaKayitlari', 'closed-account')));
+  await assertFails(setDoc(doc(db, 'hesapImhaKayitlari', 'closed-account'), { status: 'completed' }));
+});

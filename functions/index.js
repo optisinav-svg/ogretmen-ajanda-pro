@@ -34,3 +34,29 @@ exports.odevSilindiOgrenciBildirimleri = studentNotifications.odevSilindiOgrenci
 
 const ownerStatistics = require('./ownerStatistics');
 exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
+
+const accountLifecycle = require('./accountLifecycle');
+exports.profilAdSoyadGuncelle = accountLifecycle.profilAdSoyadGuncelle;
+exports.epostaDegisikliginiProfileYansit = accountLifecycle.epostaDegisikliginiProfileYansit;
+exports.hesapKapatmaTalebiOlustur = accountLifecycle.hesapKapatmaTalebiOlustur;
+exports.hesabiYenidenEtkinlestir = accountLifecycle.hesabiYenidenEtkinlestir;
+exports.rolDuzeltmeTalebiOlustur = accountLifecycle.rolDuzeltmeTalebiOlustur;
+exports.rolDuzeltmeTalebiniKararaBagla = accountLifecycle.rolDuzeltmeTalebiniKararaBagla;
+
+const emailAliases = require('./emailAliases');
+exports.epostaAliasiniRezerveEt = emailAliases.epostaAliasiniRezerveEt;
+exports.epostaAliasDegisikliginiKontrolEt = emailAliases.epostaAliasDegisikliginiKontrolEt;
+exports.epostaKaydiKontrolEt = emailAliases.epostaKaydiKontrolEt;
+// Identity Platform blocking triggers remain opt-in; the current Spark project does not enable them.
+if (process.env.ENABLE_IDENTITY_PLATFORM_BLOCKING_TRIGGERS === 'true') {
+  exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
+  exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
+}
+
+const academicPeriodTransfer = require('./academicPeriodTransfer');
+exports.ogretmenDonemAktariminiBaslat = academicPeriodTransfer.ogretmenDonemAktariminiBaslat;
+
+const accountRetention = require('./accountRetention');
+exports.uygulamaSahibiKapaliHesaplariListele = accountRetention.uygulamaSahibiKapaliHesaplariListele;
+exports.uygulamaSahibiKapaliHesapImhasiniOnizle = accountRetention.uygulamaSahibiKapaliHesapImhasiniOnizle;
+exports.uygulamaSahibiKapaliHesabiImhaEt = accountRetention.uygulamaSahibiKapaliHesabiImhaEt;

@@ -25,6 +25,10 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   const [cleanupPreview, setCleanupPreview] = useState(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
   const [cleanupMessage, setCleanupMessage] = useState('');
+  const [closedAccounts, setClosedAccounts] = useState([]);
+  const [accountPreview, setAccountPreview] = useState(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountMessage, setAccountMessage] = useState('');
 
   const load = useCallback(async (quiet = false) => {
     if (quiet) setRefreshing(true);
@@ -103,6 +107,10 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         teachers: teacherRows,
         generatedAt: new Date().toISOString(),
       });
+      try {
+        const list = await httpsCallable(functions, 'uygulamaSahibiKapaliHesaplariListele')({});
+        setClosedAccounts(list.data?.accounts || []);
+      } catch (_) { setClosedAccounts([]); setAccountMessage('Kapalı hesap listesi yüklenemedi. Yetkiyi ve bağlantıyı kontrol edin.'); }
     } catch (e) {
       setError(e?.code === 'permission-denied'
         ? 'Bu panel için uygulama sahibi yetkisi veya Firestore erişimi doğrulanamadı.'
@@ -191,6 +199,45 @@ export default function IstatistikPaneliEkrani({ navigation }) {
       [
         { text: 'Vazgeç', style: 'cancel' },
         { text: 'Silme işlemini başlat', style: 'destructive', onPress: executeRetentionCleanup },
+      ],
+    );
+  };
+
+  const previewClosedAccount = async account => {
+    if (accountBusy) return;
+    setAccountBusy(true);setAccountMessage('');setAccountPreview(null);
+    try {
+      const response = await httpsCallable(functions, 'uygulamaSahibiKapaliHesapImhasiniOnizle')({ targetUid: account.uid });
+      setAccountPreview(response.data);
+    } catch (e) {
+      setAccountMessage(e?.message || 'Hesap imha önizlemesi alınamadı.');
+    } finally { setAccountBusy(false); }
+  };
+
+  const executeClosedAccountDeletion = async () => {
+    if (!accountPreview || accountBusy) return;
+    setAccountBusy(true);setAccountMessage('');
+    try {
+      const response = await httpsCallable(functions, 'uygulamaSahibiKapaliHesabiImhaEt')({
+        targetUid: accountPreview.uid, confirm: true, expectedCounts: accountPreview.counts,
+      });
+      setAccountPreview(null);
+      setAccountMessage(`Hesap imhası tamamlandı. ${number(response.data?.totalDeleted)} kayıt kaldırıldı. Tarihsel e-posta adresleri yeniden kullanıma açılmadı.`);
+      await load(true);
+    } catch (e) {
+      setAccountMessage(`Hesap imhası tamamlanamadı: ${e?.message || 'Bilinmeyen hata'}. Güncel önizleme alıp yeniden deneyin.`);
+    } finally { setAccountBusy(false); }
+  };
+
+  const confirmClosedAccountDeletion = () => {
+    if (!accountPreview) return;
+    const summary = Object.entries(accountPreview.counts || {}).map(([name,count])=>`${name}: ${number(count)}`).join('\\n');
+    Alert.alert(
+      'Kapalı hesabı kalıcı olarak imha et',
+      `${accountPreview.displayName} (${accountPreview.role}) hesabının üç yıllık saklama süresi dolmuş. Aşağıdaki hesap verileri ve bu hesaba ait bağlantılar kalıcı olarak silinecek. Öğrenci hesabı silinirse öğretmenlerin kendi öğrenci kayıtları korunur; öğretmen hesabı silinirse yalnızca o öğretmenin sahip olduğu kayıtlar silinir. Tarihsel e-posta alias kayıtları başka hesaba verilmemesi için korunur.\\n\\n${summary}\\n\\nToplam: ${number(accountPreview.total)} kayıt. İşlem geri alınamaz.`,
+      [
+        {text:'Vazgeç',style:'cancel'},
+        {text:'Hesabı imha et',style:'destructive',onPress:executeClosedAccountDeletion},
       ],
     );
   };
@@ -286,6 +333,28 @@ export default function IstatistikPaneliEkrani({ navigation }) {
             </>
           )}
           {!!cleanupMessage && <Text style={s.cleanupInfo}>{cleanupMessage}</Text>}
+        </View>
+
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Hesap kapatma sonrası üç yıllık saklama</Text>
+          <Text style={s.cleanupInfo}>Üç yıllık saklama süresi dolan kapalı hesaplar burada listelenir. İmha yalnızca uygulama sahibi önizlemesi ve ayrı açık onayla yapılır. Tarihsel e-posta alias kayıtları, başka hesaba verilmemesi için korunur.</Text>
+          {!closedAccounts.length && <Text style={s.empty}>İmha süresi dolmuş kapalı hesap bulunmuyor.</Text>}
+          {closedAccounts.map(account=><View key={account.uid} style={s.teacher}>
+            <Text style={s.rowTitle}>{account.displayName}</Text>
+            <Text style={s.rowSub}>{account.role==='ogretmen'?'Öğretmen hesabı':'Öğrenci hesabı'} • Saklama bitişi: {new Date(account.expiresAt).toLocaleDateString('tr-TR')}</Text>
+            <TouchableOpacity style={s.cleanupButton} disabled={accountBusy} onPress={()=>previewClosedAccount(account)}>
+              <Text style={s.cleanupButtonText}>Bu hesabın imha kapsamını önizle</Text>
+            </TouchableOpacity>
+          </View>)}
+          {!!accountPreview&&<View style={s.cleanupPreview}>
+            <Text style={s.rowTitle}>{accountPreview.displayName} • {accountPreview.role}</Text>
+            {Object.entries(accountPreview.counts||{}).map(([name,count])=><View key={name} style={s.row}><Text style={s.rowTitle}>{name}</Text><Text style={s.rowValue}>{number(count)}</Text></View>)}
+            <Text style={s.cleanupTotal}>Toplam: {number(accountPreview.total)} kayıt</Text>
+            <TouchableOpacity style={s.cleanupDanger} disabled={accountBusy} onPress={confirmClosedAccountDeletion}>
+              <Text style={s.cleanupButtonText}>{accountBusy?'İşlem sürüyor…':'Önizlemeyi onayla ve hesabı imha et'}</Text>
+            </TouchableOpacity>
+          </View>}
+          {!!accountMessage&&<Text style={s.cleanupInfo}>{accountMessage}</Text>}
         </View>
 
         <TouchableOpacity style={s.homeButton} onPress={goHome}><Text style={s.homeButtonText}>⌂  Ana Sayfa</Text></TouchableOpacity>

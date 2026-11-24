@@ -190,7 +190,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
             <Text style={s.welcome}>Merhaba, {profil?.kullaniciAdi || auth.currentUser?.displayName || 'Öğrenci'} 👋</Text>
             <Text style={s.sub}>{aktifSayisi} etkin öğretmen bağlantısı</Text>
           </View>
-          <TouchableOpacity onPress={cikis} style={s.logout}><Text style={s.logoutText}>Çıkış</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Profil')} style={s.logout}><Text style={s.logoutText}>Profil</Text></TouchableOpacity><TouchableOpacity onPress={cikis} style={s.logout}><Text style={s.logoutText}>Çıkış</Text></TouchableOpacity>
         </View>
 
         <View style={s.actionCard}>

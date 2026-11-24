@@ -4,9 +4,11 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, runTransaction } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { deleteUser } from 'firebase/auth';
+import { auth, db, functions } from '../firebaseConfig';
 
 const buYil = new Date().getFullYear();
 const SEZONLAR = [
@@ -23,41 +25,52 @@ const BRANSLAR = [
   'Beden Eğitimi', 'Bilişim Teknolojileri', 'Diğer'
 ];
 
-export default function KayitEkrani({ navigation }) {
+export default function KayitEkrani({ navigation, route }) {
   const [adim, setAdim] = useState(1);
   const [sezon, setSezon] = useState('');
   const [brans, setBrans] = useState('');
   const [kullaniciAdi, setKullaniciAdi] = useState('');
-  const [eposta, setEposta] = useState('');
+  const [eposta, setEposta] = useState(route?.params?.eposta || auth.currentUser?.email || '');
   const [sifre, setSifre] = useState('');
   const [sifreTekrar, setSifreTekrar] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
+  const devamEt = route?.params?.devamEt === true;
 
   const kayitOl = async () => {
-    if (!eposta || !sifre || !sifreTekrar) {
+    const mevcutHesaplaDevam = devamEt && !!auth.currentUser;
+    if (!eposta || (!mevcutHesaplaDevam && (!sifre || !sifreTekrar))) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
     }
-    if (sifre !== sifreTekrar) {
+    if (!mevcutHesaplaDevam && sifre !== sifreTekrar) {
       Alert.alert('Hata', 'Şifreler eşleşmiyor.');
       return;
     }
-    if (sifre.length < 6) {
+    if (!mevcutHesaplaDevam && sifre.length < 6) {
       Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır.');
       return;
     }
     setYukleniyor(true);
     try {
       const normalizedEmail = eposta.trim().toLowerCase();
+      await httpsCallable(functions, 'epostaKaydiKontrolEt')({ email: normalizedEmail });
       let user = auth.currentUser;
+      let createdNewUser = false;
       if (user && (user.email || '').toLowerCase() !== normalizedEmail) {
         throw new Error('Önce açık olan hesaptan çıkış yapın, ardından yeni öğretmen hesabını oluşturun.');
       }
       if (!user) {
         const sonuc = await createUserWithEmailAndPassword(auth, normalizedEmail, sifre);
         user = sonuc.user;
+        createdNewUser = true;
+      }
+      try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
+        if (createdNewUser) await deleteUser(user).catch(() => {});
+        throw aliasError;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
+      const emailVerificationPending = !user.emailVerified;
+      if (emailVerificationPending) await sendEmailVerification(user);
       const profileRef = doc(db, 'kullanicilar', user.uid);
       await runTransaction(db, async transaction => {
         const existing = await transaction.get(profileRef);
@@ -71,6 +84,7 @@ export default function KayitEkrani({ navigation }) {
           olusturulmaTarihi: new Date().toISOString(),
         });
       });
+      if (emailVerificationPending) Alert.alert('E-posta doğrulaması', 'E-posta adresinize doğrulama bağlantısı gönderdik. Eski e-posta adreslerinin korunması için gelen kutunuzdan doğrulama yapın.');
       navigation.replace('AnaSayfa');
     } catch (hata) {
       let mesaj = 'Kayıt oluşturulamadı.';
@@ -179,26 +193,17 @@ export default function KayitEkrani({ navigation }) {
                 placeholder="ornek@mail.com"
                 value={eposta}
                 onChangeText={setEposta}
+                editable={!(devamEt && !!auth.currentUser)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              <Text style={styles.etiket}>Şifre</Text>
-              <TextInput
-                style={styles.girdi}
-                placeholder="En az 6 karakter"
-                value={sifre}
-                onChangeText={setSifre}
-                secureTextEntry
-              />
-              <Text style={styles.etiket}>Şifre Tekrar</Text>
-              <TextInput
-                style={styles.girdi}
-                placeholder="Şifrenizi tekrar girin"
-                value={sifreTekrar}
-                onChangeText={setSifreTekrar}
-                secureTextEntry
-              />
+              {!(devamEt && !!auth.currentUser) && <>
+                <Text style={styles.etiket}>Şifre</Text>
+                <TextInput style={styles.girdi} placeholder="En az 6 karakter" value={sifre} onChangeText={setSifre} secureTextEntry />
+                <Text style={styles.etiket}>Şifre Tekrar</Text>
+                <TextInput style={styles.girdi} placeholder="Şifrenizi tekrar girin" value={sifreTekrar} onChangeText={setSifreTekrar} secureTextEntry />
+              </>}
             </>
           )}
 
@@ -215,7 +220,7 @@ export default function KayitEkrani({ navigation }) {
               {yukleniyor ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.butonMetni}>Kayıt Ol ✓</Text>
+                <Text style={styles.butonMetni}>{devamEt && auth.currentUser ? 'Profili tamamla ✓' : 'Kayıt Ol ✓'}</Text>
               )}
             </TouchableOpacity>
           )}
