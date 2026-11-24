@@ -145,6 +145,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     db.collection('kitaplar').where('uid', '==', uid).where('donemYili', '==', sourceYear).get(),
     db.collection('konular').where('uid', '==', uid).where('donemYili', '==', sourceYear).get(),
   ]);
+  const selectedStudentIds = new Set([...studentIds]);
   const selectedBookIds = new Set(normalizedSelections.flatMap(x => x.bookIds));
   const books = bookSnap.docs.filter(s => selectedBookIds.has(s.id));
   if (books.length !== selectedBookIds.size) throw new HttpsError('failed-precondition', 'Seçilen kitaplardan biri kaynak dönemde bulunamadı.');
