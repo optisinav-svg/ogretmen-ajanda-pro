@@ -80,9 +80,17 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
 ## Sonuç ve durum
 
-Navigasyon düzeltmesi ve callable kaynak bağımlılığı temizliği yapıldı. Spark'ta güvenli karşılığı tamamlanmayan riskli özellikler kullanıcıya açık biçimde devre dışı bırakıldı. Dönem saklama takvimi kaynakta kullanıcı kararına göre hizalandı; yeni kuralların testi Bölüm 12'de bekliyor. Diğer bölümlerden devreden entegrasyon işleri ve geçici kapalı özelliklerin güvenli yeniden tasarımı sürüyor.
+**Bölüm 11'in kaynak entegrasyon kapsamı tamamlandı.**
 
-Bu nedenle **Bölüm 11 henüz tamamlandı olarak işaretlenmiyor**. Ana çalışma listesi esas alınarak kalan kod işleri tamamlanacak; test ve APK aşaması Bölüm 12'de kalacak.
+Tamamlanan kaynak işleri:
+- `App.js` JSX satır sonu düzeltmesi ve navigasyon statik koruması.
+- Uygulama ekranlarından tüm Cloud Functions callable bağımlılıklarının kaldırılması.
+- `functions/index.js` boş export ve `firebase.json` Functions deploy hedefinin kaldırılması.
+- Öğrenci sınıf/kayıtsız taşıma için Spark uyumlu, kilitli ve yeniden başlatılabilir akış.
+- Yıllık saklama allowlist'inin kararlaştırılan altı koleksiyonla sınırlandırılması.
+- Yedek SHA-256 manifest desteği ve dönem migrasyonu için daha sıkı yazma onayları.
+- Salt okunur dönem envanter aracı ve tek ana çalışma listesi.
 
+Bölüm 11 kapsamındaki testler çalıştırılmadı; bunlar 12. bölümde yapılacak. Bu nedenle kaynak entegrasyonunun tamamlanması, canlı Rules dağıtımı, gerçek hesap/cihaz doğrulaması veya APK'nın hazır olduğu anlamına gelmez.
 
-A separate retention review found the Admin cleanup allowlist had included student/class/school/link/notification collections despite the agreed six-collection scope. `functions/retentionPolicy.js` is now restricted to the six approved seasonal collections (`dersNotlari`, `dersler`, `yoklamalar`, `odevler`, `kitaplar`, `konular`), and the test expectation was corrected. This is untested source code only; no live deletion or rules deployment occurred.
+Canlı Firestore verisi, Auth hesapları, custom claim'ler veya canlı Rules değiştirilmedi. Hiçbir migration, veri silme, APK build ya da cihaz testi yapılmadı.
