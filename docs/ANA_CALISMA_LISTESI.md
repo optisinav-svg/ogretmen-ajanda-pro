@@ -198,3 +198,19 @@ Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasi
 `ProfilEkrani.js` ad/soyad kaydetme akisi callable'dan cikarildi; kendi UID'sine ait profil belgesine `ad` ve `soyad` alanlari, mevcut Firestore Rules kisitlari altinda dogrudan yaziliyor. Eski callable export'u kurulu telefon uygulamasinin geriye donuk uyumlulugunu korumak icin silinmedi. Kaynak degisikligi yapildi; test ve cihaz dogrulamasi 12. bolume birakildi. P0 callable engeli diger akislardan dolayi devam ediyor.
 
 - Giris sonrasi dogrulanmis Auth e-postasini kendi Firestore profiline yansitma da callable'dan cikarildi. Bunun icin kaynak Firestore Rules, e-posta alanini yalnizca dogrulanmis Auth token e-postasina esit olacak sekilde guncellemeye izin veriyor. Canli rules dagitimi ve test yapilmadi.
+
+
+### 24.11.2026 Spark kaynak ilerlemesi
+
+- Firebase Security Rules SHA-256 hashing yetenegi dogrulandi; mevcut hash tabanli alias belge kimligi korunabiliyor. Alias sistemi icin e-posta acik metinli yeni koleksiyon veya eski alias hashlerini toplu donusturme gerekmiyor.
+- `services/sparkEmailAliases.js` ve buna uygun Firestore Rules kaynak duzenlemesi eklendi. Ogretmen/ogrenci kayit ve giris ekranlari alias callable bagimliligindan cikarildi. Ogretmen profili e-posta dogrulanmadan olusturulmuyor.
+- Profil ad/soyad ve giris sonrasi dogrulanmis e-posta senkronizasyonu callable'dan cikarildi.
+- Hesap kapatma/yeniden etkinlestirme, kendi UID profili ve ayni batch'teki audit kaydi ile Spark istemci akisina tasindi; Rules, uygulama sahibi istisnasini ve imha kilidi/saklama tarihi kontrollerini kaynakta uygular.
+- Profil e-posta degisikligi guvenli alias on kontrolu tamamlanana kadar gecici olarak kapatildi.
+- Kalan callable ekranlari ve riskleri `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` belgesinde guncellendi.
+- **P0 hala acik:** rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve donem temizligi akislarinin Spark karsiligi/guvenli devre disi karari tamamlanmadi.
+- Yeni kaynak degisiklikleri icin testler calistirilmadi; canli rules dagitilmadi; canli Firestore/Auth verisi degistirilmedi.
+
+### Ayrica tespit edilen donem temizligi tarih celiskisi
+
+Kullanici karari: Temmuz 2028'de 2026 donemini sil; Temmuz 2029'da 2027 donemini sil; sonraki yillarda her Temmuz, iki yil onceki donemi ele al. Mevcut kaynak `functions/retentionPolicy.js`, `firestore.rules` ve `IstatistikPaneliEkrani.js` ise ilk temizligi Temmuz 2029 / hedef yil = yil - 3 olarak tanimliyor. Bu kaynak-karar uyumsuzlugu P1 veri saklama paketinde duzeltilmeli; su an degistirilmedi ve hicbir silme islemi yapilmadi.
