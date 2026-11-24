@@ -97,3 +97,13 @@ Kaynak kurallari ilgili bolumleri ayrica incelendi:
 - Ogrenci baglama, talep, baglanti ve uygulama ici bildirim koleksiyonlarinda ise Spark istemci kurallari zaten tanimlidir. Bu, ogrenci baglama akisinin neden ayri callable taramasindan farkli oldugunu aciklar.
 
 Bu nedenle ilk uygulanacak kod degisikligi icin profil ad/soyad callable'inin kaldirilmasi en dusuk riskli adaydir. Alias, rol, hesap yasam dongusu, tasima ve toplu silme akislari icin once rules tasarimi ve guvenlik testi gerekir. Bu incelemede `firestore.rules` degistirilmedi ve canliya dagitilmadi.
+
+
+## Ilk dusuk riskli Spark kod duzeltmesi
+
+- `screens/ProfilEkrani.js` icindeki ad/soyad kaydetme islemi artik `profilAdSoyadGuncelle` callable'ini cagirmiyor.
+- Kendi UID'sine ait `kullanicilar/{uid}` belgesine yalnizca `ad` ve `soyad` alanlari `updateDoc` ile yaziliyor.
+- Ad/soyad NFKC normalizasyonu, bosluk sadeleştirme ve bos alan kontrolu istemci tarafinda eklendi. Firestore Rules zaten yalnizca kendi profilindeki bu alan degisikliklerine izin veriyor.
+- Firebase Auth `displayName` esitlemesi ayrica yapiliyor; bu esitleme basarisiz olursa Firestore'a kaydedilmis profil bilgisinin basarili oldugu kullaniciya bildiriliyor.
+- `functions/index.js` icindeki eski callable export'u simdilik kaldirilmadi; eski kurulu telefon uygulamasiyla geriye donuk uyumluluk riski olusturmamak icin korunuyor. Yeni kaynak ekran bu callable'a bagimli degil.
+- Kod degisikligi GitHub dalina yazildi. Test, bundle ve cihaz kontrolu henuz yapilmadi; bunlar 12. bolum kapisinda.
