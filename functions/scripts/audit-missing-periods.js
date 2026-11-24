@@ -138,7 +138,7 @@ async function scanCollection(db, collectionName) {
       else if (inferred.status === 'invalid-date') summary.invalidDate += 1;
       else summary.noDate += 1;
 
-      if (inferred.status !== 'inferred-target' && summary.samples[inferred.status.replaceAll('-', '')]?.length < SAMPLE_LIMIT) {
+      if (inferred.status !== 'inferred-target') {
         const key = inferred.status === 'ambiguous-june' ? 'ambiguousJune'
           : inferred.status === 'other-period' ? 'otherPeriod'
           : inferred.status === 'invalid-date' ? 'invalidDate'
