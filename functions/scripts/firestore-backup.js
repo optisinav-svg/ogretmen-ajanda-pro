@@ -14,6 +14,7 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const zlib = require('node:zlib');
 const { once } = require('node:events');
 const { finished } = require('node:stream/promises');
@@ -67,6 +68,16 @@ async function writeLine(gzip, value) {
   if (!gzip.write(JSON.stringify(value) + '\n')) {
     await once(gzip, 'drain');
   }
+}
+
+async function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const input = fs.createReadStream(filePath);
+    input.on('data', chunk => hash.update(chunk));
+    input.on('error', reject);
+    input.on('end', () => resolve(hash.digest('hex')));
+  });
 }
 
 async function main() {
@@ -143,6 +154,7 @@ async function main() {
     }
     gzip.end();
     await finished(output);
+    manifest.archiveSha256 = await sha256File(archivePath);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), {
       flag: 'wx',
     });
@@ -153,6 +165,7 @@ async function main() {
       collectionCount: Object.keys(manifest.collections).length,
       archivePath,
       manifestPath,
+      archiveSha256: manifest.archiveSha256,
     }, null, 2));
     console.log('Keep both files private. Do not commit or send the archive.');
   } catch (error) {
