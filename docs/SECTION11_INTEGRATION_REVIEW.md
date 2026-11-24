@@ -49,7 +49,7 @@ Bu kapatmalar kullanıcıya açıklanır; ilgili ekranlarda callable çağrısı
 
 ## Son callable taraması
 
-Depo ağacındaki 38 uygulama JavaScript/JSX/TS/TSX dosyası tarandı. Uygulama kaynaklarında `httpsCallable(` çağrısı kalmadı. `firebaseConfig.js` Functions istemcisi başlatmıyor. `functions/index.js` boş export edecek şekilde kapatıldı; legacy Functions modülleri yalnızca kaynak incelemesi ve izole politika testleri için depoda duruyor.
+Depo ağacındaki 38 uygulama JavaScript/JSX/TS/TSX dosyası tarandı. Uygulama kaynaklarında `httpsCallable(` çağrısı kalmadı. `firebaseConfig.js` Functions istemcisi başlatmıyor. `functions/index.js` boş export edecek şekilde kapatıldı ve `firebase.json` içinden Functions deploy hedefi çıkarıldı; legacy Functions modülleri yalnızca kaynak incelemesi ve izole politika testleri için depoda duruyor.
 
 Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
