@@ -20,6 +20,7 @@ import IstatistikPaneliEkrani from './screens/IstatistikPaneliEkrani';
 import KVKKBilgilendirmeEkrani from './screens/KVKKBilgilendirmeEkrani';
 import ProfilEkrani from './screens/ProfilEkrani';
 import RolDuzeltmeTalepleriEkrani from './screens/RolDuzeltmeTalepleriEkrani';
+import DonemAktarimEkrani from './screens/DonemAktarimEkrani';
 const Stack=createNativeStackNavigator();
 const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',headerTitleStyle:{fontWeight:'bold'}};
 export default function App(){return <NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
@@ -38,5 +39,6 @@ export default function App(){return <NavigationContainer><Stack.Navigator initi
 <Stack.Screen name="SifreDegistir" component={SifreDegistirEkrani} options={{title:'Şifre Değiştir'}}/>
 <Stack.Screen name="Profil" component={ProfilEkrani} options={{title:"Profil ve Hesap"}}/>
 <Stack.Screen name="RolDuzeltmeTalepleri" component={RolDuzeltmeTalepleriEkrani} options={{title:"Rol Düzeltme Talepleri"}}/>
+<Stack.Screen name="DonemAktarim" component={DonemAktarimEkrani} options={{title:"Yeni Döneme Aktarım"}}/>
 <Stack.Screen name="OgrenciHesaplari" component={OgrenciHesaplariEkrani} options={{title:'Öğrenci Hesapları'}}/>
 </Stack.Navigator></NavigationContainer>}
