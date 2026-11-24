@@ -389,6 +389,8 @@ async function main() {
       plannedTotal: total,
       requiredConfirmTarget: PROJECT_ID + ':' + target.targetYear,
       requiredConfirmTotal: total,
+      backupManifest: plan.lock?.backupManifest || null,
+      requiredConfirmBackupSha256: plan.lock?.backupSha256 || null,
     }, null, 2));
     return;
   }
@@ -414,8 +416,8 @@ async function main() {
   // Recheck counts after backup and subcollection preflight; no writes occurred yet.
   const latestCounts = await getCleanupCounts(db, target.targetYear);
   for (const name of RETENTION_COLLECTIONS) {
-    if (latestCounts[name] > Number(plan.plannedCounts[name] || 0)) {
-      throw new Error(name + ' koleksiyonuna önizlemeden sonra yeni kayıt eklenmiş. Yeni önizleme alın.');
+    if (latestCounts[name] !== plan.remainingCounts[name]) {
+      throw new Error(name + ' koleksiyon sayımı önizleme ile silme başlangıcı arasında değişmiş. Yeni önizleme alın; bu çalıştırma henüz kayıt silmedi.');
     }
   }
 
