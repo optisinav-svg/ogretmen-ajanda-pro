@@ -121,8 +121,8 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   useEffect(() => { load(); }, [load]);
 
   const retentionDate = istanbulDateParts();
-  const retentionAvailable = retentionDate.year >= 2029 && retentionDate.month === 7;
-  const retentionTargetYear = retentionDate.year - 3;
+  const retentionAvailable = retentionDate.year >= 2028 && retentionDate.month === 7;
+  const retentionTargetYear = retentionDate.year - 2;
 
   const previewRetentionCleanup = async () => {
     setCleanupPreview(null);
@@ -239,7 +239,7 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Yıllık dönem arşivi ve temizliği</Text>
           {!retentionAvailable ? (
-            <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2029'da başlayabilir ve 2026 dönemini kapsar. Sonraki yıllarda üç yılını dolduran tek dönem, yalnızca uygulama sahibi onayıyla temizlenir.</Text>
+            <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2028'de 2026 dönemini kapsar. Sonraki yıllarda her Temmuz iki yıl önceki tek dönem, yalnızca uygulama sahibi onayıyla ele alınır.</Text>
           ) : (
             <Text style={s.cleanupInfo}>Temmuz {retentionDate.year} için hedef dönem {retentionTargetYear} olsa da çok koleksiyonlu temizleme Spark istemcisinde henüz güvenli ve test edilmiş değildir. Önizleme ve silme işlemi bu sürümde kapalıdır; hiçbir kayıt silinmez.</Text>
           )}
