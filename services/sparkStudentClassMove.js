@@ -9,6 +9,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -97,35 +98,39 @@ async function getOrCreateUnregisteredClass({ uid, sourceClass, periodYear }) {
   if (existing) return { id: existing.id, ...existing.data() };
 
   const deterministicId = `${uid}__${schoolId}__${Number(periodYear)}__kayitsiz`;
-  const targetRef = doc(db, 'siniflar', deterministicId);
-  await runTransaction(db, async transaction => {
-    const current = await transaction.get(targetRef);
-    if (current.exists()) {
-      const data = current.data();
-      if (data.uid !== uid || data.okulId !== schoolId
-        || Number(data.donemYili) !== Number(periodYear)
-        || data.ozelTur !== 'kayitsiz'
-        || data.arsivlendi === true
-        || data.arsivDurumu === 'isleniyor') {
-        throw new Error('Kayıtsız öğrenci sınıfı için aynı kimlikte uyumsuz bir kayıt bulundu.');
-      }
-      return;
+  const deterministicExisting = classes.docs.find(item => item.id === deterministicId);
+  if (deterministicExisting) {
+    const data = deterministicExisting.data();
+    if (data.uid !== uid || data.okulId !== schoolId
+      || typeof data.donemYili !== 'number' || data.donemYili !== Number(periodYear)
+      || data.ozelTur !== 'kayitsiz'
+      || data.arsivlendi === true
+      || data.arsivDurumu === 'isleniyor') {
+      throw new Error('Kayıtsız öğrenci sınıfı için aynı kimlikte uyumsuz veya arşivlenmiş bir kayıt bulundu.');
     }
-    transaction.set(targetRef, {
-      ad: 'Kayıtsız Öğrenciler',
-      kademe: '',
-      ders: '',
-      okulId: schoolId,
-      okulAd: sourceClass.okulAd || '',
-      uid,
-      donemYili: Number(periodYear),
-      ozelTur: 'kayitsiz',
-      olusturulma: new Date().toISOString(),
-    });
-  });
+    return { id: deterministicExisting.id, ...data };
+  }
+
+  const targetRef = doc(db, 'siniflar', deterministicId);
+  await setDoc(targetRef, {
+    ad: 'Kayıtsız Öğrenciler',
+    kademe: '',
+    ders: '',
+    okulId: schoolId,
+    okulAd: sourceClass.okulAd || '',
+    uid,
+    donemYili: Number(periodYear),
+    ozelTur: 'kayitsiz',
+    olusturulma: new Date().toISOString(),
+  }, { merge: true });
   const created = await getDoc(targetRef);
   if (!created.exists()) throw new Error('Kayıtsız öğrenci sınıfı oluşturulamadı.');
-  return { id: created.id, ...created.data() };
+  const createdData = created.data();
+  if (!isWritableClass(createdData, uid, periodYear)
+    || createdData.okulId !== schoolId || createdData.ozelTur !== 'kayitsiz') {
+    throw new Error('Oluşturulan Kayıtsız Öğrenciler sınıfı doğrulanamadı.');
+  }
+  return { id: created.id, ...createdData };
 }
 
 async function markTransfer(studentRef, student, markerField, marker) {
