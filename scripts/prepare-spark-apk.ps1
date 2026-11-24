@@ -86,7 +86,7 @@ npx expo export --platform android --output-dir $validationDir
 Assert-LastExitCode 'Expo Android export'
 
 Write-Host ''
-Write-Host 'Canlıya dağıtılacak kurallar Spark öğrenci hesabı, öğretmen onayı, veri sahipliği ve Temmuz 2028 sonrası dönem temizliği içindir.' -ForegroundColor Yellow
+Write-Host 'Canlıya dağıtılacak kurallar Spark öğrenci hesabı, öğretmen onayı, veri sahipliği ve Temmuz 2028 sonrası dönem saklama penceresi içindir. Yıllık silme ekranı güvenli Spark batch akışı tamamlanana kadar kapalıdır.' -ForegroundColor Yellow
 Write-Host 'Bu adım yalnızca Firestore rules dağıtır; Cloud Functions dağıtmaz, kayıt taşımaz ve hiçbir öğrenci/dönem verisini silmez.' -ForegroundColor Yellow
 Write-Host "Doğrulanan yedek: $backupRelativePath" -ForegroundColor Yellow
 $approval = Read-Host "ogretmen-takip projesine sıkı Firestore rules dağıtmak için DEPLOY yazın"
