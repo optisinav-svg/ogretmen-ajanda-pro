@@ -18,7 +18,6 @@ async function claimAlias(emailValue, uid, { createIfMissing = true } = {}) {
   const ref = aliasRef(email);
   await db.runTransaction(async tx => {
     const snap = await tx.get(ref);
-    const now = Date.now();
     if (snap.exists) {
       const data = snap.data();
       if (data.ownerUid !== uid) {
