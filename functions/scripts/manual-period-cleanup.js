@@ -217,6 +217,12 @@ async function readPlan(db, currentYear, targetYear) {
   const lockSnap = await lockRef.get();
   const remainingCounts = await getCleanupCounts(db, targetYear);
   if (lockSnap.exists && lockSnap.get('status') === 'completed') {
+    if (lockSnap.get('targetYear') !== targetYear) {
+      throw new Error('Tamamlandı işaretli temizleme kaydının hedef yılı uyuşmuyor.');
+    }
+    if (sumCounts(remainingCounts) !== 0) {
+      throw new Error('Temizlik kaydı tamamlandı gösteriyor ancak hedef döneme ait kayıtlar hâlâ var. İkinci silme otomatik başlatılmayacak.');
+    }
     return { status: 'completed', lockRef, lock: lockSnap.data(), remainingCounts, plannedCounts: lockSnap.get('plannedCounts') || lockSnap.get('counts') || {} };
   }
   const resumable = lockSnap.exists && ['running', 'failed'].includes(lockSnap.get('status'));
