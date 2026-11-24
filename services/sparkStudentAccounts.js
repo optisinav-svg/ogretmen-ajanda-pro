@@ -49,6 +49,10 @@ export async function createStudentPairingCode(studentRecord) {
   if (!['9', '10', '11', '12', 'TYT', 'AYT'].includes(String(classSnap.get('kademe') || '').trim().toUpperCase())) {
     throw new Error('Öğrenci hesabı yalnızca lise düzeyi sınıflar için açılabilir.');
   }
+  const linkIndexSnap = await getDoc(doc(db, 'ogrenciKayitEslesmeleri', [teacherUid, studentRecord.id].join('__')));
+  if (linkIndexSnap.exists() && linkIndexSnap.get('durum') === 'active') {
+    throw new Error('Bu öğrenci kaydı zaten bir öğrenci hesabına bağlı. Yeni eşleştirme kodu oluşturulamaz.');
+  }
   const normalizedStudentEmail = normalizeEmail(student.eposta);
   if (student.epostaEslesme !== normalizedStudentEmail) {
     await updateDoc(doc(db, 'ogrenciler', studentRecord.id), { epostaEslesme: normalizedStudentEmail });
