@@ -73,19 +73,33 @@ exports.hesapKapatmaTalebiOlustur = onCall({ region: REGION }, async request => 
 exports.hesabiYenidenEtkinlestir = onCall({ region: REGION }, async request => {
   const uid = requireUid(request);
   if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Yeniden etkinleştirme için e-posta doğrulanmalıdır.');
-  const { ref, data } = await getProfile(uid);
-  if (data.hesapDurumu !== 'kapali') return { durum: 'zaten_aktif' };
-  if (data.hesapSaklamaSonu?.toMillis?.() && data.hesapSaklamaSonu.toMillis() <= Date.now()) {
-    throw new HttpsError('failed-precondition', 'Hesabın üç yıllık saklama ve yeniden etkinleştirme süresi sona ermiş. Destekle iletişime geçin.');
-  }
-  await setEmailAliasRetention(uid, null);
-  await ref.update({
-    hesapDurumu: 'aktif',
-    hesapSaklamaSonu: FieldValue.delete(),
-    hesapYenidenEtkinlestirmeTarihi: FieldValue.serverTimestamp(),
+  const ref = db.collection('kullanicilar').doc(uid);
+  const lockRef = db.collection('hesapImhaKayitlari').doc(uid);
+  let role = null;
+  let reactivated = false;
+  await db.runTransaction(async tx => {
+    const [profileSnap, lockSnap] = await Promise.all([tx.get(ref), tx.get(lockRef)]);
+    if (!profileSnap.exists) throw new HttpsError('not-found', 'Hesap profili bulunamadı.');
+    const data = profileSnap.data();
+    role = data.rol || null;
+    if (data.hesapDurumu !== 'kapali') return;
+    if (data.hesapImhaKilidi || (lockSnap.exists && ['running','completed'].includes(lockSnap.get('status')))) {
+      throw new HttpsError('failed-precondition', 'Hesap imha işlemi başlamış. Bu aşamada yeniden etkinleştirme yapılamaz.');
+    }
+    if (data.hesapSaklamaSonu?.toMillis?.() && data.hesapSaklamaSonu.toMillis() <= Date.now()) {
+      throw new HttpsError('failed-precondition', 'Hesabın üç yıllık saklama ve yeniden etkinleştirme süresi sona ermiş. Destekle iletişime geçin.');
+    }
+    tx.update(ref, {
+      hesapDurumu: 'aktif',
+      hesapSaklamaSonu: FieldValue.delete(),
+      hesapYenidenEtkinlestirmeTarihi: FieldValue.serverTimestamp(),
+    });
+    reactivated = true;
   });
+  if (!reactivated) return { durum: 'zaten_aktif' };
+  await setEmailAliasRetention(uid, null);
   await db.collection('hesapYasamDongusuDenetimi').add({
-    uid, islem: 'hesap_yeniden_etkinlestirildi', rol: data.rol || null,
+    uid, islem: 'hesap_yeniden_etkinlestirildi', rol: role,
     zaman: FieldValue.serverTimestamp(), sonuc: 'basarili',
   });
   return { durum: 'aktif' };
