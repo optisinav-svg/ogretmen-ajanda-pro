@@ -106,7 +106,7 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - [ ] Kullanıcıya canlıya geçiş özeti ve geri dönüş planı sunuldu.
 - [ ] Yedek alındı ve okunabilirliği/manifesti doğrulandı.
 - [ ] Doğru Firebase projesi açıkça doğrulandı.
-- [x] Spark'ta Cloud Functions dağıtımı yapılmaz; öğretmen/öğrenci hesap, bildirim ve istatistik ekranlarındaki callable bağımlılıkları kaldırıldı.
+- [ ] Spark'ta Cloud Functions dağıtımı yapılmaz; tüm uygulama ekranlarındaki callable bağımlılıkları henüz kaldırılmadı veya güvenli biçimde devre dışı bırakılmadı. Kalan ekranlar için `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` izlenmeli.
 - [ ] Firestore rules kontrollü dağıtılır; öğretmen, öğrenci ve uygulama sahibi erişim sınırları doğrulanır.
 - [ ] Gerekli indexes dağıtıldı ve sorgular doğrulandı.
 - [ ] Öğrenci bağlantısı ancak tüm backend kontrolleri geçtikten sonra açıldı.
