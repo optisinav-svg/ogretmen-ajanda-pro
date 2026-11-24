@@ -258,6 +258,25 @@ export async function revokeStudentLink(linkItem) {
   });
 }
 
+export async function cancelHomeworkNotifications(homeworkId) {
+  const teacherUid = currentUid();
+  const snapshot = await getDocs(query(
+    collection(db, 'ogrenciYeniOdevBildirimleri'),
+    where('ogretmenUid', '==', teacherUid),
+  ));
+  const targets = snapshot.docs.filter(item =>
+    item.get('odevId') === homeworkId && item.get('durum') === 'aktif'
+  );
+  for (let offset = 0; offset < targets.length; offset += 450) {
+    const batch = writeBatch(db);
+    targets.slice(offset, offset + 450).forEach(item => {
+      batch.update(item.ref, { durum: 'iptal', iptalTarihi: serverTimestamp() });
+    });
+    await batch.commit();
+  }
+  return targets.length;
+}
+
 export async function notifyHomeworkCompleted(linkItem, homeworkItem) {
   const studentUid = currentUid();
   const notificationId = [studentUid, linkItem.id, homeworkItem.id].join('__');
