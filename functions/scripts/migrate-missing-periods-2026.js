@@ -176,15 +176,15 @@ async function main() {
   const backup = await verifyBackup();
   initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
   const db = getFirestore();
-  const results = {};
   let totalScanned = 0;
   let totalMissing = 0;
   let totalInvalid = 0;
   let totalUpdated = 0;
+  const previewResults = {};
 
   console.log('Proje:', PROJECT_ID);
   console.log('Hedef dönem:', TARGET_PERIOD);
-  console.log('Mod:', apply ? 'UYGULAMA' : 'DRY-RUN (salt okunur)');
+  console.log('Mod:', apply ? 'UYGULAMA (önce salt okunur ön kontrol)' : 'DRY-RUN (salt okunur)');
   console.log('Yedek doğrulaması:', backup.totalDocuments, 'belge; arşiv ve manifest mevcut.');
   console.log('SHA-256:', backup.hashVerified ? 'DOĞRULANDI' : 'YOK (yalnızca dry-run yapılabilir).');
   if (apply && !backup.hashVerified) {
@@ -192,14 +192,27 @@ async function main() {
   }
   console.log('Dönem verisi olmayan profil ve ortak kitap kütüphanesi tanımları bilerek kapsam dışıdır.');
 
+  // Always scan every collection before the first write. Existing but invalid
+  // period values are never overwritten; if any are found, abort before apply.
   for (const name of COLLECTIONS) {
-    const result = await scanCollection(db, name, apply);
-    results[name] = result;
+    const result = await scanCollection(db, name, false);
+    previewResults[name] = result;
     totalScanned += result.scanned;
     totalMissing += result.missing;
     totalInvalid += result.invalid;
-    totalUpdated += result.updated;
-    console.log(name + ': taranan=' + result.scanned + ', eksik=' + result.missing + ', geçersiz-mevcut=' + result.invalid + ', yazılan=' + result.updated);
+    console.log('ÖN KONTROL ' + name + ': taranan=' + result.scanned + ', eksik=' + result.missing + ', geçersiz-mevcut=' + result.invalid);
+  }
+  console.log('ÖN KONTROL TOPLAM:', JSON.stringify({ totalScanned, totalMissing, totalInvalid, targetPeriod: TARGET_PERIOD }));
+  if (apply && totalInvalid > 0) {
+    throw new Error('Ön kontrol durduruldu: geçersiz mevcut donemYili değerleri var. Hiçbir belge yazılmadı; önce bu kayıtlar incelenmeli.');
+  }
+
+  if (apply) {
+    for (const name of COLLECTIONS) {
+      const result = await scanCollection(db, name, true);
+      totalUpdated += result.updated;
+      console.log('YAZIM ' + name + ': yazılan=' + result.updated + ', geçersiz-mevcut=' + result.invalid);
+    }
   }
 
   console.log('TOPLAM:', JSON.stringify({ totalScanned, totalMissing, totalInvalid, totalUpdated, targetPeriod: TARGET_PERIOD }));
