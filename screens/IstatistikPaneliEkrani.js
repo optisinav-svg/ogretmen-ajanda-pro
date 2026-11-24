@@ -5,8 +5,7 @@ import {
 } from 'react-native';
 import { getIdTokenResult } from 'firebase/auth';
 import { collection, getDocs, getCountFromServer, query, where } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { auth, db, functions } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
 
 const number = value => Number(value || 0).toLocaleString('tr-TR');
 const istanbulDateParts = () => {
@@ -107,10 +106,8 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         teachers: teacherRows,
         generatedAt: new Date().toISOString(),
       });
-      try {
-        const list = await httpsCallable(functions, 'uygulamaSahibiKapaliHesaplariListele')({});
-        setClosedAccounts(list.data?.accounts || []);
-      } catch (_) { setClosedAccounts([]); setAccountMessage('Kapalı hesap listesi yüklenemedi. Yetkiyi ve bağlantıyı kontrol edin.'); }
+      setClosedAccounts([]);
+      setAccountMessage('Spark planında kapalı hesap listeleme ve Firebase Auth hesabı imhası uygulama içinden güvenli biçimde yapılamadığından bu bölüm geçici olarak kapalıdır. Hesap verileri korunur.');
     } catch (e) {
       setError(e?.code === 'permission-denied'
         ? 'Bu panel için uygulama sahibi yetkisi veya Firestore erişimi doğrulanamadı.'
@@ -128,64 +125,13 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   const retentionTargetYear = retentionDate.year - 3;
 
   const previewRetentionCleanup = async () => {
-    if (!retentionAvailable || cleanupBusy) return;
-    setCleanupBusy(true);
-    setCleanupMessage('');
     setCleanupPreview(null);
-    try {
-      const token = await getIdTokenResult(auth.currentUser, true);
-      if (token.claims.uygulamaSahibi !== true) throw new Error('Uygulama sahibi yetkisi doğrulanamadı.');
-      const preview = httpsCallable(functions, 'uygulamaSahibiDonemTemizliginiOnizle');
-      const response = await preview({});
-      const result = response.data || {};
-      if (result.status === 'completed') {
-        setCleanupMessage(`${result.targetYear} dönemi için Temmuz ${retentionDate.year} temizliği daha önce tamamlanmış.`);
-        return;
-      }
-      if (result.status === 'running') {
-        setCleanupMessage('Dönem temizliği başka bir oturumda devam ediyor. Kilit süresi dolana kadar yeni işlem başlatılamaz.');
-        return;
-      }
-      if (result.status === 'failed') {
-        setCleanupMessage('Önceki temizlik yarıda kalmış. Onay verirseniz aynı işlem güvenli biçimde kaldığı yerden tamamlanır.');
-      }
-      setCleanupPreview({
-        currentYear: retentionDate.year,
-        targetYear: result.targetYear,
-        counts: result.counts || {},
-        total: Number(result.total || 0),
-      });
-    } catch (e) {
-      setCleanupMessage(e?.message || 'Dönem kayıtları önizlenemedi.');
-    } finally {
-      setCleanupBusy(false);
-    }
+    setCleanupMessage('Spark planında çok koleksiyonlu dönem silme işlemi, güvenli ve devam ettirilebilir istemci akışı tamamlanana kadar kapalıdır. Hiçbir kayıt silinmedi.');
   };
 
   const executeRetentionCleanup = async () => {
-    if (!cleanupPreview || cleanupBusy) return;
-    const now = istanbulDateParts();
-    if (now.month !== 7 || now.year < 2029 || now.year !== cleanupPreview.currentYear) {
-      setCleanupPreview(null);
-      setCleanupMessage('Temizlik yalnızca Temmuz ayında ve üç yıllık saklama süresi dolan dönem için başlatılabilir.');
-      return;
-    }
-    setCleanupBusy(true);
-    setCleanupMessage('');
-    try {
-      const token = await getIdTokenResult(auth.currentUser, true);
-      if (token.claims.uygulamaSahibi !== true) throw new Error('Uygulama sahibi yetkisi doğrulanamadı.');
-      const cleanup = httpsCallable(functions, 'uygulamaSahibiDonemTemizliginiOnayla');
-      const response = await cleanup({ confirm: true });
-      const result = response.data || {};
-      setCleanupPreview(null);
-      setCleanupMessage(`Temizlik tamamlandı: ${result.targetYear} dönemine ait ${number(result.totalDeleted)} kayıt silindi. Öğrenci uygulama hesapları ve diğer dönem kayıtları korundu.`);
-      await load(true);
-    } catch (e) {
-      setCleanupMessage(`Temizlik tamamlanamadı: ${e?.message || 'Bilinmeyen hata'}. İşlem kilidi süre aşımından sonra güvenli biçimde yeniden denenebilir.`);
-    } finally {
-      setCleanupBusy(false);
-    }
+    setCleanupPreview(null);
+    setCleanupMessage('Dönem temizliği bu sürümde devre dışıdır. Canlı veriye dokunulmadı.');
   };
 
   const confirmRetentionCleanup = () => {
@@ -204,29 +150,13 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   };
 
   const previewClosedAccount = async account => {
-    if (accountBusy) return;
-    setAccountBusy(true);setAccountMessage('');setAccountPreview(null);
-    try {
-      const response = await httpsCallable(functions, 'uygulamaSahibiKapaliHesapImhasiniOnizle')({ targetUid: account.uid });
-      setAccountPreview(response.data);
-    } catch (e) {
-      setAccountMessage(e?.message || 'Hesap imha önizlemesi alınamadı.');
-    } finally { setAccountBusy(false); }
+    setAccountPreview(null);
+    setAccountMessage('Kapalı hesap imhası Firebase Admin Auth yetkisi gerektirir ve Spark istemcisinden çalıştırılamaz. Hesap verileri korunur.');
   };
 
   const executeClosedAccountDeletion = async () => {
-    if (!accountPreview || accountBusy) return;
-    setAccountBusy(true);setAccountMessage('');
-    try {
-      const response = await httpsCallable(functions, 'uygulamaSahibiKapaliHesabiImhaEt')({
-        targetUid: accountPreview.uid, confirm: true, expectedCounts: accountPreview.counts,
-      });
-      setAccountPreview(null);
-      setAccountMessage(`Hesap imhası tamamlandı. ${number(response.data?.totalDeleted)} kayıt kaldırıldı. Tarihsel e-posta adresleri yeniden kullanıma açılmadı.`);
-      await load(true);
-    } catch (e) {
-      setAccountMessage(`Hesap imhası tamamlanamadı: ${e?.message || 'Bilinmeyen hata'}. Güncel önizleme alıp yeniden deneyin.`);
-    } finally { setAccountBusy(false); }
+    setAccountPreview(null);
+    setAccountMessage('Kapalı hesap imhası güvenli bir Admin Auth süreci tanımlanana kadar devre dışıdır. Hiçbir hesap silinmedi.');
   };
 
   const confirmClosedAccountDeletion = () => {
@@ -311,49 +241,14 @@ export default function IstatistikPaneliEkrani({ navigation }) {
           {!retentionAvailable ? (
             <Text style={s.cleanupInfo}>Otomatik zamanlayıcı kullanılmaz. İlk temizlik Temmuz 2029'da başlayabilir ve 2026 dönemini kapsar. Sonraki yıllarda üç yılını dolduran tek dönem, yalnızca uygulama sahibi onayıyla temizlenir.</Text>
           ) : (
-            <>
-              <Text style={s.cleanupInfo}>Temmuz {retentionDate.year}: üç yılını dolduran {retentionTargetYear} dönemine ait öğretmen kayıtları, öğrenciye bağlı veriler, sınıflar, okullar, eşleştirme ve bildirim kayıtları temizlenebilir. Genel kullanıcı profilleri, Firebase Auth hesapları ve diğer dönemler korunur.</Text>
-              <TouchableOpacity style={s.cleanupButton} disabled={cleanupBusy} onPress={previewRetentionCleanup}>
-                <Text style={s.cleanupButtonText}>{cleanupBusy ? 'İşlem sürüyor…' : 'Silinecek kayıtları önizle'}</Text>
-              </TouchableOpacity>
-              {!!cleanupPreview && (
-                <View style={s.cleanupPreview}>
-                  {Object.entries(cleanupPreview.counts || {}).map(([name, count]) => (
-                    <View key={name} style={s.row}>
-                      <Text style={s.rowTitle}>{name}</Text>
-                      <Text style={s.rowValue}>{number(count || 0)}</Text>
-                    </View>
-                  ))}
-                  <Text style={s.cleanupTotal}>Toplam: {number(cleanupPreview.total)} kayıt</Text>
-                  <TouchableOpacity style={s.cleanupDanger} disabled={cleanupBusy} onPress={confirmRetentionCleanup}>
-                    <Text style={s.cleanupButtonText}>Önizlemeyi onayla ve sil</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </>
+            <Text style={s.cleanupInfo}>Temmuz {retentionDate.year} için hedef dönem {retentionTargetYear} olsa da çok koleksiyonlu temizleme Spark istemcisinde henüz güvenli ve test edilmiş değildir. Önizleme ve silme işlemi bu sürümde kapalıdır; hiçbir kayıt silinmez.</Text>
           )}
           {!!cleanupMessage && <Text style={s.cleanupInfo}>{cleanupMessage}</Text>}
         </View>
 
         <View style={s.section}>
           <Text style={s.sectionTitle}>Hesap kapatma sonrası üç yıllık saklama</Text>
-          <Text style={s.cleanupInfo}>Üç yıllık saklama süresi dolan kapalı hesaplar burada listelenir. İmha yalnızca uygulama sahibi önizlemesi ve ayrı açık onayla yapılır. Tarihsel e-posta alias kayıtları, başka hesaba verilmemesi için korunur.</Text>
-          {!closedAccounts.length && <Text style={s.empty}>İmha süresi dolmuş kapalı hesap bulunmuyor.</Text>}
-          {closedAccounts.map(account=><View key={account.uid} style={s.teacher}>
-            <Text style={s.rowTitle}>{account.displayName}</Text>
-            <Text style={s.rowSub}>{account.role==='ogretmen'?'Öğretmen hesabı':'Öğrenci hesabı'} • Saklama bitişi: {new Date(account.expiresAt).toLocaleDateString('tr-TR')}</Text>
-            <TouchableOpacity style={s.cleanupButton} disabled={accountBusy} onPress={()=>previewClosedAccount(account)}>
-              <Text style={s.cleanupButtonText}>Bu hesabın imha kapsamını önizle</Text>
-            </TouchableOpacity>
-          </View>)}
-          {!!accountPreview&&<View style={s.cleanupPreview}>
-            <Text style={s.rowTitle}>{accountPreview.displayName} • {accountPreview.role}</Text>
-            {Object.entries(accountPreview.counts||{}).map(([name,count])=><View key={name} style={s.row}><Text style={s.rowTitle}>{name}</Text><Text style={s.rowValue}>{number(count)}</Text></View>)}
-            <Text style={s.cleanupTotal}>Toplam: {number(accountPreview.total)} kayıt</Text>
-            <TouchableOpacity style={s.cleanupDanger} disabled={accountBusy} onPress={confirmClosedAccountDeletion}>
-              <Text style={s.cleanupButtonText}>{accountBusy?'İşlem sürüyor…':'Önizlemeyi onayla ve hesabı imha et'}</Text>
-            </TouchableOpacity>
-          </View>}
+          <Text style={s.cleanupInfo}>Kapalı hesapların listelenmesi ve Firebase Auth hesabının üç yıl sonunda imhası, Spark istemcisinden güvenli biçimde yapılamaz. Bu bölüm geçici olarak devre dışıdır; tarihsel e-posta alias kayıtları ve hesap verileri korunur.</Text>
           {!!accountMessage&&<Text style={s.cleanupInfo}>{accountMessage}</Text>}
         </View>
 
