@@ -51,7 +51,6 @@ export default function KayitEkrani({ navigation }) {
     setYukleniyor(true);
     try {
       const normalizedEmail = eposta.trim().toLowerCase();
-      const normalizedEmail = eposta.trim().toLowerCase();
       await httpsCallable(functions, 'epostaKaydiKontrolEt')({ email: normalizedEmail });
       let user = auth.currentUser;
       let createdNewUser = false;
