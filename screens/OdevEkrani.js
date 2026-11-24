@@ -1,7 +1,7 @@
 import React,{useState,useEffect}from'react';
 import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,KeyboardAvoidingView,Platform}from'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where,deleteField}from'firebase/firestore';
+import {collection,addDoc,getDocs,updateDoc,deleteDoc,doc,query,where,deleteField,writeBatch}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {bugun,displayDate,oturumIdOlustur}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
@@ -116,7 +116,37 @@ export default function OdevEkrani({route}){
     Alert.alert('Hata','Ödev kaydedilemedi. '+(e?.message||''));
   }
  };
- const durumGuncelle=async(o,id,d)=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev durumları değiştirilemez.');if(d==='yapildi'&&teslimTarihiGectiMi(o)){Alert.alert('Teslim tarihi geçti','Bu ödev artık Yapıldı olarak işaretlenemez. Geç getirdi veya Yapılmadı seçebilirsiniz.');return;}try{const durumlar={...(o.ogrenciDurumlari||{})},gecmis={...(o.durumGecmisi||{})};durumlar[id]=d;gecmis[id]=[...(gecmis[id]||[]),{durum:d,tarih:new Date().toISOString(),tarihGosterim:displayDate(bugun())}];await updateDoc(doc(db,'odevler',o.id),{ogrenciDurumlari:durumlar,durumGecmisi:gecmis,durum:d});setDurum(null);yukle(secili)}catch(e){Alert.alert('Hata','Durum güncellenemedi.')}};
+ const durumGuncelle=async(o,id,d)=>{
+  if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev durumları değiştirilemez.');
+  if(d==='yapildi'&&teslimTarihiGectiMi(o)){Alert.alert('Teslim tarihi geçti','Bu ödev artık Yapıldı olarak işaretlenemez. Geç getirdi veya Yapılmadı seçebilirsiniz.');return;}
+  const oncekiDurum=(o.ogrenciDurumlari||{})[id]||'bekliyor';
+  if(oncekiDurum===d){setDurum(null);return;}
+  try{
+    const bildirimAnahtari=String(Date.now());
+    const tarih=new Date(Number(bildirimAnahtari)).toISOString();
+    const durumlar={...(o.ogrenciDurumlari||{})},gecmis={...(o.durumGecmisi||{})};
+    durumlar[id]=d;
+    gecmis[id]=[...(gecmis[id]||[]),{durum:d,tarih,tarihGosterim:displayDate(bugun())}];
+    const linkSnap=await getDocs(query(collection(db,'ogretmenOgrenciBaglantilari'),where('ogretmenUid','==',uid)));
+    const links=linkSnap.docs.map(x=>({id:x.id,...x.data()})).filter(link=>
+      link.durum==='active'&&link.ogrenciKayitId===id&&link.sinifId===o.sinifId
+      &&link.donemYili===o.donemYili&&link.izinler?.odevler===true
+      &&(o.hedefOgrenciIds||[]).includes(id));
+    const batch=writeBatch(db);
+    batch.update(doc(db,'odevler',o.id),{ogrenciDurumlari:durumlar,durumGecmisi:gecmis,durum:d});
+    links.forEach(link=>{
+      const notificationId=`${o.id}__${link.ogrenciUid}__${bildirimAnahtari}`;
+      batch.set(doc(db,'ogrenciOdevDurumBildirimleri',notificationId),{
+        uid,ogretmenUid:uid,ogrenciUid:link.ogrenciUid,ogrenciKayitId:id,
+        baglantiId:link.id,odevId:o.id,sinifId:o.sinifId,donemYili:o.donemYili,
+        odevAciklama:o.aciklama||'Ödev',oncekiDurum,yeniDurum:d,
+        bildirimAnahtari,bildirimTarihi:tarih,okundu:false,
+      });
+    });
+    await batch.commit();
+    setDurum(null);yukle(secili);
+  }catch(e){Alert.alert('Hata','Durum güncellenemedi. '+(e?.message||''));}
+ };
  const okulGruplari=()=>{const m={};siniflar.forEach(x=>{const k=x.okulId||x.okulAd||'okulsuz';if(!m[k])m[k]={okulId:x.okulId,okulAd:x.okulAd||'Okul belirtilmemiş',siniflar:[]};m[k].siniflar.push(x)});return Object.values(m).sort((a,b)=>String(a.okulAd).localeCompare(String(b.okulAd),'tr'))};const uygunKitaplar=hedef==='bireysel'?kitaplar.filter(k=>ids.includes(k.ogrenciId)):kutuphaneKitaplari;const odevSil=async o=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için ödev kayıtları silinemez.');Alert.alert('Ödevi Sil','Bu ödevi silmek istediğinize emin misiniz?', [{text:'Vazgeç',style:'cancel'},{text:'Sil',style:'destructive',onPress:async()=>{try{await deleteDoc(doc(db,'odevler',o.id));try{await cancelHomeworkNotifications(o.id)}catch(e){Alert.alert('Ödev silindi','Öğrenci bildirimleri iptal edilemedi. Bağlantıyı kontrol edip tekrar deneyin.')}yukle(secili)}catch(e){Alert.alert('Hata','Ödev silinemedi.')}}}]);};
  const duzenle=o=>{
   setEdit(o);
