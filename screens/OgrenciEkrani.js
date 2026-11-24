@@ -18,18 +18,57 @@ export default function OgrenciEkrani({route,navigation}){
  const formAc=(o=null)=>{setDuzenlenen(o);setAd(o?.ad||'');setSoyad(o?.soyad||'');setTelefon(o?.telefon||'');setEposta(o?.eposta||'');setModalAcik(true)};
  const formKapat=()=>{setModalAcik(false);setDuzenlenen(null);setAd('');setSoyad('');setTelefon('');setEposta('')};
  const ogrenciKaydet=async()=>{if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Dönem sona erdiği için öğrenci kayıtları yalnızca görüntülenebilir.');if(!ad.trim()||!soyad.trim())return Alert.alert('Hata','Ad ve soyad zorunludur.');if(eposta.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eposta.trim()))return Alert.alert('E-posta hatalı','Geçerli bir e-posta adresi girin.');try{const data={ad:ad.trim(),soyad:soyad.trim(),adSoyad:`${ad.trim()} ${soyad.trim()}`,telefon:telefon.trim(),eposta:eposta.trim().toLocaleLowerCase('en-US')};if(duzenlenen)await updateDoc(doc(db,'ogrenciler',duzenlenen.id),data);else await addDoc(collection(db,'ogrenciler'),{...data,sinifId:sinif.id,sinifAd:sinif.ad,okulId:sinif.okulId,okulAd:sinif.okulAd,uid,donemYili,olusturulma:new Date().toISOString()});formKapat();ogrencileriYukle()}catch(e){Alert.alert('Hata','Öğrenci kaydedilemedi.')}};
- const ogrenciSil = () => Alert.alert(
-  'İşlem geçici olarak kapalı',
-  'Öğrenciyi Kayıtsız Öğrenciler sınıfına taşıma işlemi; öğrenci, sınıf ve uygulama bağlantılarını tek işlemde güvenli biçimde güncelleyecek Spark akışı tamamlanana kadar kapalıdır. Hiçbir kayıt değiştirilmedi.'
- );
+ const ogrenciSil = o => {
+  if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Eski dönem kayıtları salt okunurdur.');
+  Alert.alert(
+   'Kayıtsız Öğrencilere Taşı',
+   `${o.adSoyad} kayıtsız öğrenci sınıfına taşınacak. Yoklama, ödev, ders ve kitap geçmişi silinmeyecek.`,
+   [
+    {text:'İptal',style:'cancel'},
+    {text:'Taşı',style:'destructive',onPress:async()=>{
+     setYukleniyor(true);
+     try{
+      const result=await moveStudentToUnregistered({studentId:o.id,sourceClass:sinif,periodYear:donemYili});
+      await ogrencileriYukle();
+      Alert.alert('Taşıma tamamlandı',result.needsRelink
+       ?'Öğrenci kayıtsız sınıfa taşındı. Önceki sınıfın uygulama bağlantısı geçmişe erişim için korundu. Öğrenci yeni bir sınıfa kaydedilirse yeni eşleştirme kodu oluşturulabilir.'
+       :'Öğrenci kayıtsız sınıfa taşındı. Geçmiş kayıtları silinmedi.');
+     }catch(e){
+      setYukleniyor(false);
+      Alert.alert('Taşıma tamamlanamadı',e?.message||'Kayıtlar değiştirilmedi veya işlem güvenli biçimde durduruldu. Aynı işlemi tekrar deneyebilirsiniz.');
+     }
+    }},
+   ]
+  );
+ };
  const ogrenciKaliciSil = () => Alert.alert(
   'Kalıcı silme kapalı',
   'Öğrenci verilerinin kalıcı silinmesi bu ekrandan yapılmaz. Öğrenci geçmişi korunur; okul kaldırma ve saklama süreci güvenli biçimde tamamlanana kadar kayıtlar silinmez.'
  );
- const ogrenciTasi = async () => Alert.alert(
-  'Sınıf taşıma geçici olarak kapalı',
-  'Öğrenci, kitap/konu kayıtları ve öğretmen-öğrenci bağlantılarının birlikte taşınmasını sağlayan güvenli Spark işlemi tamamlanana kadar sınıf değişikliği kapalıdır. Hiçbir kayıt değiştirilmedi.'
- );
+ const ogrenciTasi = (o,yeniSinif) => {
+  if(!donemDuzenlemeyeAcik(donemYili))return Alert.alert('Geçmiş dönem','Eski dönem kayıtları salt okunurdur.');
+  Alert.alert(
+   'Sınıf Değişikliğini Onayla',
+   `${o.adSoyad}, ${yeniSinif.ad} sınıfına taşınacak. Bu döneme ait kitap ve konu ilerlemesi yeni sınıfa aktarılacak; geçmiş yoklama, ödev ve ders kayıtları korunacak.`,
+   [
+    {text:'İptal',style:'cancel'},
+    {text:'Taşı',onPress:async()=>{
+     setYukleniyor(true);
+     try{
+      const result=await moveStudentToClass({studentId:o.id,sourceClass:sinif,targetClass:yeniSinif,periodYear:donemYili});
+      setTasimaModal(false);setTasimaci(null);
+      await ogrencileriYukle();
+      Alert.alert('Taşıma tamamlandı',result.needsRelink
+       ?'Öğrenci yeni sınıfa taşındı. Önceki sınıf uygulama bağlantısı geçmiş kayıtlarına erişim için korundu. Yeni sınıf için Öğrenci Hesapları ekranından yeni eşleştirme kodu oluşturun; öğrenci talep gönderdikten sonra onaylayın.'
+       :'Öğrenci yeni sınıfa taşındı. Kitap/konu ilerlemesi aktarıldı, geçmiş yoklama ve ödev kayıtları korundu.');
+     }catch(e){
+      setYukleniyor(false);
+      Alert.alert('Taşıma tamamlanamadı',e?.message||'Taşıma güvenlik nedeniyle durduruldu. Aynı hedef sınıfı seçerek işlemi sürdürebilirsiniz.');
+     }
+    }},
+   ]
+  );
+ };
  if(yukleniyor)return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
  return <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS==='ios'?'padding':'height'}><View style={s.header}><Text style={s.title}>{sinif?.ad} - Öğrenciler</Text><Text style={s.school}>{sinif?.okulAd||'Okul belirtilmemiş'}{sinif?.kademe?` • ${sinif.kademe}. Sınıf`:''}{sinif?.ders?` • ${sinif.ders}`:''}</Text></View><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{padding:12,paddingBottom:Math.max(150,insets.bottom+80)}}>{!ogrenciler.length&&<Text style={s.empty}>Henüz öğrenci eklenmemiş.</Text>}{ogrenciler.map((o,i)=><View key={o.id} style={s.card}><TouchableOpacity style={s.main} onPress={()=>navigation.navigate('Rapor',{sinif,ogrenci:o,donemYili})}><View style={s.num}><Text style={s.numT}>{i+1}</Text></View><View style={{flex:1}}><Text style={s.name}>{o.adSoyad}</Text>{o.telefon?<Text style={s.phone}>📞 {o.telefon}</Text>:null}<Text style={s.reportHint}>Raporlar ›</Text></View><Text style={s.arrow}>›</Text></TouchableOpacity><View style={s.actions}><TouchableOpacity style={s.editBtn} onPress={()=>formAc(o)}><Text style={s.editT}>✏️ Düzenle</Text></TouchableOpacity><TouchableOpacity style={s.moveBtn} onPress={()=>{setTasimaci(o);setTasimaModal(true)}}><Text style={s.moveT}>↔️ Sınıf Değiştir</Text></TouchableOpacity>{!sinif?.ozelTur&&<TouchableOpacity style={s.delBtn} onPress={()=>ogrenciSil(o)}><Text style={s.delT}>📦 Kayıtsızlara Taşı</Text></TouchableOpacity>}{sinif?.ozelTur==='kayitsiz'&&<TouchableOpacity style={s.delBtn} onPress={()=>ogrenciKaliciSil(o)}><Text style={s.delT}>🗑️ Kalıcı Sil</Text></TouchableOpacity>}</View></View>)}</ScrollView>{!sinif?.ozelTur&&!sinif?.arsivlendi&&<TouchableOpacity style={[s.add,{bottom:Math.max(78,insets.bottom+60)}]} onPress={()=>formAc()}><Text style={s.addT}>+ Öğrenci Ekle</Text></TouchableOpacity>}
  <Modal visible={modalAcik} transparent animationType="slide"><KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}><View style={s.bg}><View style={[s.form,{maxHeight:'90%'}]}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{paddingBottom:insets.bottom+24}}><Text style={s.formTitle}>{duzenlenen?'Öğrenciyi Düzenle':'Öğrenci Ekle'}</Text><TextInput style={s.input} placeholder="Ad" value={ad} onChangeText={setAd} autoCapitalize="words"/><TextInput style={s.input} placeholder="Soyad" value={soyad} onChangeText={setSoyad} autoCapitalize="words"/><TextInput style={s.input} placeholder="Telefon (isteğe bağlı)" value={telefon} onChangeText={setTelefon} keyboardType="phone-pad"/><TextInput style={s.input} placeholder="Öğrenci e-posta adresi (hesap eşleştirme için)" value={eposta} onChangeText={setEposta} keyboardType="email-address" autoCapitalize="none" autoCorrect={false}/><TouchableOpacity style={s.save} onPress={ogrenciKaydet}><Text style={s.saveT}>{duzenlenen?'Güncelle':'Kaydet'}</Text></TouchableOpacity><TouchableOpacity style={s.cancel} onPress={formKapat}><Text>İptal</Text></TouchableOpacity></ScrollView></View></View></KeyboardAvoidingView></Modal>
