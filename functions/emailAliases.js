@@ -21,21 +21,10 @@ async function claimAlias(emailValue, uid, { createIfMissing = true } = {}) {
     const now = Date.now();
     if (snap.exists) {
       const data = snap.data();
-      const expiry = data.sonaErme?.toMillis?.() || 0;
-      const expired = expiry > 0 && expiry <= now;
-      if (data.ownerUid !== uid && !expired) {
-        throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce başka bir hesaba ait olarak rezerve edilmiş.');
+      if (data.ownerUid !== uid) {
+        throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce başka bir hesaba ait olarak rezerve edilmiş. Saklama süresi sona ermiş olsa bile uygulama sahibi tarafından imha kararı verilmeden başka hesaba aktarılamaz.');
       }
-      if (data.ownerUid !== uid && expired) {
-        tx.set(ref, {
-          ownerUid: uid,
-          emailHash: emailAliasId(email),
-          rezerveEdilme: FieldValue.serverTimestamp(),
-          sonKullanim: FieldValue.serverTimestamp(),
-        });
-      } else {
-        tx.set(ref, { sonKullanim: FieldValue.serverTimestamp() }, { merge: true });
-      }
+      tx.set(ref, { sonKullanim: FieldValue.serverTimestamp() }, { merge: true });
       return;
     }
     if (createIfMissing) {
@@ -54,10 +43,7 @@ exports.epostaKaydiKontrolEt = onCall({ region: REGION }, async request => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
   const snap = await aliasRef(email).get();
   if (snap.exists) {
-    const expiry = snap.get('sonaErme')?.toMillis?.() || 0;
-    if (!expiry || expiry > Date.now()) {
-      throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce bir hesaba ait olarak rezerve edilmiş. Lütfen eski hesabınıza giriş yapın veya hesap kurtarma adımlarını izleyin.');
-    }
+    throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce bir hesaba ait olarak rezerve edilmiş. Lütfen eski hesabınıza giriş yapın veya hesap kurtarma adımlarını izleyin.');
   }
   return { kayitUygun: true };
 });
@@ -68,9 +54,8 @@ exports.epostaAliasDegisikliginiKontrolEt = onCall({ region: REGION }, async req
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
   const snap = await aliasRef(email).get();
   if (snap.exists) {
-    const expiry = snap.get('sonaErme')?.toMillis?.() || 0;
-    if (snap.get('ownerUid') !== request.auth.uid && (!expiry || expiry > Date.now())) {
-      throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce başka bir hesaba ait olarak rezerve edilmiş.');
+    if (snap.get('ownerUid') !== request.auth.uid) {
+      throw new HttpsError('already-exists', 'Bu e-posta adresi daha önce başka bir hesaba ait olarak rezerve edilmiş. Saklama süresi sona erse bile uygulama sahibi tarafından imha kararı verilmeden kullanılamaz.');
     }
   }
   return { kullanilabilir: true };
