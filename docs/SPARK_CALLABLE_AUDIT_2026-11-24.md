@@ -151,3 +151,15 @@ Bu degisikliklerden sonra uygulama ekranlarinda kalan callable kullanimlari:
 Bu kalan akislarin bir kismi cok koleksiyonlu, yetkili veya yikici islemlerdir. Her biri guvenli Firestore transaction/Rules tasarimina cevrilmeden veya guvenli sekilde devre disi birakilmadan Spark callable engeli kapanmis sayilmayacak.
 
 **Test durumu:** Bu kaynak degisiklikleri icin Emulator, unit, bundle veya cihaz testi calistirilmadi. Canli Firestore rules dagitilmadi; canli veri, Auth hesabi veya alias kaydi degistirilmedi.
+
+
+## 24.11.2026 son tarama: uygulama callable cagrisi kalmadi
+
+Onceki bolumde listelenen riskli ekranlar icin Spark'ta guvenli istemci/Rules karsiligi henuz bulunmayan islevler acik bir uyariyla devre disi birakildi. Ardindan depo agacindaki **38 uygulama JavaScript/JSX/TS/TSX dosyasinin tamami** tarandi. Uygulama kaynaklarinda artik `httpsCallable(` cagrisi bulunmuyor. Functions kaynak dosyalari ve eski export'lar geriye donuk kaynak uyumlulugu icin depoda duruyor; uygulama arayuzu bunlara bagli degil.
+
+Guncel kullaniciya gorunen durum:
+- Calisan Spark akislari: e-posta alias SHA-256 transaction, dogrulanmis ogretmen/ogrenci kaydi, giris, kendi profil ad/soyad ve dogrulanmis e-posta senkronizasyonu, hesap kapatma/yeniden etkinlestirme, ogrenci kodu/ogretmen onayi ve uygulama ici bildirim altyapisi.
+- Gecici olarak kapali: e-posta degisikligi; rol duzeltme talebi/karari (owner ekraninda bekleyenler salt okunur); ogrenci sinif/kayitsiz tasima; ogrenci kalici silme; okul kaldirma; akademik donem aktarimi; kapali hesap listeleme/imhasi; cok koleksiyonlu yillik donem temizligi.
+- Kapali islevlerde kullaniciya neden aciklamasi gosterilir; hicbir callable cagrisi veya gizli arka plan silme islemi yapilmaz.
+
+**Durum:** Uygulama kaynak kodunda Cloud Functions callable bagimliligi kalmadi. Bu, kapatilan islevlerin Spark'ta yeniden tasarlandigi anlamina gelmez; bu islevler guvenli uygulama hazir olana kadar ertelemeye alinmistir. Emulator/unit/bundle testleri henuz calistirilmadi; canli rules dagitilmadi; canli veri degistirilmedi.
