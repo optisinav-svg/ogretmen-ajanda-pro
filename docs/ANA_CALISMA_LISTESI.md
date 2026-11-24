@@ -168,7 +168,7 @@ Bu asama tum P0 engelleri ve kaynak duzeltmeleri kapandiktan sonra baslar:
 
 Durum: Bölüm 12 CI doğrulamasının ilk paketi tamamlandı; gerçek Firebase/canlı Rules, indeks karşılaştırması, gerçek hesap ve cihaz testleri ile APK hâlâ bekliyor.
 
-**24.11.2026 CI kanıtı:** GitHub Actions #700 (`26f7f24`) başarılı. Firestore Emulator + statik/navigasyon testleri 79/79; Cloud Functions politika testleri 46/46; Android bundle 888 modülle başarıyla üretildi. Bu sonuçlar canlı Firebase Rules dağıtımı veya gerçek cihaz doğrulaması değildir. Functions bağımlılık kurulumu ayrıca 9 orta düzey npm audit uyarısı verdi; paketler tek tek incelenmeden otomatik `npm audit fix` uygulanmayacak.
+**24.11.2026 CI kanıtı:** GitHub Actions #700 (`26f7f24`) başarılı. Firestore Emulator + statik/navigasyon testleri 79/79; Cloud Functions politika testleri 46/46; Android bundle 888 modülle başarıyla üretildi. Bu sonuçlar canlı Firebase Rules dağıtımı veya gerçek cihaz doğrulaması değildir. CI günlüklerinde ana proje bağımlılık kurulumunda 29 npm audit uyarısı (14 orta, 14 yüksek, 1 kritik), Functions bağımlılık kurulumunda ayrıca 9 orta düzey uyarı görüldü. Kaynak/etki analizi yapılmadan otomatik `npm audit fix` uygulanmayacak.
 - `scripts/prepare-spark-apk.ps1` su anda eski `release/pre-apk-2026-11-22` dalini bekliyor. 12. bolumden once bu betik guncel entegre kaynak dalina gore yenilenmeli; su an calistirilmayacak.
 
 ## 4. Is sirasi ve tamamlanma kapilari
