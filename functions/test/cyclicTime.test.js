@@ -24,3 +24,8 @@ test('wheel scroll offset maps to the nearest row and recenters only at outer co
   assert.equal(shouldRecenter(95,24),false);
   assert.equal(shouldRecenter(96,24),true);
 });
+
+const appConfig = require('../../app.json');
+test('Android resizes the layout when the software keyboard opens', () => {
+  assert.equal(appConfig.expo.android.softwareKeyboardLayoutMode, 'resize');
+});
