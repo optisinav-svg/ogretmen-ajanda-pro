@@ -15,7 +15,9 @@ export default function DonemAktarimEkrani({route}){
  const[schools,setSchools]=useState([]);
  const[classes,setClasses]=useState([]);
  const[students,setStudents]=useState([]);
+ const[books,setBooks]=useState([]);
  const[selected,setSelected]=useState({});
+ const[selectedBooks,setSelectedBooks]=useState({});
  const[grades,setGrades]=useState({});
  const[loading,setLoading]=useState(true);
  const[sending,setSending]=useState(false);
@@ -26,46 +28,48 @@ export default function DonemAktarimEkrani({route}){
   if(!uid)return;
   setLoading(true);
   try{
-   const [a,b,c]=await Promise.all([
+   const [a,b,c,d]=await Promise.all([
     getDocs(query(collection(db,'okullar'),where('uid','==',uid))),
     getDocs(query(collection(db,'siniflar'),where('uid','==',uid))),
     getDocs(query(collection(db,'ogrenciler'),where('uid','==',uid))),
+    getDocs(query(collection(db,'kitaplar'),where('uid','==',uid))),
    ]);
    const ss=a.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi);
    const cs=b.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear)&&!x.arsivlendi&&!x.ozelTur);
    const os=c.docs.map(d=>({id:d.id,...d.data()})).filter(x=>donemUygun(x,sourceYear));
-   setSchools(ss);setClasses(cs);setStudents(os);
+   const bs=d.docs.map(x=>({id:x.id,...x.data()})).filter(x=>donemUygun(x,sourceYear));
+   setSchools(ss);setClasses(cs);setStudents(os);setBooks(bs);
    const initial={};const initialGrades={};
    for(const cls of cs){initialGrades[cls.id]=nextGrade(cls.kademe);}
-   setSelected(initial);setGrades(initialGrades);
+   setSelected(initial);setSelectedBooks({});setGrades(initialGrades);
   }catch(e){Alert.alert('Yükleme hatası','Kaynak dönem kayıtları yüklenemedi. '+(e?.message||''))}
   finally{setLoading(false)}
  };
  const schoolMap=useMemo(()=>new Map(schools.map(x=>[x.id,x])),[schools]);
  const selectedCount=Object.values(selected).reduce((n,ids)=>n+ids.length,0);
  const toggleStudent=(classId,studentId)=>{
-  setSelected(prev=>{
-   const current=prev[classId]||[];
-   const next=current.includes(studentId)?current.filter(x=>x!==studentId):[...current,studentId];
-   return {...prev,[classId]:next};
-  });
+  const removing=(selected[classId]||[]).includes(studentId);
+  setSelected(prev=>{const current=prev[classId]||[];const next=removing?current.filter(x=>x!==studentId):[...current,studentId];return {...prev,[classId]:next};});
+  if(removing)setSelectedBooks(prev=>({...prev,[classId]:(prev[classId]||[]).filter(bookId=>books.find(b=>b.id===bookId)?.ogrenciId!==studentId)}));
  };
+ const toggleBook=(classId,bookId)=>setSelectedBooks(prev=>{const current=prev[classId]||[];return {...prev,[classId]:current.includes(bookId)?current.filter(x=>x!==bookId):[...current,bookId]};});
  const toggleAll=(cls,list)=>{
   const current=selected[cls.id]||[];
-  setSelected(prev=>({...prev,[cls.id]:current.length===list.length?{...prev,[cls.id]:[]}: {...prev,[cls.id]:list.map(x=>x.id)}}));
+  setSelected(prev=>({...prev,[cls.id]:current.length===list.length?[]:list.map(x=>x.id)}));
+  if(current.length===list.length)setSelectedBooks(prev=>({...prev,[cls.id]:[]}));
  };
  const start=async()=>{
   const chosen=classes.filter(x=>(selected[x.id]||[]).length>0);
   if(!chosen.length)return Alert.alert('Seçim gerekli','Aktarılacak sınıflardan en az bir öğrenci seçin.');
   if(selectedCount>500)return Alert.alert('Seçim sınırı','Tek aktarımda en fazla 500 öğrenci seçilebilir.');
   if(!donemDuzenlemeyeAcik(targetYear))return Alert.alert('Hedef dönem kapalı',`\u001b[0m${targetYear}/${targetYear+1} dönemi henüz başlamadı veya düzenlemeye kapalı. Aktarım hedef dönemin 1 Haziran–30 Haziran düzenleme aralığında yapılabilir.`);
-  Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${chosen.length} sınıf ve ${selectedCount} öğrenci aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi yeni döneme kopyalanmayacak; kitap ve konu tanımları aktarılacak, yeni dönem konu/ödev ilerlemesi sıfırdan başlayacak. Devam edilsin mi?`,[
+  Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${chosen.length} sınıf ve ${selectedCount} öğrenci aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi kopyalanmayacak. Yalnızca seçtiğiniz öğrenci kitapları ve konu sayfa aralıkları aktarılacak; yeni dönem ilerlemesi sıfırdan başlayacak. Öğretmenin ortak kitap kütüphanesi zaten dönemden bağımsızdır. Devam edilsin mi?`,[
    {text:'Vazgeç',style:'cancel'},
    {text:'Aktarımı başlat',onPress:async()=>{
     setSending(true);setDone(null);
     try{
      const call=httpsCallable(functions,'ogretmenDonemAktariminiBaslat');
-     const result=await call({sourceYear,targetYear,classes:chosen.map(cls=>({sourceClassId:cls.id,targetGrade:grades[cls.id]||nextGrade(cls.kademe),studentIds:selected[cls.id]}))});
+     const result=await call({sourceYear,targetYear,classes:chosen.map(cls=>({sourceClassId:cls.id,targetGrade:grades[cls.id]||nextGrade(cls.kademe),studentIds:selected[cls.id],bookIds:selectedBooks[cls.id]||[]}))});
      setDone(result.data);
      Alert.alert('Aktarım tamamlandı',`${result.data.okulSayisi} okul, ${result.data.sinifSayisi} sınıf, ${result.data.ogrenciSayisi} öğrenci, ${result.data.kitapSayisi} kitap ve ${result.data.konuSayisi} konu kaydı yeni döneme aktarıldı.`);
     }catch(e){Alert.alert('Aktarım tamamlanamadı',e?.message||'İşlem sırasında hata oluştu. Tamamlanan kayıtlar korunur; aynı seçimlerle tekrar denendiğinde aktarım kimlikleri yinelenen kayıt oluşturmaz.')}
@@ -89,6 +93,7 @@ export default function DonemAktarimEkrani({route}){
     const list=students.filter(x=>x.sinifId===cls.id);
     const chosen=selected[cls.id]||[];
     const fixed=['12','TYT','AYT'].includes(String(cls.kademe||'').toUpperCase());
+    const selectedBookIds=selectedBooks[cls.id]||[];
     return <View key={cls.id} style={s.card}>
      <Text style={s.school}>{school?.ad||cls.okulAd||'Okul bilgisi yok'}</Text>
      <Text style={s.className}>{cls.ad} • {cls.kademe||'Kademe yok'} • {cls.ders||'Ders yok'}</Text>
@@ -101,10 +106,17 @@ export default function DonemAktarimEkrani({route}){
       <Text style={s.label}>Öğrenciler ({chosen.length}/{list.length})</Text>
       <TouchableOpacity onPress={()=>toggleAll(cls,list)}><Text style={s.selectAll}>{chosen.length===list.length?'Seçimi kaldır':'Tümünü seç'}</Text></TouchableOpacity>
      </View>
-     {list.map(st=><TouchableOpacity key={st.id} style={s.student} onPress={()=>toggleStudent(cls.id,st.id)}>
-      <View style={[s.check,chosen.includes(st.id)&&s.checkOn]}>{chosen.includes(st.id)&&<Text style={s.checkMark}>✓</Text>}</View>
-      <Text style={s.studentName}>{st.adSoyad||[st.ad,st.soyad].filter(Boolean).join(' ')}</Text>
-     </TouchableOpacity>)}
+     {list.map(st=>{const assignedBooks=books.filter(b=>b.ogrenciId===st.id&&b.sinifId===cls.id);return <View key={st.id} style={s.studentBlock}>
+      <TouchableOpacity style={s.student} onPress={()=>toggleStudent(cls.id,st.id)}>
+       <View style={[s.check,chosen.includes(st.id)&&s.checkOn]}>{chosen.includes(st.id)&&<Text style={s.checkMark}>✓</Text>}</View>
+       <Text style={s.studentName}>{st.adSoyad||[st.ad,st.soyad].filter(Boolean).join(' ')}</Text>
+      </TouchableOpacity>
+      {chosen.includes(st.id)&&assignedBooks.map(book=><TouchableOpacity key={book.id} style={s.bookRow} onPress={()=>toggleBook(cls.id,book.id)}>
+       <View style={[s.bookCheck,selectedBookIds.includes(book.id)&&s.checkOn]}>{selectedBookIds.includes(book.id)&&<Text style={s.checkMark}>✓</Text>}</View>
+       <Text style={s.bookText}>📘 {book.ad||'Kitap'} ({book.sayfaSayisi||'?'} sayfa)</Text>
+      </TouchableOpacity>)}
+      {chosen.includes(st.id)&&!assignedBooks.length&&<Text style={s.emptySmall}>Bu öğrencinin kaynak dönemde atanmış kitabı yok.</Text>}
+     </View>})}
      {!list.length&&<Text style={s.emptySmall}>Bu sınıfta aktarılabilir öğrenci yok.</Text>}
     </View>
    })}
@@ -120,5 +132,5 @@ export default function DonemAktarimEkrani({route}){
 }
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:'#F1F8E9'},header:{backgroundColor:'#2E7D32',padding:17},title:{fontSize:20,fontWeight:'bold',color:'#fff'},sub:{fontSize:15,color:'#E8F5E9',marginTop:4,fontWeight:'700'},info:{fontSize:12,color:'#E8F5E9',lineHeight:18,marginTop:8},
- card:{backgroundColor:'#fff',borderRadius:13,padding:14,marginBottom:12,elevation:2},school:{fontSize:12,color:'#558B2F',fontWeight:'700'},className:{fontSize:16,color:'#1B5E20',fontWeight:'bold',marginTop:3,marginBottom:10},row:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:9,marginBottom:6},label:{fontSize:13,color:'#455A64',fontWeight:'700'},grade:{paddingVertical:7,paddingHorizontal:11,borderWidth:1,borderColor:'#C8E6C9',borderRadius:8,marginRight:6},gradeOn:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},gradeText:{color:'#2E7D32',fontWeight:'700'},gradeTextOn:{color:'#fff'},fixed:{fontSize:11,color:'#EF6C00',marginBottom:8},student:{flexDirection:'row',alignItems:'center',paddingVertical:9,borderTopWidth:1,borderTopColor:'#F1F5F0'},check:{width:20,height:20,borderRadius:5,borderWidth:1,borderColor:'#90A4AE',marginRight:10,alignItems:'center',justifyContent:'center'},checkOn:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},checkMark:{color:'#fff',fontWeight:'bold'},studentName:{fontSize:14,color:'#263238'},selectAll:{color:'#1565C0',fontSize:12,fontWeight:'700'},empty:{color:'#78909C',textAlign:'center',padding:24},emptySmall:{color:'#90A4AE',fontSize:12,paddingVertical:8},notice:{backgroundColor:'#FFF8E1',borderRadius:10,padding:12,marginBottom:12},noticeText:{color:'#795548',fontSize:12,lineHeight:18},done:{backgroundColor:'#E8F5E9',borderRadius:10,padding:12},doneTitle:{color:'#1B5E20',fontWeight:'bold'},doneText:{color:'#33691E',fontSize:12,marginTop:4},footer:{position:'absolute',left:0,right:0,bottom:0,backgroundColor:'#fff',padding:13,borderTopWidth:1,borderTopColor:'#E0E0E0'},counter:{textAlign:'center',fontSize:12,color:'#546E7A',marginBottom:8},button:{backgroundColor:'#2E7D32',borderRadius:10,padding:15,alignItems:'center'},buttonOff:{backgroundColor:'#A5BFA6'},buttonText:{color:'#fff',fontWeight:'bold'}
+ card:{backgroundColor:'#fff',borderRadius:13,padding:14,marginBottom:12,elevation:2},school:{fontSize:12,color:'#558B2F',fontWeight:'700'},className:{fontSize:16,color:'#1B5E20',fontWeight:'bold',marginTop:3,marginBottom:10},row:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:9,marginBottom:6},label:{fontSize:13,color:'#455A64',fontWeight:'700'},grade:{paddingVertical:7,paddingHorizontal:11,borderWidth:1,borderColor:'#C8E6C9',borderRadius:8,marginRight:6},gradeOn:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},gradeText:{color:'#2E7D32',fontWeight:'700'},gradeTextOn:{color:'#fff'},fixed:{fontSize:11,color:'#EF6C00',marginBottom:8},studentBlock:{borderTopWidth:1,borderTopColor:'#F1F5F0'},student:{flexDirection:'row',alignItems:'center',paddingVertical:9},bookRow:{flexDirection:'row',alignItems:'center',paddingVertical:6,paddingLeft:30},bookCheck:{width:17,height:17,borderRadius:4,borderWidth:1,borderColor:'#90A4AE',marginRight:8,alignItems:'center',justifyContent:'center'},bookText:{fontSize:12,color:'#546E7A'},check:{width:20,height:20,borderRadius:5,borderWidth:1,borderColor:'#90A4AE',marginRight:10,alignItems:'center',justifyContent:'center'},checkOn:{backgroundColor:'#2E7D32',borderColor:'#2E7D32'},checkMark:{color:'#fff',fontWeight:'bold'},studentName:{fontSize:14,color:'#263238'},selectAll:{color:'#1565C0',fontSize:12,fontWeight:'700'},empty:{color:'#78909C',textAlign:'center',padding:24},emptySmall:{color:'#90A4AE',fontSize:12,paddingVertical:8},notice:{backgroundColor:'#FFF8E1',borderRadius:10,padding:12,marginBottom:12},noticeText:{color:'#795548',fontSize:12,lineHeight:18},done:{backgroundColor:'#E8F5E9',borderRadius:10,padding:12},doneTitle:{color:'#1B5E20',fontWeight:'bold'},doneText:{color:'#33691E',fontSize:12,marginTop:4},footer:{position:'absolute',left:0,right:0,bottom:0,backgroundColor:'#fff',padding:13,borderTopWidth:1,borderTopColor:'#E0E0E0'},counter:{textAlign:'center',fontSize:12,color:'#546E7A',marginBottom:8},button:{backgroundColor:'#2E7D32',borderRadius:10,padding:15,alignItems:'center'},buttonOff:{backgroundColor:'#A5BFA6'},buttonText:{color:'#fff',fontWeight:'bold'}
 });
