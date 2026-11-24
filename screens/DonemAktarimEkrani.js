@@ -1,8 +1,7 @@
 import React,{useEffect,useMemo,useState}from'react';
 import{View,Text,TouchableOpacity,ScrollView,StyleSheet,Alert,ActivityIndicator}from'react-native';
 import{collection,getDocs,query,where}from'firebase/firestore';
-import{httpsCallable}from'firebase/functions';
-import{auth,db,functions}from'../firebaseConfig';
+import{auth,db}from'../firebaseConfig';
 import{donemYiliBugun,donemUygun,donemDuzenlemeyeAcik}from'../utils/donem';
 
 const KADEMELER=['1','2','3','4','5','6','7','8','9','10','11','12','TYT','AYT'];
@@ -69,24 +68,10 @@ export default function DonemAktarimEkrani({route}){
   if(clear)setSelectedBooks(prev=>({...prev,[cls.id]:[]}));
  };
  const start=async()=>{
-  const chosen=classes.filter(x=>selectedClasses.includes(x.id));
-  if(!chosen.length)return Alert.alert('Seçim gerekli','Aktarılacak en az bir sınıf seçin.');
-  if(selectedCount>500)return Alert.alert('Seçim sınırı','Tek aktarımda en fazla 500 öğrenci seçilebilir.');
-  if(!donemDuzenlemeyeAcik(targetYear))return Alert.alert('Hedef dönem kapalı',`${targetYear}/${targetYear+1} dönemi henüz başlamadı veya düzenlemeye kapalı. Aktarım hedef dönemin 1 Haziran–30 Haziran düzenleme aralığında yapılabilir.`);
-  const schoolCount=new Set(chosen.map(x=>x.okulId).filter(Boolean)).size;
-  Alert.alert('Dönem aktarımını başlat',`${sourceYear}/${sourceYear+1} döneminden ${targetYear}/${targetYear+1} dönemine ${schoolCount} okul, ${chosen.length} sınıf, ${selectedCount} öğrenci ve ${selectedBookCount} kitap ataması aktarılacak. Eski dönem kayıtları değiştirilmeyecek. Öğrencilerin eski yoklama, ödev ve ders geçmişi kopyalanmayacak. Yalnızca seçtiğiniz öğrenci kitapları ve konu sayfa aralıkları aktarılacak; yeni dönem ilerlemesi sıfırdan başlayacak. Öğretmenin ortak kitap kütüphanesi zaten dönemden bağımsızdır. Aynı seçimle tekrar deneme mükerrer kayıt oluşturmaz; daha sonra farklı seçim yapılırsa yeni kayıtlar eklenir, önceden aktarılan kayıtlar otomatik silinmez. Devam edilsin mi?`,[
-   {text:'Vazgeç',style:'cancel'},
-   {text:'Aktarımı başlat',onPress:async()=>{
-    setSending(true);setDone(null);
-    try{
-     const call=httpsCallable(functions,'ogretmenDonemAktariminiBaslat');
-     const result=await call({sourceYear,targetYear,classes:chosen.map(cls=>({sourceClassId:cls.id,targetGrade:grades[cls.id]||nextGrade(cls.kademe),studentIds:selected[cls.id],bookIds:selectedBooks[cls.id]||[]}))});
-     setDone(result.data);
-     Alert.alert('Aktarım tamamlandı',`${result.data.okulSayisi} okul, ${result.data.sinifSayisi} sınıf, ${result.data.ogrenciSayisi} öğrenci, ${result.data.kitapSayisi} kitap, ${result.data.konuSayisi} konu ve ${result.data.baglantiSayisi||0} öğrenci hesap bağlantısı yeni döneme aktarıldı.`);
-    }catch(e){Alert.alert('Aktarım tamamlanamadı',e?.message||'İşlem sırasında hata oluştu. Tamamlanan kayıtlar korunur; aynı seçimlerle tekrar denendiğinde aktarım kimlikleri yinelenen kayıt oluşturmaz.')}
-    finally{setSending(false)}
-   }}
-  ]);
+  Alert.alert(
+   'Dönem aktarımı geçici olarak kapalı',
+   'Dönem aktarımı okul, sınıf, öğrenci, kitap, konu ve öğrenci bağlantılarını birlikte kopyalayan çok adımlı bir işlemdir. Spark planında güvenli, tekrar çalıştırılabilir ve yarım kalınca devam ettirilebilir istemci akışı tamamlanana kadar aktarım kapalıdır. Hiçbir kayıt değiştirilmedi.'
+  );
  };
  if(loading)return <ActivityIndicator style={{flex:1}} size="large" color="#2E7D32"/>;
  const targetOpen=donemDuzenlemeyeAcik(targetYear);
@@ -97,6 +82,7 @@ export default function DonemAktarimEkrani({route}){
    <Text style={s.info}>Okul ve sınıflar seçtiğiniz öğrencilerle birlikte yeni dönemde kopyalanır. Öğrencilerin kitapları ve konu sayfa aralıkları da aktarılır. Eski dönem kayıtları değiştirilmez.</Text>
   </View>
   <ScrollView contentContainerStyle={{padding:14,paddingBottom:130}}>
+   <View style={s.notice}><Text style={s.noticeText}>Bu ekran kaynak dönemi incelemek ve aktarım seçimini hazırlamak için görüntülenebilir. Gerçek aktarım, veri bütünlüğü ve Spark güvenlik kontrolleri tamamlanana kadar devre dışıdır.</Text></View>
    {!targetOpen&&<View style={s.notice}><Text style={s.noticeText}>Aktarım, hedef dönemin düzenlemeye açıldığı 1 Haziran tarihinde etkinleşir. Şu anda seçimleri inceleyebilirsiniz.</Text></View>}
    {!classes.length&&<Text style={s.empty}>Kaynak {sourceYear}/{sourceYear+1} döneminde aktarılabilecek sınıf bulunamadı.</Text>}
    {classes.map(cls=>{
