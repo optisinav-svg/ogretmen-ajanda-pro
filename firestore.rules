@@ -391,26 +391,40 @@ service cloud.firestore {
       let data = request.resource.data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciKayitId);
       let classPath = /databases/$(database)/documents/siniflar/$(data.sinifId);
+      let teacherPath = /databases/$(database)/documents/kullanicilar/$(request.auth.uid);
+      let indexPath = studentRecordIndexPath(request.auth.uid + '__' + data.ogrenciKayitId);
       return isTeacher()
-        && codeId.matches('^[A-Fa-f0-9]{64}$')
-        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogrenciKayitId', 'sinifId', 'donemYili', 'kullanildi', 'olusturulma', 'sonaErme'])
+        && codeId.size() == 64
+        && codeId.matches('[A-Fa-f0-9]{64}')
+        && data.keys().hasOnly(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
+        && data.keys().hasAll(['uid', 'ogretmenUid', 'ogretmenHesapAdi', 'ogrenciKayitId', 'ogrenciAdSoyad', 'eposta', 'sinifId', 'sinifAd', 'okulAd', 'donemYili', 'kademe', 'ders', 'kullanildi', 'olusturulma', 'sonaErme'])
         && data.uid == request.auth.uid
         && data.ogretmenUid == request.auth.uid
+        && data.ogretmenHesapAdi == get(teacherPath).data.get('kullaniciAdi', '')
         && data.ogrenciKayitId is string
+        && data.ogrenciAdSoyad is string && data.ogrenciAdSoyad.size() >= 2 && data.ogrenciAdSoyad.size() <= 80
+        && data.eposta is string && data.eposta.size() >= 3 && data.eposta.size() <= 254
         && data.sinifId is string
+        && data.sinifAd is string && data.sinifAd.size() <= 80
+        && data.okulAd is string && data.okulAd.size() <= 120
+        && data.ders is string && data.ders.size() <= 80
         && data.donemYili is int
         && data.kullanildi == false
         && data.olusturulma == request.time
         && data.sonaErme > request.time
         && data.sonaErme <= request.time + duration.value(12, 'h')
         && isEditablePeriod(data.donemYili)
+        && (!exists(indexPath) || get(indexPath).data.durum != 'active')
         && exists(studentPath)
         && get(studentPath).data.uid == request.auth.uid
         && get(studentPath).data.sinifId == data.sinifId
         && get(studentPath).data.donemYili == data.donemYili
+        && data.eposta == get(studentPath).data.get('epostaEslesme', get(studentPath).data.get('eposta', ''))
         && exists(classPath)
         && get(classPath).data.uid == request.auth.uid
         && get(classPath).data.donemYili == data.donemYili
+        && data.sinifAd == get(classPath).data.get('ad', '')
+        && data.kademe == get(classPath).data.kademe
         && get(classPath).data.kademe in ['9', '10', '11', '12', 'TYT', 'AYT', 9, 10, 11, 12];
     }
 
@@ -614,6 +628,60 @@ service cloud.firestore {
     }
 
 
+    function teacherCanCreateHomeworkStatusNotice(data, notificationId) {
+      let linkPath = studentLinkDocPath(data.baglantiId);
+      let link = get(linkPath).data;
+      let homeworkPath = /databases/$(database)/documents/odevler/$(data.odevId);
+      let homework = get(homeworkPath).data;
+      return isTeacher()
+        && notificationId == data.odevId + '__' + data.ogrenciUid + '__' + data.bildirimAnahtari
+        && data.keys().hasOnly([
+          'uid', 'ogretmenUid', 'ogrenciUid', 'ogrenciKayitId', 'baglantiId',
+          'odevId', 'sinifId', 'donemYili', 'odevAciklama', 'oncekiDurum',
+          'yeniDurum', 'bildirimAnahtari', 'bildirimTarihi', 'okundu'
+        ])
+        && data.uid == request.auth.uid
+        && data.ogretmenUid == request.auth.uid
+        && data.ogrenciUid is string
+        && data.ogrenciKayitId is string
+        && data.bildirimAnahtari is string
+        && data.bildirimAnahtari.size() == 13
+        && data.bildirimAnahtari.matches('^[0-9]{13}')
+        && data.yeniDurum in ['yapildi', 'yapilmadi', 'gec']
+        && data.oncekiDurum in ['bekliyor', 'yapildi', 'yapilmadi', 'gec']
+        && data.oncekiDurum != data.yeniDurum
+        && data.okundu == false
+        && exists(linkPath)
+        && link.ogretmenUid == request.auth.uid
+        && link.ogrenciUid == data.ogrenciUid
+        && link.ogrenciKayitId == data.ogrenciKayitId
+        && link.sinifId == data.sinifId
+        && link.donemYili == data.donemYili
+        && link.durum == 'active'
+        && link.izinler.odevler == true
+        && exists(homeworkPath)
+        && homework.uid == request.auth.uid
+        && homework.sinifId == data.sinifId
+        && homework.donemYili == data.donemYili
+        && homework.hedefOgrenciIds.hasAny([data.ogrenciKayitId])
+        && homework.ogrenciDurumlari[data.ogrenciKayitId] == data.yeniDurum;
+    }
+
+    function teacherCanUpdateHomeworkStatus() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isTeacher()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && resource.data.donemYili is int
+        && request.resource.data.donemYili == resource.data.donemYili
+        && isEditablePeriod(resource.data.donemYili)
+        && request.resource.data.sinifId == resource.data.sinifId
+        && changed.hasOnly(['ogrenciDurumlari', 'durumGecmisi', 'durum'])
+        && request.resource.data.ogrenciDurumlari is map
+        && request.resource.data.durumGecmisi is map
+        && request.resource.data.durum in ['yapildi', 'yapilmadi', 'gec', 'bekliyor'];
+    }
+
     match /kullanicilar/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isApplicationOwner());
       allow list: if isApplicationOwner();
@@ -688,7 +756,7 @@ service cloud.firestore {
     match /odevler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'odevler') && resource.data.hedefOgrenciIds.hasAny([linkedStudentRecordId(resource.data.uid, resource.data.sinifId)])) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
-      allow update: if ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
+      allow update: if teacherCanUpdateHomeworkStatus() || (ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data));
       allow delete: if ownsEditablePeriodRecord();
     }
 
@@ -746,11 +814,17 @@ service cloud.firestore {
 
     match /ogrenciEslesmeKodlari/{codeId} {
       allow get: if signedIn()
-        && (resource.data.ogretmenUid == request.auth.uid
-          || (request.auth.token.email_verified == true
-            && resource.data.eposta == request.auth.token.email
-            && resource.data.kullanildi == false
-            && resource.data.sonaErme > request.time));
+        && codeId.size() == 64
+        && codeId.matches('^[A-Fa-f0-9]+')
+        && (
+          (resource == null && request.auth.token.email_verified == true)
+          || (resource != null
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
       allow list: if false;
       allow create: if createsPairingCode(codeId);
       allow update: if consumesPairingCode(codeId);
@@ -758,7 +832,15 @@ service cloud.firestore {
     }
 
     match /ogretmenOgrenciBaglantilari/{linkId} {
-      allow get, list: if signedIn()
+      allow get: if signedIn()
+        && (
+          (resource == null && isTeacher() && linkId.matches('^' + request.auth.uid + '__.*'))
+          || (resource != null
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
         && (isApplicationOwner()
           || resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
@@ -778,7 +860,12 @@ service cloud.firestore {
     }
 
     match /ogrenciKayitEslesmeleri/{indexId} {
-      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow get: if isTeacher()
+        && (
+          (resource == null && indexId.matches('^' + request.auth.uid + '__.*'))
+          || (resource != null && resource.data.ogretmenUid == request.auth.uid)
+        );
+      allow list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
       allow create: if createsApprovedStudentIndex(indexId);
       allow update: if (
         isTeacher()
@@ -800,7 +887,14 @@ service cloud.firestore {
     }
 
     match /ogrenciOdevBildirimleri/{notificationId} {
-      allow get, list: if signedIn()
+      allow get: if signedIn()
+        && (
+          (resource == null && isStudent() && notificationId.matches('^' + request.auth.uid + '__.*'))
+          || (resource != null
+            && (resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
         && (resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
       allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
@@ -808,7 +902,14 @@ service cloud.firestore {
     }
 
     match /ogrenciYeniOdevBildirimleri/{notificationId} {
-      allow get, list: if signedIn()
+      allow get: if signedIn()
+        && (
+          (resource == null && isTeacher() && notificationId.matches('.*__' + request.auth.uid + '__.*'))
+          || (resource != null
+            && (resource.data.ogrenciUid == request.auth.uid
+              || resource.data.ogretmenUid == request.auth.uid))
+        );
+      allow list: if signedIn()
         && (resource.data.ogrenciUid == request.auth.uid
           || resource.data.ogretmenUid == request.auth.uid);
       allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
@@ -824,6 +925,17 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
         && request.resource.data.durum == 'iptal'
       );
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevDurumBildirimleri/{notificationId} {
+      allow get, list: if isStudent() && resource.data.ogrenciUid == request.auth.uid;
+      allow create: if teacherCanCreateHomeworkStatusNotice(request.resource.data, notificationId);
+      allow update: if isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time;
       allow delete: if false;
     }
 

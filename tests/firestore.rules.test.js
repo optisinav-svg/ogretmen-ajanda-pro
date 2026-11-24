@@ -537,6 +537,22 @@ test('Silinmiş ders programına bağlı tarihsel not düzenlenebilir', async ()
 });
 
 
+test('Öğretmen kendi ders konusunu sonradan düzenleyebilir; öğrenci yalnızca okuyabilir', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+
+  await assertSucceeds(updateDoc(doc(teacherDb, 'dersNotlari', 'note-a'), {
+    not: 'Sonradan düzenlenen konu',
+  }));
+  await assertFails(updateDoc(doc(studentDb, 'dersNotlari', 'note-a'), {
+    not: 'Öğrenci tarafından değiştirilmemeli',
+  }));
+
+  const saved = await getDoc(doc(teacherDb, 'dersNotlari', 'note-a'));
+  assert.equal(saved.get('not'), 'Sonradan düzenlenen konu');
+});
+
+
 test('Öğretmen kendi profilini Spark üzerinde oluşturabilir ancak uygulama sahibi yetkisi veremez', async () => {
   const db = testEnv.authenticatedContext('teacher-new', {
     email: 'teacher-new@example.com',
@@ -1247,25 +1263,54 @@ test('Öğretmen yalnızca bağlantı kurulmuş ve ödev izni açık öğrenciye
 
 test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık kod ve öğretmen onayı gerektirir', async () => {
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const otherTeacherDb = testEnv.authenticatedContext('teacher-b').firestore();
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogretmenOgrenciBaglantilari', 'teacher-a__missing-student__class-a')));
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogrenciKayitEslesmeleri', 'teacher-a__missing-student')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogretmenOgrenciBaglantilari', 'teacher-a__missing-student__class-a')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogrenciKayitEslesmeleri', 'teacher-a__missing-student')));
   const code = 'ABCDEF0123456789';
   const codeId = '1c1181e7f8dece465e066361d49886efa49b372e3e029fcdf21b9621e4021366';
   const codeRef = doc(teacherDb, 'ogrenciEslesmeKodlari', codeId);
   await assertSucceeds(setDoc(codeRef, {
     uid: 'teacher-a',
     ogretmenUid: 'teacher-a',
+    ogretmenHesapAdi: 'Öğretmen A',
     ogrenciKayitId: 'student-a',
+    ogrenciAdSoyad: 'Test Öğrencisi',
+    eposta: 'student-new@example.com',
     sinifId: 'class-a',
+    sinifAd: '9-A',
+    okulAd: 'A Okulu',
     donemYili: 2026,
+    kademe: '9',
+    ders: '',
     kullanildi: false,
     olusturulma: serverTimestamp(),
     sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
   }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'ogrenciKayitEslesmeleri', 'teacher-a__student-a'), {
+      ogretmenUid: 'teacher-a', ogrenciKayitId: 'student-a', durum: 'active',
+    });
+  });
+  await assertFails(setDoc(doc(teacherDb, 'ogrenciEslesmeKodlari', 'A'.repeat(64)), {
+    uid: 'teacher-a', ogretmenUid: 'teacher-a', ogretmenHesapAdi: 'Öğretmen A',
+    ogrenciKayitId: 'student-a', ogrenciAdSoyad: 'Test Öğrencisi',
+    eposta: 'student-new@example.com', sinifId: 'class-a', sinifAd: '9-A',
+    okulAd: 'A Okulu', donemYili: 2026, kademe: '9', ders: '',
+    kullanildi: false, olusturulma: serverTimestamp(),
+    sonaErme: new Date(Date.now() + 12 * 60 * 60 * 1000),
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await deleteDoc(doc(context.firestore(), 'ogrenciKayitEslesmeleri', 'teacher-a__student-a'));
+  });
 
   const unrelatedStudentDb = testEnv.authenticatedContext('unrelated-student', {
     email: 'someone-else@example.com',
     email_verified: true,
   }).firestore();
   await assertFails(getDoc(doc(unrelatedStudentDb, 'ogrenciEslesmeKodlari', codeId)));
+  await assertSucceeds(getDoc(doc(unrelatedStudentDb, 'ogrenciEslesmeKodlari', 'A'.repeat(64))));
 
   const studentDb = testEnv.authenticatedContext('student-new', {
     email: 'student-new@example.com',
@@ -1306,6 +1351,9 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     talepId: requestRef.id,
   });
   await assertSucceeds(submit.commit());
+  await assertSucceeds(getDoc(doc(studentDb, 'ogrenciOdevBildirimleri', 'student-new__teacher-a__student-new__class-a__homework-a')));
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogrenciYeniOdevBildirimleri', 'homework-a__student-new__teacher-a__student-new__class-a')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogrenciYeniOdevBildirimleri', 'homework-a__student-new__teacher-a__student-new__class-a')));
 
   const approve = writeBatch(teacherDb);
   const linkId = ['teacher-a', 'student-new', 'class-a'].join('__');
@@ -1479,3 +1527,44 @@ test('closed-account deletion locks are server-only', async () => {
   await assertFails(getDoc(doc(db, 'hesapImhaKayitlari', 'closed-account')));
   await assertFails(setDoc(doc(db, 'hesapImhaKayitlari', 'closed-account'), { status: 'completed' }));
 });
+
+test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güvenli bildirim oluşturabilir', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const notificationId = 'homework-a__student-1__1790000000000';
+  const notificationRef = doc(teacherDb, 'ogrenciOdevDurumBildirimleri', notificationId);
+
+  await assertSucceeds(updateDoc(doc(teacherDb, 'odevler', 'homework-a'), {
+    ogrenciDurumlari: { 'student-a': 'yapildi' },
+    durumGecmisi: { 'student-a': [{ durum: 'yapildi', tarih: '2026-11-24T06:00:00.000Z' }] },
+    durum: 'yapildi',
+  }));
+  await assertSucceeds(setDoc(notificationRef, {
+    uid: 'teacher-a',
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-1',
+    ogrenciKayitId: 'student-a',
+    baglantiId: 'teacher-a__student-1__class-a',
+    odevId: 'homework-a',
+    sinifId: 'class-a',
+    donemYili: 2026,
+    odevAciklama: 'Öğrenciye verilen ödev',
+    oncekiDurum: 'bekliyor',
+    yeniDurum: 'yapildi',
+    bildirimAnahtari: '1790000000000',
+    bildirimTarihi: '2026-09-21T00:00:00.000Z',
+    okundu: false,
+  }));
+
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId)));
+  await assertSucceeds(updateDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId), {
+    okundu: true,
+    okunduTarihi: serverTimestamp(),
+  }));
+  const otherStudentDb = testEnv.authenticatedContext('student-2').firestore();
+  await assertFails(getDoc(doc(otherStudentDb, 'ogrenciOdevDurumBildirimleri', notificationId)));
+  await assertFails(updateDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId), {
+    yeniDurum: 'yapilmadi',
+  }));
+});
+

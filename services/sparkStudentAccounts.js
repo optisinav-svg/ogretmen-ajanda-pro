@@ -49,6 +49,10 @@ export async function createStudentPairingCode(studentRecord) {
   if (!['9', '10', '11', '12', 'TYT', 'AYT'].includes(String(classSnap.get('kademe') || '').trim().toUpperCase())) {
     throw new Error('Öğrenci hesabı yalnızca lise düzeyi sınıflar için açılabilir.');
   }
+  const linkIndexSnap = await getDoc(doc(db, 'ogrenciKayitEslesmeleri', [teacherUid, studentRecord.id].join('__')));
+  if (linkIndexSnap.exists() && linkIndexSnap.get('durum') === 'active') {
+    throw new Error('Bu öğrenci kaydı zaten bir öğrenci hesabına bağlı. Yeni eşleştirme kodu oluşturulamaz.');
+  }
   const normalizedStudentEmail = normalizeEmail(student.eposta);
   if (student.epostaEslesme !== normalizedStudentEmail) {
     await updateDoc(doc(db, 'ogrenciler', studentRecord.id), { epostaEslesme: normalizedStudentEmail });
@@ -92,10 +96,16 @@ export async function submitStudentPairingRequest(codeValue, displayNameValue) {
   const requestRef = doc(collection(db, 'ogrenciEslesmeTalepleri'));
 
   await runTransaction(db, async transaction => {
-    const [codeSnap, profileSnap] = await Promise.all([
-      transaction.get(codeRef),
-      transaction.get(profileRef),
-    ]);
+    let codeSnap;
+    try {
+      codeSnap = await transaction.get(codeRef);
+    } catch (error) {
+      if (error?.code === 'permission-denied') {
+        throw new Error('Eşleştirme kodu süresi dolmuş, kullanılmış veya bu e-posta adresiyle eşleşmiyor.');
+      }
+      throw error;
+    }
+    const profileSnap = await transaction.get(profileRef);
     if (!codeSnap.exists()) throw new Error('Eşleştirme kodu geçersiz veya bulunamadı.');
     const invite = codeSnap.data();
     if (invite.kullanildi || !invite.sonaErme || invite.sonaErme.toMillis() <= Date.now()) {
@@ -252,6 +262,25 @@ export async function revokeStudentLink(linkItem) {
       transaction.update(indexRef, { durum: 'revoked', iptalTarihi: serverTimestamp() });
     }
   });
+}
+
+export async function cancelHomeworkNotifications(homeworkId) {
+  const teacherUid = currentUid();
+  const snapshot = await getDocs(query(
+    collection(db, 'ogrenciYeniOdevBildirimleri'),
+    where('ogretmenUid', '==', teacherUid),
+  ));
+  const targets = snapshot.docs.filter(item =>
+    item.get('odevId') === homeworkId && item.get('durum') === 'aktif'
+  );
+  for (let offset = 0; offset < targets.length; offset += 450) {
+    const batch = writeBatch(db);
+    targets.slice(offset, offset + 450).forEach(item => {
+      batch.update(item.ref, { durum: 'iptal', iptalTarihi: serverTimestamp() });
+    });
+    await batch.commit();
+  }
+  return targets.length;
 }
 
 export async function notifyHomeworkCompleted(linkItem, homeworkItem) {
