@@ -6,6 +6,7 @@
 // existing period values are never overwritten.
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { applicationDefault, initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 
@@ -32,7 +33,17 @@ function hasTargetConfirmation(argv) {
   return argv.includes('--confirm-period=' + TARGET_PERIOD);
 }
 
-function verifyBackup() {
+async function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const input = fs.createReadStream(filePath);
+    input.on('data', chunk => hash.update(chunk));
+    input.on('error', reject);
+    input.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+
+async function verifyBackup() {
   const root = path.resolve(__dirname, '../..');
   const backupDir = path.join(root, 'firestore-backups');
   if (!fs.existsSync(backupDir)) {
@@ -42,6 +53,7 @@ function verifyBackup() {
     .filter(name => name.endsWith('.manifest.json'))
     .sort()
     .reverse();
+  let unhashedCandidate = null;
   for (const name of manifests) {
     const manifestPath = path.join(backupDir, name);
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -51,18 +63,42 @@ function verifyBackup() {
       ? manifest.collections : {};
     const missingCollections = COLLECTIONS.filter(name => !Object.prototype.hasOwnProperty.call(manifestCollections, name));
     if (
-      manifest.projectId === PROJECT_ID &&
-      manifest.readOnly === true &&
-      manifest.archive === archiveName &&
-      Number(manifest.totalDocuments) >= 1 &&
-      missingCollections.length === 0 &&
-      fs.existsSync(archivePath) &&
-      fs.statSync(archivePath).size > 0
-    ) {
-      return { manifestPath, archivePath, totalDocuments: manifest.totalDocuments };
+      manifest.projectId !== PROJECT_ID ||
+      manifest.readOnly !== true ||
+      manifest.archive !== archiveName ||
+      Number(manifest.totalDocuments) < 1 ||
+      missingCollections.length > 0 ||
+      !fs.existsSync(archivePath) ||
+      fs.statSync(archivePath).size <= 0
+    ) continue;
+
+    let expectedHash = typeof manifest.archiveSha256 === 'string' ? manifest.archiveSha256.trim() : '';
+    if (!expectedHash) {
+      const sidecars = [archivePath + '.sha256', manifestPath + '.sha256'];
+      for (const sidecar of sidecars) {
+        if (fs.existsSync(sidecar)) {
+          expectedHash = fs.readFileSync(sidecar, 'utf8').trim().split(/\\s+/)[0];
+          break;
+        }
+      }
+    }
+    if (expectedHash) {
+      const actualHash = await sha256File(archivePath);
+      if (actualHash.toLowerCase() !== expectedHash.toLowerCase()) continue;
+      return {
+        manifestPath, archivePath, totalDocuments: manifest.totalDocuments,
+        hashVerified: true, archiveSha256: actualHash,
+      };
+    }
+    if (!unhashedCandidate) {
+      unhashedCandidate = {
+        manifestPath, archivePath, totalDocuments: manifest.totalDocuments,
+        hashVerified: false, archiveSha256: null,
+      };
     }
   }
-  throw new Error('ogretmen-takip projesine ait eşleşen ve dolu yedek + manifest bulunamadı.');
+  if (unhashedCandidate) return unhashedCandidate;
+  throw new Error('ogretmen-takip projesine ait tam koleksiyon manifestli ve okunabilir yedek bulunamadı.');
 }
 
 async function scanCollection(db, name, apply) {
@@ -114,7 +150,7 @@ async function main() {
   if (apply && !hasTargetConfirmation(argv)) {
     throw new Error('Yazma için hem --apply hem de --confirm-period=2026 parametreleri zorunludur.');
   }
-  const backup = verifyBackup();
+  const backup = await verifyBackup();
   initializeApp({ credential: applicationDefault(), projectId: PROJECT_ID });
   const db = getFirestore();
   const results = {};
@@ -126,6 +162,10 @@ async function main() {
   console.log('Hedef dönem:', TARGET_PERIOD);
   console.log('Mod:', apply ? 'UYGULAMA' : 'DRY-RUN (salt okunur)');
   console.log('Yedek doğrulaması:', backup.totalDocuments, 'belge; arşiv ve manifest mevcut.');
+  console.log('SHA-256:', backup.hashVerified ? 'DOĞRULANDI' : 'YOK (yalnızca dry-run yapılabilir).');
+  if (apply && !backup.hashVerified) {
+    throw new Error('Yazma öncesi SHA-256 doğrulaması zorunlu. Güncel backup scriptiyle yedek alın veya eşleşen .sha256 sidecar dosyası sağlayın.');
+  }
   console.log('Dönem verisi olmayan profil ve ortak kitap kütüphanesi tanımları bilerek kapsam dışıdır.');
 
   for (const name of COLLECTIONS) {
