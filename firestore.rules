@@ -816,7 +816,2508 @@ service cloud.firestore {
     }
 
     match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get: if signedIn()
+        && (
+          (!exists(/databases/$(database)/documents/ogrenciOdevBildirimleri/$(notificationId))
+            && isStudent()
+            && notificationId.matches('^' + request.auth.uid + '__[A-Za-z0-9_-]+__' + request.auth.uid + '__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get: if signedIn()
+        && (
+          (!exists(/databases/$(database)/documents/ogrenciYeniOdevBildirimleri/$(notificationId))
+            && isTeacher()
+            && notificationId.matches('^[A-Za-z0-9_-]+__[A-Za-z0-9_-]+__' + request.auth.uid + '__[A-Za-z0-9_-]+__[A-Za-z0-9_-]+
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
       allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciKayitEslesmeleri/$(indexId))
+            && resource.data.ogretmenUid == request.auth.uid)
+        );
+      allow list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciOdevBildirimleri/$(notificationId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciKayitEslesmeleri/$(indexId))
+            && resource.data.ogretmenUid == request.auth.uid)
+        );
+      allow list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciYeniOdevBildirimleri/$(notificationId))
+            && (resource.data.ogrenciUid == request.auth.uid
+              || resource.data.ogretmenUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciKayitEslesmeleri/$(indexId))
+            && resource.data.ogretmenUid == request.auth.uid)
+        );
+      allow list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogretmenOgrenciBaglantilari/$(linkId))
+            && (isApplicationOwner()
+              || resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && (
+          (!exists(pairingCodePath(codeId)) && request.auth.token.email_verified == true)
+          || (exists(pairingCodePath(codeId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || (request.auth.token.email_verified == true
+                && resource.data.eposta == request.auth.token.email
+                && resource.data.kullanildi == false
+                && resource.data.sonaErme > request.time)))
+        );
+      allow list: if false;
+      allow create: if createsPairingCode(codeId);
+      allow update: if consumesPairingCode(codeId);
+      allow delete: if false;
+    }
+
+    match /ogretmenOgrenciBaglantilari/{linkId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if createsApprovedStudentLink(linkId);
+      allow update: if isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && (
+          (resource.data.durum == 'active'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['izinler', 'izinGuncelleme'])
+            && validStudentPermissions(request.resource.data.izinler))
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+            && request.resource.data.durum == 'revoked')
+          || reactivatesStudentLink(linkId)
+        );
+      allow delete: if false;
+    }
+
+    match /ogrenciKayitEslesmeleri/{indexId} {
+      allow get, list: if isTeacher() && resource.data.ogretmenUid == request.auth.uid;
+      allow create: if createsApprovedStudentIndex(indexId);
+      allow update: if (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'revoked'
+      ) || reactivatesStudentIndex(indexId);
+      allow delete: if false;
+    }
+
+    match /ogrenciEslesmeTalepleri/{requestId} {
+      allow get, list: if signedIn()
+        && (isApplicationOwner()
+          || resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if validStudentPairingRequest(request.resource.data);
+      allow update: if updatesPairingRequest(requestId);
+      allow delete: if false;
+    }
+
+    match /ogrenciOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogretmenUid == request.auth.uid
+          || resource.data.ogrenciUid == request.auth.uid);
+      allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
+      allow update, delete: if false;
+    }
+
+    match /ogrenciYeniOdevBildirimleri/{notificationId} {
+      allow get, list: if signedIn()
+        && (resource.data.ogrenciUid == request.auth.uid
+          || resource.data.ogretmenUid == request.auth.uid);
+      allow create: if teacherCanCreateHomeworkNotice(request.resource.data, notificationId);
+      allow update: if (
+        isStudent()
+        && resource.data.ogrenciUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['okundu', 'okunduTarihi'])
+        && request.resource.data.okundu == true
+        && request.resource.data.okunduTarihi == request.time
+      ) || (
+        isTeacher()
+        && resource.data.ogretmenUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['durum', 'iptalTarihi'])
+        && request.resource.data.durum == 'iptal'
+      );
+      allow delete: if false;
+    }
+
+    // Push belirteçleri kişisel cihaz bilgisi sayılır; yalnızca Admin SDK erişebilir.
+    match /ogrenciPushTokenlari/{tokenId} {
+      allow read, write: if false;
+    }
+
+    match /epostaAliaslari/{aliasId} {
+      // E-posta alias hash kayıtları yalnızca Admin SDK ve Identity Platform trigger'ları tarafından yönetilir.
+      allow read, write: if false;
+    }
+
+    match /rolDuzeltmeTalepleri/{requestId} {
+      allow get, list: if isApplicationOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false; // Yalnızca güvenilir callable yazar.
+    }
+
+    match /hesapYasamDongusuDenetimi/{auditId} {
+      allow get, list: if isApplicationOwner();
+      allow create, update, delete: if false;
+    }
+
+    match /donemTemizlikKayitlari/{cleanupId} {
+      allow get, list: if isApplicationOwner();
+      // Kilit ve denetim kaydı yalnızca Admin SDK kullanan güvenli callable tarafından yazılır.
+      allow create, update, delete: if false;
+    }
+
+    // Tanımlanmamış koleksiyonlar ve yollar varsayılan olarak kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+))
+          || (exists(/databases/$(database)/documents/ogrenciOdevBildirimleri/$(notificationId))
+            && (resource.data.ogretmenUid == request.auth.uid
+              || resource.data.ogrenciUid == request.auth.uid))
+        );
+      allow list: if signedIn()
         && (resource.data.ogretmenUid == request.auth.uid
           || resource.data.ogrenciUid == request.auth.uid);
       allow create: if studentCanCreateHomeworkCompletion(request.resource.data, notificationId);
