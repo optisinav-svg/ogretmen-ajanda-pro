@@ -195,7 +195,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
 
         <View style={s.actionCard}>
           <Text style={s.cardTitle}>Uygulama içi bildirimler</Text>
-          <Text style={s.muted}>Yeni ödevler ve öğretmeninizin duyuruları burada görünür. Firebase Spark ücretsiz planında sunucu üzerinden anlık telefon bildirimi gönderimi kullanılmaz.</Text>
+          <Text style={s.muted}>Yeni ödevler ve ödev tamamlanma bildirimleriniz burada görünür. Bu sürümde telefona anlık push bildirimi gönderilmez.</Text>
         </View>
 
         <View style={s.actionCard}>
