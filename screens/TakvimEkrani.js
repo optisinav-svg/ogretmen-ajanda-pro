@@ -6,7 +6,6 @@ import {auth,db}from'../firebaseConfig';
 import {isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';
 import {donemYiliBugun,donemUygun,donemTarihAraliginda,donemDuzenlemeyeAcik}from'../utils/donem';
 import cyclicTime from '../utils/cyclicTime';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const GUNLER=['Pazartesi','Sal\u0131','\u00c7ar\u015famba','Per\u015fembe','Cuma','Cumartesi','Pazar'];
 const haftaTarihi=gun=>{const d=new Date(),p=new Date(d),f=(d.getDay()+6)%7;p.setDate(d.getDate()-f);p.setDate(p.getDate()+GUNLER.indexOf(gun));return isoDate(p)};
 const gunAdiTarihten=tarih=>{const d=new Date(tarih+'T12:00:00');return GUNLER[(d.getDay()+6)%7]};
