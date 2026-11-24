@@ -25,26 +25,28 @@ const BRANSLAR = [
   'Beden Eğitimi', 'Bilişim Teknolojileri', 'Diğer'
 ];
 
-export default function KayitEkrani({ navigation }) {
+export default function KayitEkrani({ navigation, route }) {
   const [adim, setAdim] = useState(1);
   const [sezon, setSezon] = useState('');
   const [brans, setBrans] = useState('');
   const [kullaniciAdi, setKullaniciAdi] = useState('');
-  const [eposta, setEposta] = useState('');
+  const [eposta, setEposta] = useState(route?.params?.eposta || auth.currentUser?.email || '');
   const [sifre, setSifre] = useState('');
   const [sifreTekrar, setSifreTekrar] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
+  const devamEt = route?.params?.devamEt === true;
 
   const kayitOl = async () => {
-    if (!eposta || !sifre || !sifreTekrar) {
+    const mevcutHesaplaDevam = devamEt && !!auth.currentUser;
+    if (!eposta || (!mevcutHesaplaDevam && (!sifre || !sifreTekrar))) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
     }
-    if (sifre !== sifreTekrar) {
+    if (!mevcutHesaplaDevam && sifre !== sifreTekrar) {
       Alert.alert('Hata', 'Şifreler eşleşmiyor.');
       return;
     }
-    if (sifre.length < 6) {
+    if (!mevcutHesaplaDevam && sifre.length < 6) {
       Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır.');
       return;
     }
