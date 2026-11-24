@@ -57,7 +57,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 5. Tum uygulama kaynaklarinda callable taramasi sifir sonuc verdi.
 6. Canli Rules dagitimi, veri migrasyonu, silme veya Auth degisikligi yapilmadi.
 
-**Durum:** Uygulama kaynak callable bagimliligi kapandi. Ogrenci sinif/kayitsiz tasima kaynakta Spark'a tasindi; rol duzeltme, kalici silme, okul kaldirma, donem aktarimi ve imha/temizlik akislari guvenli karsilik bulunana kadar kapali. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Emulator/unit/bundle testleri 12. bolumde calistirilacak. Bu nedenle APK'ya gecis henuz onayli degil.
+**Durum:** Spark kaynak gecidi tamamlandi: uygulama ekranlarinda callable kalmadi, ogrenci sinif/kayitsiz tasima Spark'a tasindi, diger riskli akislara acik uyari kondu. Bu kaynak degisikliklerinin Emulator/unit/bundle testleri 12. bolumde yapilacak. Canli Rules dagitimi ve APK icin ayri onay gerektiginden APK'ya henuz gecilmeyecek.
 
 ### P1 — Donem, arsiv ve veri saklama
 
