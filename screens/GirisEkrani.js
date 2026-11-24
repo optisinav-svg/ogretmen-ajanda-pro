@@ -16,11 +16,12 @@ export default function GirisEkrani({navigation}){
 if (credential.user.emailVerified) { try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) { await signOut(auth); throw aliasError; } }
 const profile = await getDoc(doc(db,'kullanicilar',credential.user.uid));
 if (!profile.exists()) {
-  if (ACCOUNT_LINKING_ENABLED) {
-    navigation.replace('OgrenciKayit',{devamEt:true});
-    return;
-  }
-  throw new Error('Hesap profiliniz henüz tamamlanmamış. Öğrenci hesabı özelliği canlıya alındığında eşleştirme koduyla kaydınızı tamamlayabilirsiniz.');
+  Alert.alert('Mevcut hesabı tamamlama', 'Bu e-posta adresiyle bir giriş hesabınız var ancak profil tamamlanmamış. Yeni hesap açılmayacak. Hesap türünüzü seçerek mevcut hesabınızı tamamlayın.', [
+    { text: 'Vazgeç', style: 'cancel', onPress: async () => { await signOut(auth); } },
+    { text: 'Öğretmen', onPress: () => navigation.replace('Kayit', { devamEt: true }) },
+    ...(ACCOUNT_LINKING_ENABLED ? [{ text: 'Öğrenci', onPress: () => navigation.replace('OgrenciKayit', { devamEt: true }) }] : []),
+  ]);
+  return;
 }
 if (profile.get('hesapDurumu') === 'kapali') {
   Alert.alert('Hesap kapalı', 'Bu hesap daha önce kapatılmış. Geçmiş kayıtlarınıza erişmek için hesabınızı yeniden etkinleştirebilirsiniz.', [
