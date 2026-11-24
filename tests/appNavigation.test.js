@@ -32,7 +32,7 @@ test('Spark deployment configuration exports no Cloud Functions', () => {
   const firebaseJson = JSON.parse(fs.readFileSync(path.join(root, 'firebase.json'), 'utf8'));
   assert.equal(Object.prototype.hasOwnProperty.call(firebaseJson, 'functions'), false);
   const functionsIndex = fs.readFileSync(path.join(root, 'functions', 'index.js'), 'utf8');
-  assert.match(functionsIndex, /module\\.exports\\s*=\\s*\\{\\s*\\}/);
+  assert.match(functionsIndex, /module\.exports\s*=\s*\{\s*\}/);
 });
 
 test('Spark application screens and services do not call Cloud Functions', () => {
