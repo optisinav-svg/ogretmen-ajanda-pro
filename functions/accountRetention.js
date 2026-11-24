@@ -70,7 +70,10 @@ async function buildAccountPreview(uid, profile) {
   const counts = Object.fromEntries(Object.entries(refs).map(([name, docs]) => [name, docs.length]));
   counts.kullanicilar = 1;
   let authCount = 1;
-  try { await getAuth().getUser(uid); } catch (e) { if (e.code === 'auth/user-not-found') authCount = 0; else throw e; }
+  try {
+    const authUser = await getAuth().getUser(uid);
+    if (authUser.customClaims?.uygulamaSahibi === true) throw new HttpsError('failed-precondition', 'Uygulama sahibi hesabı sahiplik devri yapılmadan imha edilemez.');
+  } catch (e) { if (e.code === 'auth/user-not-found') authCount = 0; else throw e; }
   counts.firebaseAuth = authCount;
   const total = Object.values(counts).reduce((sum, count) => sum + Number(count || 0), 0);
   return { uid, role, displayName: String(profile.kullaniciAdi || [profile.ad,profile.soyad].filter(Boolean).join(' ') || 'İsimsiz hesap').slice(0,80), expiresAt: new Date(expiryMillis(profile)).toISOString(), counts, total };
