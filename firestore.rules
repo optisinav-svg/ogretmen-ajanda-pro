@@ -396,6 +396,78 @@ service cloud.firestore {
             && data.sezon.matches('^[0-9]{4}/[0-9]{4}$')));
     }
 
+    function accountLifecycleAuditPath(userId) {
+      return /databases/$(database)/documents/hesapYasamDongusuDenetimi/$(userId);
+    }
+
+    function validAccountLifecycleAudit(userId) {
+      let before = get(profilePath(userId)).data;
+      let after = getAfter(profilePath(userId)).data;
+      let action = request.resource.data.islem;
+      return request.resource.data.keys().hasOnly(['uid', 'islem', 'rol', 'zaman', 'sonuc'])
+        && request.resource.data.keys().hasAll(['uid', 'islem', 'rol', 'zaman', 'sonuc'])
+        && request.resource.data.uid == userId
+        && request.resource.data.rol == before.rol
+        && request.resource.data.zaman == request.time
+        && request.resource.data.sonuc == 'basarili'
+        && (
+          (action == 'hesap_kapatildi'
+            && before.get('hesapDurumu', 'aktif') == 'aktif'
+            && after.hesapDurumu == 'kapali')
+          ||
+          (action == 'hesap_yeniden_etkinlestirildi'
+            && before.hesapDurumu == 'kapali'
+            && after.hesapDurumu == 'aktif')
+        );
+    }
+
+    function closesOwnAccount(userId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      let auditPath = accountLifecycleAuditPath(userId);
+      return signedIn()
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true
+        && !isApplicationOwner()
+        && resource.data.get('hesapDurumu', 'aktif') == 'aktif'
+        && resource.data.rol in ['ogretmen', 'ogrenci']
+        && data.hesapDurumu == 'kapali'
+        && data.hesapKapatmaTalepUid == userId
+        && data.hesapKapatmaTalepTarihi == request.time
+        && data.hesapSaklamaBaslangic == request.time
+        && data.hesapSaklamaSonu is timestamp
+        && data.hesapSaklamaSonu > request.time + duration.value(1094, 'd')
+        && data.hesapSaklamaSonu < request.time + duration.value(1097, 'd')
+        && changed.hasOnly(['hesapDurumu', 'hesapKapatmaTalepUid', 'hesapKapatmaTalepTarihi', 'hesapSaklamaBaslangic', 'hesapSaklamaSonu'])
+        && existsAfter(auditPath)
+        && getAfter(auditPath).data.uid == userId
+        && getAfter(auditPath).data.islem == 'hesap_kapatildi'
+        && getAfter(auditPath).data.zaman == request.time;
+    }
+
+    function reactivatesOwnAccount(userId) {
+      let data = request.resource.data;
+      let changed = data.diff(resource.data).affectedKeys();
+      let auditPath = accountLifecycleAuditPath(userId);
+      let lockPath = /databases/$(database)/documents/hesapImhaKayitlari/$(userId);
+      return signedIn()
+        && request.auth.uid == userId
+        && request.auth.token.email_verified == true
+        && resource.data.get('hesapDurumu', 'aktif') == 'kapali'
+        && resource.data.get('hesapSaklamaSonu', null) is timestamp
+        && resource.data.hesapSaklamaSonu > request.time
+        && !resource.data.keys().hasAny(['hesapImhaKilidi'])
+        && (!exists(lockPath) || !(get(lockPath).data.get('status', '') in ['running', 'completed']))
+        && data.hesapDurumu == 'aktif'
+        && !data.keys().hasAny(['hesapSaklamaSonu'])
+        && data.hesapYenidenEtkinlestirmeTarihi == request.time
+        && changed.hasOnly(['hesapDurumu', 'hesapSaklamaSonu', 'hesapYenidenEtkinlestirmeTarihi'])
+        && existsAfter(auditPath)
+        && getAfter(auditPath).data.uid == userId
+        && getAfter(auditPath).data.islem == 'hesap_yeniden_etkinlestirildi'
+        && getAfter(auditPath).data.zaman == request.time;
+    }
+
     function createsPairingCode(codeId) {
       let data = request.resource.data;
       let studentPath = /databases/$(database)/documents/ogrenciler/$(data.ogrenciKayitId);
@@ -699,7 +771,7 @@ service cloud.firestore {
       allow create: if createsOwnUserProfile(userId);
 
       // Kullanıcı rolünü, e-posta adresini veya uygulama sahibi claim alanlarını değiştiremez.
-      allow update: if updatesOwnUserProfile(userId);
+      allow update: if updatesOwnUserProfile(userId) || closesOwnAccount(userId) || reactivatesOwnAccount(userId);
 
       allow delete: if false;
     }
@@ -982,7 +1054,10 @@ service cloud.firestore {
 
     match /hesapYasamDongusuDenetimi/{auditId} {
       allow get, list: if isApplicationOwner();
-      allow create, update, delete: if false;
+      allow create, update: if signedIn()
+        && auditId == request.auth.uid
+        && validAccountLifecycleAudit(auditId);
+      allow delete: if false;
     }
 
     match /donemTemizlikKayitlari/{cleanupId} {
