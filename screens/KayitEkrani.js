@@ -4,7 +4,7 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, runTransaction } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { deleteUser } from 'firebase/auth';
@@ -67,6 +67,8 @@ export default function KayitEkrani({ navigation }) {
         throw aliasError;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
+      const emailVerificationPending = !user.emailVerified;
+      if (emailVerificationPending) await sendEmailVerification(user);
       const profileRef = doc(db, 'kullanicilar', user.uid);
       await runTransaction(db, async transaction => {
         const existing = await transaction.get(profileRef);
@@ -80,6 +82,7 @@ export default function KayitEkrani({ navigation }) {
           olusturulmaTarihi: new Date().toISOString(),
         });
       });
+      if (emailVerificationPending) Alert.alert('E-posta doğrulaması', 'E-posta adresinize doğrulama bağlantısı gönderdik. Eski e-posta adreslerinin korunması için gelen kutunuzdan doğrulama yapın.');
       navigation.replace('AnaSayfa');
     } catch (hata) {
       let mesaj = 'Kayıt oluşturulamadı.';
