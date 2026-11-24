@@ -34,6 +34,7 @@ Spark'ta Cloud Functions ve zamanlanmis isler calistirilmayacagindan:
 | Ogrenci eslestirme | 16 karakter kriptografik kod, SHA-256 belge kimligi, 12 saat, tek kullanim, dogrulanmis e-posta/ad eslesmesi, ogretmen onayi | Kaynakta var; Emulator/gercek hesap testi 12. bolumde |
 | Ogrenci izinleri | Aktif baglanti ve allowlist izinleri; varsayilan kapali | Kaynakta var; guvenlik testi 12. bolumde |
 | Odev bildirimleri | Ogrenci tamamlama ve yeni odev bildirimleri dogrudan Firestore transaction/batch | Kaynakta var; test 12. bolumde |
+| Haziran donem hatirlatmasi | Ogretmen ve ogrenci ekranlarinda 5 gunde bir yerel hatirlatma; ogrencide yeni donem baglantisi yoksa eslestirme kodu yonlendirmesi | Kaynakta var; cihaz testi 12. bolumde |
 | Ogrenci sinif degisikligi | `services/sparkStudentClassMove.js`: resumable kilit, kitap/konu batch tasima, sinif gecmisi, eski baglantiyi koruma ve yeni kodla yeniden eslestirme | Kaynakta var; test 12. bolumde |
 | Kayitsiz ogrenciye tasima | Ayni okul/donem Kayıtsız Öğrenciler sinifi; ogrenci ve gecmis kayitlar silinmez | Kaynakta var; test 12. bolumde |
 | Uygulama sahibi istatistikleri | Custom claim kontrolu; aggregate Firestore okumasi, ogrenci kimligi gostermeden sayim | Kaynakta var; owner claim henuz atanmadı |
