@@ -645,7 +645,28 @@ service cloud.firestore {
         && data.ogrenciUid is string
         && data.ogrenciKayitId is string
         && data.bildirimAnahtari is string
-        && data.bildirimAnahtari.matches('^[0-9]{13}    match /kullanicilar/{userId} {
+        && data.bildirimAnahtari.size() == 13
+        && data.bildirimAnahtari.matches('^[0-9]+')
+        && data.yeniDurum in ['yapildi', 'yapilmadi', 'gec']
+        && data.oncekiDurum in ['bekliyor', 'yapildi', 'yapilmadi', 'gec']
+        && data.okundu == false
+        && exists(linkPath)
+        && link.ogretmenUid == request.auth.uid
+        && link.ogrenciUid == data.ogrenciUid
+        && link.ogrenciKayitId == data.ogrenciKayitId
+        && link.sinifId == data.sinifId
+        && link.donemYili == data.donemYili
+        && link.durum == 'active'
+        && link.izinler.odevler == true
+        && exists(homeworkPath)
+        && homework.uid == request.auth.uid
+        && homework.sinifId == data.sinifId
+        && homework.donemYili == data.donemYili
+        && homework.hedefOgrenciIds.hasAny([data.ogrenciKayitId])
+        && homework.get('ogrenciDurumlari', {}).get(data.ogrenciKayitId, '') == data.yeniDurum;
+    }
+
+    match /kullanicilar/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isApplicationOwner());
       allow list: if isApplicationOwner();
 
