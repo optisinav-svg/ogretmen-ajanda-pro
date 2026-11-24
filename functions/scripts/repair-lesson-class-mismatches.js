@@ -50,8 +50,7 @@ async function main() {
     Promise.all(scheduleIds.map(id => db.collection('dersler').doc(id).get())),
     Promise.all(classIds.map(id => db.collection('siniflar').doc(id).get())),
     Promise.all(recordRefs.map(item => item.ref.get())),
-    db.collection('dersler').where('uid', '==', report.mismatchRecords[0] && report.mismatchRecords[0].uid || '___').get()
-      .catch(() => db.collection('dersler').get()),
+    db.collection('dersler').get(),
   ]);
 
   const schedules = new Map();
