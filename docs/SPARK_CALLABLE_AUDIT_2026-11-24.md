@@ -192,3 +192,8 @@ The allowlist is now restricted to exactly:
 - `konular`
 
 Student records, classes, schools, user profiles, teacher-student links, pairing requests/codes, notifications, individual activities and the shared book library are excluded. The retention policy test was changed to assert this exact six-collection allowlist. Tests were not run; no live data was deleted and no rules were deployed.
+
+
+## 24.11.2026 — Functions deploy entrypoint kapatildi
+
+Spark-only karariyla `functions/index.js` artik hicbir callable/trigger export etmiyor (`module.exports = {}`). Legacy moduller depoda kalabilir ancak Firebase Functions deploy giris noktasindan ulasilamaz. Uygulama ekranlarinda callable cagrisi yoktur. Bu degisiklik icin test veya deploy yapilmadi.
