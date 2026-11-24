@@ -51,7 +51,7 @@ async function claimAlias(emailValue, uid, { createIfMissing = true } = {}) {
 
 exports.epostaKaydiKontrolEt = onCall({ region: REGION }, async request => {
   const email = normalizeEmail(request.data?.email);
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
   const snap = await aliasRef(email).get();
   if (snap.exists) {
     const expiry = snap.get('sonaErme')?.toMillis?.() || 0;
@@ -65,7 +65,7 @@ exports.epostaKaydiKontrolEt = onCall({ region: REGION }, async request => {
 exports.epostaAliasDegisikliginiKontrolEt = onCall({ region: REGION }, async request => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
   const email = normalizeEmail(request.data?.email);
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpsError('invalid-argument', 'Geçerli bir e-posta adresi girin.');
   const snap = await aliasRef(email).get();
   if (snap.exists) {
     const expiry = snap.get('sonaErme')?.toMillis?.() || 0;
