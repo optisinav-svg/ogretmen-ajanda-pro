@@ -180,7 +180,6 @@ async function main() {
   let totalMissing = 0;
   let totalInvalid = 0;
   let totalUpdated = 0;
-  const previewResults = {};
 
   console.log('Proje:', PROJECT_ID);
   console.log('Hedef dönem:', TARGET_PERIOD);
@@ -196,7 +195,6 @@ async function main() {
   // period values are never overwritten; if any are found, abort before apply.
   for (const name of COLLECTIONS) {
     const result = await scanCollection(db, name, false);
-    previewResults[name] = result;
     totalScanned += result.scanned;
     totalMissing += result.missing;
     totalInvalid += result.invalid;
