@@ -84,17 +84,17 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Sifre degistirme korunacak; ad-soyad degistirme desteklenecek.
 - Ayni gorunen ad serbest; yanlis rol icin guvenli duzeltme talep/onay sureci.
 - E-posta alias rezervasyonu ve eski alias'in tekrar kullanilmamasi kritik butunluk kosuludur.
-- Hesap kapatma/yeniden etkinlestirme akislari, Spark callable engeli kapsaminda incelenecek.
+- Hesap kapatma/yeniden etkinlestirme kendi profil + ayni batch audit kaydi olarak Spark istemci akisi seklinde kaynakta uygulandi; Rules testleri 12. bolumde.
 - Kaynak kod akislari ve Auth/Firestore canli hesap eslesmesi ayri dogrulanmali. KOD INCELEMESI GEREKLI.
 
 ### P4 — Uygulama sahibi ve yetkilendirme
 
 - Uygulama sahibi hesabi `cografyaciriza@gmail.com`; ad Riza Gokce, brans Cografya, donem 2026/2027. Firestore profilindeki kullanici tarafindan duzeltilmis degerler izinsiz degistirilmeyecek.
 - Yetki `uygulamaSahibi == true` custom claim ile verilir; Firestore rol alanini elle degistirmek bunun yerine gecmez.
-- Claim'in gercek Auth UID'sine atanmasi ve uygulamada dogru yenilenmesi salt okunur/guvenli yontemle dogrulanacak. Claim atama adimi ayrica onay gerektirir.
+- `functions/scripts/set-application-owner-claim.js` guvenli dry-run/apply araci olarak eklendi. OWNER_UID ve OWNER_EMAIL eslesmesini, dogrulanmis e-postayi, etkin ogretmen profilini ve baska hesapta owner claim bulunmadigini kontrol eder; yalnizca Auth custom claim yazar, Firestore profilini degistirmez. Eski iki-profil varsayan `configure-existing-accounts.js` devre disi birakildi.
 - Istatistik paneli ogretmen sayisi/branslari ve ogrenci sayisi/ogretmen-brans iliskisini gereksiz kisisel bilgi gostermeden sunmali.
 - Callable kullanan istatistik/yonetim akislarinin Spark alternatifi ayri incelenecek.
-- Durum: KOD INCELEMESI GEREKLI; canli claim atamasi dogrulanmis sayilmaz.
+- Durum: SCRIPT HAZIR; canli Auth claim henuz atanmadı ve dogrulanmadi. Scriptin --apply adimi kullanici onayi olmadan calistirilmayacak.
 
 ### P5 — Ogrenci hesabi, eslestirme, izinler ve bildirimler
 
