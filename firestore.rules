@@ -649,6 +649,7 @@ service cloud.firestore {
         && data.bildirimAnahtari.matches('^[0-9]{13}')
         && data.yeniDurum in ['yapildi', 'yapilmadi', 'gec']
         && data.oncekiDurum in ['bekliyor', 'yapildi', 'yapilmadi', 'gec']
+        && data.oncekiDurum != data.yeniDurum
         && data.okundu == false
         && exists(linkPath)
         && link.ogretmenUid == request.auth.uid
@@ -663,7 +664,7 @@ service cloud.firestore {
         && homework.sinifId == data.sinifId
         && homework.donemYili == data.donemYili
         && homework.hedefOgrenciIds.hasAny([data.ogrenciKayitId])
-        && homework.get('ogrenciDurumlari', {}).get(data.ogrenciKayitId, '') == data.yeniDurum;
+        && homework.ogrenciDurumlari[data.ogrenciKayitId] == data.yeniDurum;
     }
 
     match /kullanicilar/{userId} {
