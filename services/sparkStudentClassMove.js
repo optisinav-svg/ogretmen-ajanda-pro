@@ -26,7 +26,9 @@ function requireTeacher() {
 function isWritableClass(data, uid, periodYear) {
   return data
     && data.uid === uid
-    && Number(data.donemYili) === Number(periodYear)
+    && typeof data.donemYili === 'number'
+    && Number.isInteger(data.donemYili)
+    && data.donemYili === Number(periodYear)
     && data.arsivlendi !== true
     && data.arsivDurumu !== 'isleniyor';
 }
@@ -158,7 +160,9 @@ async function moveCurrentPeriodProgress({ uid, studentId, periodYear, targetCla
 
   const books = booksSnapshot.docs.filter(item => donemUygun(item.data(), periodYear));
   const topics = topicsSnapshot.docs.filter(item => donemUygun(item.data(), periodYear));
-  const missingPeriod = [...books, ...topics].some(item => Number(item.data().donemYili) !== Number(periodYear));
+  const missingPeriod = [...books, ...topics].some(item => typeof item.data().donemYili !== 'number'
+    || !Number.isInteger(item.data().donemYili)
+    || item.data().donemYili !== Number(periodYear));
   if (missingPeriod) {
     throw new Error('Taşınacak kitap/konu kayıtlarından en az birinde dönem bilgisi eksik veya farklı. Veri karışmasını önlemek için önce dönem kayıtları düzeltilmeli.');
   }
@@ -249,7 +253,7 @@ async function finalizeStudentMove({
     const source = sourceSnap.data();
     const target = targetSnap.data();
     if (student.uid !== uid || student.sinifId !== sourceClassId
-      || Number(student.donemYili) !== Number(periodYear)) {
+      || (typeof student.donemYili !== 'number' || !Number.isInteger(student.donemYili) || student.donemYili !== Number(periodYear))) {
       throw new Error('Öğrencinin kaynak sınıfı veya dönemi değişmiş. Taşıma güvenlik için durduruldu.');
     }
     if (!isWritableClass(source, uid, periodYear) || !isWritableClass(target, uid, periodYear)) {
@@ -360,7 +364,7 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
     throw new Error('Kayıtsız sınıfa taşıma için ayrı işlem kullanılmalı.');
   }
   await ensureSchoolWritable(target, uid);
-  if (student.uid !== uid || Number(student.donemYili) !== period) {
+  if (student.uid !== uid || (typeof student.donemYili !== 'number' || !Number.isInteger(student.donemYili) || student.donemYili !== period)) {
     throw new Error('Öğrenci seçilen öğretmene veya döneme ait değil.');
   }
   if (student.sinifId === target.id && !student.sinifTasiIslemi) {
