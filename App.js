@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import GirisEkrani from './screens/GirisEkrani';
 import KayitRolSecimiEkrani from './screens/KayitRolSecimiEkrani';
@@ -24,7 +25,7 @@ import RolDuzeltmeTalepleriEkrani from './screens/RolDuzeltmeTalepleriEkrani';
 import DonemAktarimEkrani from './screens/DonemAktarimEkrani';
 const Stack=createNativeStackNavigator();
 const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',headerTitleStyle:{fontWeight:'bold'}};
-export default function App(){return <NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
+export default function App(){return <SafeAreaProvider><NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
 <Stack.Screen name="Giris" component={GirisEkrani} options={{headerShown:false}}/>
 <Stack.Screen name="KayitRolSecimi" component={KayitRolSecimiEkrani} options={{title:"Kayıt Türü"}}/>
 <Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>\n<Stack.Screen name="KVKKBilgilendirme" component={KVKKBilgilendirmeEkrani} options={{title:"KVKK Bilgilendirme"}}/>\n<Stack.Screen name="OgrenciKayit" component={OgrenciKayitEkrani} options={{title:"Öğrenci Kaydı"}}/>\n<Stack.Screen name="OgrenciAnaSayfa" component={OgrenciAnaSayfaEkrani} options={{title:"Öğrenci Ajandası",headerBackVisible:false}}/>
@@ -43,4 +44,4 @@ export default function App(){return <NavigationContainer><Stack.Navigator initi
 <Stack.Screen name="RolDuzeltmeTalepleri" component={RolDuzeltmeTalepleriEkrani} options={{title:"Rol Düzeltme Talepleri"}}/>
 <Stack.Screen name="DonemAktarim" component={DonemAktarimEkrani} options={{title:"Yeni Döneme Aktarım"}}/>
 <Stack.Screen name="OgrenciHesaplari" component={OgrenciHesaplariEkrani} options={{title:'Öğrenci Hesapları'}}/>
-</Stack.Navigator></NavigationContainer>}
+</Stack.Navigator></NavigationContainer></SafeAreaProvider>}
