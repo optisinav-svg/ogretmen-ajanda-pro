@@ -118,7 +118,7 @@ export default function OkulSinifEkrani({ navigation,route }) {
           // Kilit, silme kontrolü sırasında sınıfa yeni öğrenci eklenmesini engeller.
           await updateDoc(classRef,{arsivDurumu:'isleniyor'});
           const students=await getDocs(query(collection(db,'ogrenciler'),where('sinifId','==',sinifKaydi.id),where('uid','==',uid)));
-          const count=students.docs.filter(x=>donemUygun(x.data(),donemYili)).length;
+          const count=students.docs.length;
           if(count){
             await updateDoc(classRef,{arsivDurumu:deleteField()});
             return Alert.alert('Sınıf kaldırılamaz',`Bu sınıfta ${count} kayıtlı öğrenci var. Önce öğrencileri başka bir sınıfa veya aynı okulun Kayıtsız Öğrenciler alanına taşıyın.`);
