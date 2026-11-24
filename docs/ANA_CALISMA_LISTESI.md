@@ -214,3 +214,8 @@ Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasi
 ### Ayrica tespit edilen donem temizligi tarih celiskisi
 
 Kullanici karari: Temmuz 2028'de 2026 donemini sil; Temmuz 2029'da 2027 donemini sil; sonraki yillarda her Temmuz, iki yil onceki donemi ele al. Mevcut kaynak `functions/retentionPolicy.js`, `firestore.rules` ve `IstatistikPaneliEkrani.js` ise ilk temizligi Temmuz 2029 / hedef yil = yil - 3 olarak tanimliyor. Bu kaynak-karar uyumsuzlugu P1 veri saklama paketinde duzeltilmeli; su an degistirilmedi ve hicbir silme islemi yapilmadi.
+
+
+### 24.11.2026 callable engeli kaynak durumu
+
+38 uygulama JS/JSX/TS/TSX dosyasinin tam taramasinda `httpsCallable(` cagrisi kalmadigi dogrulandi. Alias, kayit/giris, profil temel alanlari ve hesap kapatma/yeniden etkinlestirme Spark Rules akislari kaynakta yazildi. Guvenli Spark karsiligi tamamlanmayan e-posta degisikligi, rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve yillik donem temizligi kullaniciya acik mesajla devre disi birakildi. Bu ozellikler kaybolmadi; P0/P1 altinda guvenli yeniden tasarim icin bekliyor. Kaynak testleri henuz calistirilmadi ve canli rules dagitilmadi.
