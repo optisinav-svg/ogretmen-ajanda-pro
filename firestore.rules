@@ -756,7 +756,7 @@ service cloud.firestore {
     match /odevler/{docId} {
       allow read: if ownsRecord() || (studentHasPermission(resource.data.uid, resource.data.sinifId, 'odevler') && resource.data.hedefOgrenciIds.hasAny([linkedStudentRecordId(resource.data.uid, resource.data.sinifId)])) || (isApplicationOwner() && isRetentionCleanupWindow(resource.data.donemYili));
       allow create: if createsOwnPeriodRecord() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data);
-      allow update: if (ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data)) || teacherCanUpdateHomeworkStatus();
+      allow update: if teacherCanUpdateHomeworkStatus() || (ownsEditablePeriodRecord() && keepsOwner() && keepsPeriod() && classBelongsToTeacher(request.resource.data) && optionalLessonBelongsToTeacher(request.resource.data));
       allow delete: if ownsEditablePeriodRecord();
     }
 
