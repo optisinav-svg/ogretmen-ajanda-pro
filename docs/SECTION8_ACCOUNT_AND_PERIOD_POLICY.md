@@ -5,7 +5,7 @@ Bu bölüm; öğretmen/öğrenci hesaplarının ayrımını, hesap sahipliğini,
 
 ## Kararlaştırılan kullanıcı akışları
 - Tek kayıt giriş ekranı öğretmen ve öğrenci hesabı seçimi sunar. Öğrenci hesabı e-posta doğrulaması ve mevcut öğretmen eşleştirme onayı olmadan öğretmen verilerine erişemez.
-- Aynı e-posta adresiyle ikinci bir Firebase Auth hesabı oluşturulamaz. E-posta değişiminden önce mevcut adres hesap UID'sine bağlı, SHA-256 ile anahtarlanmış bir alias kaydıyla rezerve edilir. Kayıt öncesi ve giriş sırasında Identity Platform blocking trigger'ları alias'ın başka UID tarafından kullanılmasını engeller. Kapalı hesap Auth kimliği hemen silinmeden tutulur; hesap sahibi üç yıllık saklama penceresi içinde doğrulanmış oturumla yeniden etkinleştirebilir. Kapatma anında alias kayıtlarına üç yıllık sona erme tarihi yazılır; yeniden etkinleştirme bu tarihi kaldırır. Süre sonunda alias kişisel veriyi asgari düzeyde tutacak biçimde silinmeye uygun hâle gelir.
+- Aynı e-posta adresiyle ikinci bir Firebase Auth hesabı oluşturulamaz. E-posta değişiminden önce mevcut adres hesap UID'sine bağlı, SHA-256 ile anahtarlanmış bir alias kaydıyla rezerve edilir. Kayıt öncesi ve giriş sırasında uygulama callable kontrolleri alias'ın başka UID tarafından kullanılmasını engeller. Identity Platform blocking trigger'ları ek, atlatılamaz Auth katmanı korumasıdır; mevcut Spark ortamında varsayılan olarak kapalıdır ve yalnızca plan/ürün yükseltmesi ayrıca onaylanırsa etkinleştirilebilir. Kapalı hesap Auth kimliği hemen silinmeden tutulur; hesap sahibi üç yıllık saklama penceresi içinde doğrulanmış oturumla yeniden etkinleştirebilir. Kapatma anında alias kayıtlarına üç yıllık sona erme tarihi yazılır; yeniden etkinleştirme bu tarihi kaldırır. Üç yıl sonunda alias otomatik olarak serbest bırakılmaz; yalnızca uygulama sahibi önizlemesi, hukuki saklama kontrolü ve açık imha kararı sonrasında silinmesi değerlendirilebilir. Alias özeti de kişisel veri kabul edilerek KVKK incelemesine tabidir.
 - Ad ve soyad düzenlenebilir; mevcut birleşik kullaniciAdi alanı geriye dönük uyumluluk için korunur. İsimler benzersiz değildir.
 - Şifre değiştirme ve şifre sıfırlama akışları korunur.
 - Hesap türü kullanıcı tarafından değiştirilemez. Rol düzeltme talebi mevcut hesap sahibi tarafından oluşturulur; yalnızca özel uygulama sahibi yetkisi olan hesap inceler. Onay, veri sahipliği/bağlantı incelemesi tamamlanmadan rolü değiştirmez.
@@ -24,11 +24,11 @@ Bu bölüm; öğretmen/öğrenci hesaplarının ayrımını, hesap sahipliğini,
 ## Akademik dönem aktarımı — zorunlu kurallar
 1. Aktarılan her okul, sınıf, öğrenci ataması ve öğrenciye özel kitap/konu ilerleme kaydı hedef dönemin donemYili alanıyla yeni kaydı olarak oluşturulur.
 2. Eski dönem kayıtları değiştirilmez ve silinmez.
-3. Öğrenci Firebase UID'si değişmez; öğretmen yerel öğrenci kaydı yeni dönemde yeni kayıt kimliği alır. Yeni bağlantı yeni dönem ve sınıf kimliğine işaret eder.
+3. Öğrenci Firebase UID'si değişmez; öğretmen yerel öğrenci kaydı yeni dönemde yeni kayıt kimliği alır. Aktif öğrenci hesabı bağlantısı ve paylaşım izinleri yeni dönem/sınıf kimliğine taşınır; eski bağlantı ve geçmiş kayıtlar korunur.
 4. Kitap kütüphanesinin sezon bağımsız tanımları çoğaltılmaz; yeni dönem atamaları mevcut kütüphane kimliklerini kullanır.
 5. Eski ödev, yoklama, ders notu, bireysel etkinlik ve ilerleme kayıtları yeni döneme kopyalanmaz.
-6. Öğretmen okul, sınıf, öğrenci ve kitap atamalarını tek tek seçer. Sınıf seviyesi öğretmen tarafından hedeflenir; TYT öğrencisi TYT kalır, 12. sınıftan TYT'ye geçiş açık seçimdir.
-7. Aktarım önizlemesi, hedef dönem, kaynak/hedef sayıları ve uyarıları gösterir. İşlem kimliği ve deterministik kaynak-hedef eşlemesi tekrar çalıştırmada mükerrer kayıt oluşmasını engeller.
+6. Öğretmen okul, sınıf, öğrenci ve her öğrenci için kitap atamalarını tek tek seçer. Sınıf seviyesi öğretmen tarafından hedeflenir; 12. sınıf, TYT ve AYT kaynak grupları hedefte TYT olur.
+7. Aktarım onay ekranı hedef dönemi, seçilen sınıf ve öğrenci sayılarını ve kopyalanmayacak geçmiş verileri açıklar. İşlem kimliği ve deterministik kaynak-hedef eşlemesi tekrar çalıştırmada mükerrer kayıt oluşmasını engeller.
 8. Aktarım yarıda kalırsa aynı işlem kimliğiyle güvenli devam eder; yeni dönem kaydı oluşturulmadan önce kaynak ve hedef ilişkileri doğrulanır.
 
 ## Hesap kapatma ve saklama
@@ -79,3 +79,11 @@ Veri kategorileri ve saklama gerekçeleri en az yılda bir gözden geçirilir. �
 - Aktarım kimlikleri kaynak kayıt + hedef dönem üzerinden deterministiktir. Aynı aktarım tekrar çalıştırılırsa aynı belge kimlikleri kullanılır; farklı bir kayıtla çakışma tespit edilirse işlem güvenli biçimde durur.
 - İlk sürüm bir çağrıda en fazla 500 öğrenci ve 100 sınıfı kabul eder. Daha büyük aktarım gruplara bölünerek yapılmalıdır.
 - Aktarım Admin SDK callable üzerinden çalışır; istemci doğrudan geçmiş dönemi değiştirmez. Canlıya alınmadan önce Firestore Emulator entegrasyon testi ve örnek veri üzerinde dry-run/önizleme gerekir.
+
+
+## E-posta alias uygulama sınırları ve geçiş
+
+- Öğretmen ve öğrenci kayıt ekranları Auth hesabı oluşturulmadan önce rezerve edilmiş adresi kontrol eder. Doğrulanmış girişte mevcut adres UID'ye bağlanır; e-posta değişiminde eski adres önce rezerve edilir ve yeni adresin alias kaydı kontrol edilir.
+- `functions/scripts/backfill-email-aliases.js` mevcut Firebase Auth hesaplarının şu anki e-posta adreslerini tarar. Varsayılanı yalnızca dry-run'dır; `--apply` yazma yapar ve yalnızca ayrıca onaylanmış bakım adımında çalıştırılmalıdır. Auth kayıtlarında geçmişte değiştirilmiş eski adresler bulunmadığından bu script onları geriye dönük keşfedemez.
+- Mevcut Firebase Spark projesinde Identity Platform blocking trigger'ları etkin değildir. Uygulama içi callable kontrolleri standart kayıt akışını korur; Firebase Auth API'sini uygulama dışından doğrudan kullanan bir istemci bu kontrolleri atlayabilir. Atlatılamaz garanti için Identity Platform gereklidir; Spark sınırları ve maliyet etkisi kullanıcı onayı olmadan değiştirilmez.
+- Alias kayıtları otomatik olarak süre sonunda serbest bırakılmaz. Üç yıllık `sonaErme` yalnızca imha incelemesi için işarettir. İmha kararı verilene kadar başka UID'ye devredilmez. Hash kayıtları da kişisel veri/pseudonim veri sayılabileceğinden saklama hukuki dayanak ve süre bakımından ayrıca onaylanmalıdır.
