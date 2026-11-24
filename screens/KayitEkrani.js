@@ -90,7 +90,6 @@ export default function KayitEkrani({ navigation, route }) {
       if (hata.code === 'auth/email-already-in-use') mesaj = 'Bu e-posta zaten kayıtlı. Giriş ekranından giriş yapın.';
       else if (hata.code === 'auth/invalid-email') mesaj = 'Geçersiz e-posta adresi.';
       else if (hata.code === 'alias/already-reserved') mesaj = hata.message;
-      else if (hata.code === 'functions/already-exists') mesaj = 'Bu hesap için kullanıcı profili zaten mevcut. Giriş ekranına dönün.';
       else if (hata.message) mesaj = hata.message;
       Alert.alert('Kayıt Hatası', mesaj);
     } finally {
