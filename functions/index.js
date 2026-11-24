@@ -1,48 +1,13 @@
-// Firebase Spark uyumluluğu:
-// Zamanlanmış Cloud Functions Spark planında dağıtılamadığı için dönem temizliği
-// burada otomatik tetiklenmez. Dönem politikası functions/retentionPolicy.js
-// içinde saf/test edilebilir yardımcılarla doğrulanır; fiziksel silme yalnızca
-// uygulama sahibi onaylı, sunucu kilitli callable üzerinden yürütülür.
-
-const profileRegistration = require('./profileRegistration');
-exports.ogretmenProfiliOlustur = profileRegistration.ogretmenProfiliOlustur;
-
-
-
-const section7DataLifecycle = require('./section7DataLifecycle');
-exports.ogretmenOgrenciKaydiniKaliciSil = section7DataLifecycle.ogretmenOgrenciKaydiniKaliciSil;
-exports.uygulamaSahibiDonemTemizliginiOnizle = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnizle;
-exports.uygulamaSahibiDonemTemizliginiOnayla = section7DataLifecycle.uygulamaSahibiDonemTemizliginiOnayla;
-
-const studentClassMove = require('./studentClassMove');
-exports.ogretmenOgrenciKaydiniTasi = studentClassMove.ogretmenOgrenciKaydiniTasi;
-
-
-const ownerStatistics = require('./ownerStatistics');
-exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
-
-const accountLifecycle = require('./accountLifecycle');
-exports.profilAdSoyadGuncelle = accountLifecycle.profilAdSoyadGuncelle;
-exports.epostaDegisikliginiProfileYansit = accountLifecycle.epostaDegisikliginiProfileYansit;
-exports.hesapKapatmaTalebiOlustur = accountLifecycle.hesapKapatmaTalebiOlustur;
-exports.hesabiYenidenEtkinlestir = accountLifecycle.hesabiYenidenEtkinlestir;
-exports.rolDuzeltmeTalebiOlustur = accountLifecycle.rolDuzeltmeTalebiOlustur;
-exports.rolDuzeltmeTalebiniKararaBagla = accountLifecycle.rolDuzeltmeTalebiniKararaBagla;
-
-const emailAliases = require('./emailAliases');
-exports.epostaAliasiniRezerveEt = emailAliases.epostaAliasiniRezerveEt;
-exports.epostaAliasDegisikliginiKontrolEt = emailAliases.epostaAliasDegisikliginiKontrolEt;
-exports.epostaKaydiKontrolEt = emailAliases.epostaKaydiKontrolEt;
-// Identity Platform blocking triggers remain opt-in; the current Spark project does not enable them.
-if (process.env.ENABLE_IDENTITY_PLATFORM_BLOCKING_TRIGGERS === 'true') {
-  exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
-  exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
-}
-
-const academicPeriodTransfer = require('./academicPeriodTransfer');
-exports.ogretmenDonemAktariminiBaslat = academicPeriodTransfer.ogretmenDonemAktariminiBaslat;
-
-const accountRetention = require('./accountRetention');
-exports.uygulamaSahibiKapaliHesaplariListele = accountRetention.uygulamaSahibiKapaliHesaplariListele;
-exports.uygulamaSahibiKapaliHesapImhasiniOnizle = accountRetention.uygulamaSahibiKapaliHesapImhasiniOnizle;
-exports.uygulamaSahibiKapaliHesabiImhaEt = accountRetention.uygulamaSahibiKapaliHesabiImhaEt;
+/**
+ * Spark-only deployment entrypoint.
+ *
+ * This project intentionally exports no Cloud Functions. Firebase Spark does
+ * not support deploying Cloud Functions, and the application has been migrated
+ * to Firestore Rules-enforced client flows where safe. Risky or privileged
+ * operations remain disabled in the app until a safe Spark design is complete.
+ *
+ * Legacy function modules remain in this folder for source review and isolated
+ * policy tests only. Do not re-export them without an explicit architecture
+ * decision and a separate review of billing, security and data-retention impact.
+ */
+module.exports = {};
