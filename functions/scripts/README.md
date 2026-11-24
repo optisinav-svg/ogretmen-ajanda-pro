@@ -55,6 +55,17 @@ node .\scripts\audit-account-ownership.js hesap1@example.com hesap2@example.com
 - Eski hesap yapılandırma yaklaşımı güvenlik nedeniyle devre dışıdır.
 - Çalıştırmayın; betik bilerek hata vererek durur.
 
+
+### \`manual-period-cleanup.js\`
+- Spark uyumlu yerel Admin SDK betiğidir; Cloud Functions veya Blaze kullanmaz.
+- Varsayılan çalışma biçimi yoktur; \`--preview\` açıkça seçilirse salt okunur sayım yapar.
+- Yalnızca Temmuz 2028 ve sonrasında, o yılın iki yıl öncesindeki dönemi hedefler.
+- Yalnızca \`dersNotlari\`, \`dersler\`, \`yoklamalar\`, \`odevler\`, \`kitaplar\` ve \`konular\` koleksiyonlarını işler.
+- Etkin uygulama sahibi custom claim'ini ve öğretmen profilini doğrular.
+- Silme için son 24 saatte alınmış tam yedeği, arşiv dosyasını ve SHA-256 özetini doğrular; hedef, toplam belge sayısı ve yedek özeti ayrı ayrı açıkça onaylanmalıdır.
+- Alt koleksiyonu olan belgeler varsa silmeye başlamadan durur. 400'lük partiler, işlem kilidi ve kesinti sonrası ilk yedeğe bağlı devam mekanizması kullanır.
+- Çalıştırma ve onay örnekleri \`docs/SECTION12_SPARK_RETENTION_CLEANUP.md\` içindedir. Betik canlı projede çalıştırılmadan önce CI ve ayrı kod incelemesi tamamlanmalıdır.
+
 ## Cloud Functions
 
 Proje Spark planında kalacağı için `firebase.json` içinde Functions deploy hedefi yoktur ve `functions/index.js` hiçbir fonksiyon export etmez. Bu klasördeki eski Functions modülleri yalnızca kaynak incelemesi ve izole testler içindir; deploy edilmemelidir.
