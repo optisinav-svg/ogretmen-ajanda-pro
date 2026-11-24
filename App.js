@@ -28,7 +28,10 @@ const opt={headerStyle:{backgroundColor:'#2E7D32'},headerTintColor:'#fff',header
 export default function App(){return <SafeAreaProvider><NavigationContainer><Stack.Navigator initialRouteName="Giris" screenOptions={opt}>
 <Stack.Screen name="Giris" component={GirisEkrani} options={{headerShown:false}}/>
 <Stack.Screen name="KayitRolSecimi" component={KayitRolSecimiEkrani} options={{title:"Kayıt Türü"}}/>
-<Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>\n<Stack.Screen name="KVKKBilgilendirme" component={KVKKBilgilendirmeEkrani} options={{title:"KVKK Bilgilendirme"}}/>\n<Stack.Screen name="OgrenciKayit" component={OgrenciKayitEkrani} options={{title:"Öğrenci Kaydı"}}/>\n<Stack.Screen name="OgrenciAnaSayfa" component={OgrenciAnaSayfaEkrani} options={{title:"Öğrenci Ajandası",headerBackVisible:false}}/>
+<Stack.Screen name="Kayit" component={KayitEkrani} options={{headerShown:false}}/>
+<Stack.Screen name="KVKKBilgilendirme" component={KVKKBilgilendirmeEkrani} options={{title:"KVKK Bilgilendirme"}}/>
+<Stack.Screen name="OgrenciKayit" component={OgrenciKayitEkrani} options={{title:"Öğrenci Kaydı"}}/>
+<Stack.Screen name="OgrenciAnaSayfa" component={OgrenciAnaSayfaEkrani} options={{title:"Öğrenci Ajandası",headerBackVisible:false}}/>
 <Stack.Screen name="AnaSayfa" component={AnaSayfa} options={{title:'Öğretmen AjandaPro',headerBackVisible:false}}/>
 <Stack.Screen name="IstatistikPaneli" component={IstatistikPaneliEkrani} options={{title:'İstatistik Paneli'}}/>
 <Stack.Screen name="OkulSinif" component={OkulSinifEkrani} options={{title:'Okul & Sınıf Yönetimi'}}/>
