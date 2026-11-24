@@ -1,5 +1,6 @@
 import React,{useState,useEffect,useRef}from'react';
-import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,SafeAreaView,KeyboardAvoidingView,Platform}from'react-native';
+import {View,Text,TextInput,TouchableOpacity,StyleSheet,ScrollView,Alert,Modal,KeyboardAvoidingView,Platform}from'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {collection,addDoc,getDocs,deleteDoc,doc,query,where,updateDoc,writeBatch,arrayUnion,getDoc,setDoc}from'firebase/firestore';
 import {auth,db}from'../firebaseConfig';
 import {pad,isoDate,displayDate,oturumIdOlustur,gunAdi}from'../utils/oturum';
