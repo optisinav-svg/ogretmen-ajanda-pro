@@ -115,3 +115,39 @@ Bu nedenle ilk uygulanacak kod degisikligi icin profil ad/soyad callable'inin ka
 - `firestore.rules` icindeki `updatesOwnUserProfile` kosulu, e-posta alaninin yalnizca Auth token'indaki e-posta dogrulanmis oldugunda ve yeni deger token e-postasiyla birebir eslestiginde degistirilmesine izin verecek sekilde dar kapsamli guncellendi. Diger alan/rol kisitlari korundu.
 - Bu degisiklik kaynak rules dosyasindadir; canli Firestore rules dagitilmadi. Testler 12. bolumde calistirilacak.
 - Eski callable export'u geriye donuk uyumluluk icin silinmedi. E-posta alias rezervasyon callable'i hala GirisEkrani tarafinda cagrildigindan Spark callable engeli devam ediyor.
+
+
+## SHA-256 alias icin Spark cozumunun bulunmasi ve uygulanmasi
+
+Ilk risk notundaki "alias hash kimligi Rules tarafinda dogrulanamaz" varsayimi guncel Firebase Security Rules yetenekleriyle dogru degildir. Firestore Rules, `hashing.sha256()`, `String.lower()`, `String.trim()`, `String.toUtf8()` ve `Bytes.toHexString()` destekler. Bu nedenle mevcut SHA-256 belge kimligi korunarak istemci yazimi guvenli sekilde sinirlanabilir. Resmi Firebase dokumani: https://firebase.google.com/support/release-notes/security-rules
+
+Bu bulgu uzerine kaynak kodda yapilanlar:
+1. `services/sparkEmailAliases.js` eklendi. Oturum acmis kullanicinin Auth token'indaki dogrulanmis e-posta adresi normalize edilip Expo Crypto SHA-256 ile hashleniyor; mevcut `epostaAliaslari/{sha256}` belge yapisi kullaniliyor.
+2. Firestore Rules, kullanicinin yalnizca kendi dogrulanmis Auth e-postasinin hash belgesini okuyabilmesine izin verecek sekilde guncellendi. Listeleme kapali. Create yalnizca dogru hash, kendi UID'si ve beklenen alan/timestamp yapisiyla; update yalnizca ayni UID icin `sonKullanim` alaninda mumkun. Delete kapali.
+3. Ogretmen kaydi, ogrenci kaydi ve giris ekranlarindaki alias callable cagrilari kaldirildi. E-posta alias kontrol callable'i yerine dogrulanmis hesapta transaction ile mevcut hash kaydi kontrol ediliyor/olusturuluyor.
+4. Ogretmen profili, e-posta dogrulanmadan olusturulmuyor. Kullanici once dogrulama e-postasini acar, sonra kaydi tamamlar. Firestore Rules da profil olusturulurken `email_verified == true` kosulunu zorunlu tutuyor.
+5. Ogrenci baglama akisi, dogrulanmis e-posta sonrasinda ayni alias servisini kullaniyor.
+6. Profil ekranindaki e-posta degisikligi gecici olarak kapatildi. Yeni e-posta icin dogrulanmis alias on kontrolu Spark'ta guvenli bicimde tamamlanana kadar mevcut adres korunuyor; bu alan yeniden tasarlanacak.
+7. Giris sonrasi profil e-posta senkronizasyonu ve profil ad/soyad kaydetme de onceki adimlarda callable'dan cikarilmisti.
+
+## Hesap kapatma / yeniden etkinlestirme Spark uygulamasi
+
+- `services/sparkAccountLifecycle.js` eklendi.
+- Hesap kapatma ve yeniden etkinlestirme, kullanicinin kendi profil belgesi ve `hesapYasamDongusuDenetimi/{uid}` kaydina tek Firestore batch icinde yaziliyor.
+- Rules, yalnizca dogrulanmis kullanicinin kendi hesabini kapatmasina; uygulama sahibi hesabinin kapatilamamasina; uc yillik saklama tarihine; yeniden etkinlestirmede imha kilidi/bitmis imha kontrolune ve audit kaydinin ayni batch'te olusmasina izin verecek sekilde kaynakta guncellendi.
+- Giris ve profil ekranlarindaki ilgili callable cagrilari kaldirildi.
+- Kapali hesabin Firebase Auth hesabini uc yil sonunda silme islemi hala Admin Auth yetkisi gerektirir; bu islem istemciye tasinmadi ve uygulama panelinden kapali tutulmalidir.
+
+## 24.11.2026 guncel kalan callable ekranlari
+
+Bu degisikliklerden sonra uygulama ekranlarinda kalan callable kullanimlari:
+- `ProfilEkrani.js`: rol duzeltme talebi olusturma.
+- `RolDuzeltmeTalepleriEkrani.js`: rol talebi karari.
+- `OgrenciEkrani.js`: sinif/kayitsiz ogrenci tasima ve kalici silme.
+- `OkulSinifEkrani.js`: okul kaldirma akisinda kayitsiz ogrencilerin iliskili verilerini silme.
+- `DonemAktarimEkrani.js`: buyuk akademik donem aktarimi.
+- `IstatistikPaneliEkrani.js`: kapali hesap listeleme/imhasi ve yillik donem temizligi.
+
+Bu kalan akislarin bir kismi cok koleksiyonlu, yetkili veya yikici islemlerdir. Her biri guvenli Firestore transaction/Rules tasarimina cevrilmeden veya guvenli sekilde devre disi birakilmadan Spark callable engeli kapanmis sayilmayacak.
+
+**Test durumu:** Bu kaynak degisiklikleri icin Emulator, unit, bundle veya cihaz testi calistirilmadi. Canli Firestore rules dagitilmadi; canli veri, Auth hesabi veya alias kaydi degistirilmedi.
