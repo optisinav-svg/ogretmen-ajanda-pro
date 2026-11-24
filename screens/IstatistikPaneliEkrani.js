@@ -21,12 +21,6 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [cleanupPreview, setCleanupPreview] = useState(null);
-  const [cleanupBusy, setCleanupBusy] = useState(false);
-  const [cleanupMessage, setCleanupMessage] = useState('');
-  const [closedAccounts, setClosedAccounts] = useState([]);
-  const [accountPreview, setAccountPreview] = useState(null);
-  const [accountBusy, setAccountBusy] = useState(false);
   const [accountMessage, setAccountMessage] = useState('');
 
   const load = useCallback(async (quiet = false) => {
@@ -106,7 +100,6 @@ export default function IstatistikPaneliEkrani({ navigation }) {
         teachers: teacherRows,
         generatedAt: new Date().toISOString(),
       });
-      setClosedAccounts([]);
       setAccountMessage('Spark planında kapalı hesap listeleme ve Firebase Auth hesabı imhası uygulama içinden güvenli biçimde yapılamadığından bu bölüm geçici olarak kapalıdır. Hesap verileri korunur.');
     } catch (e) {
       setError(e?.code === 'permission-denied'
@@ -123,54 +116,6 @@ export default function IstatistikPaneliEkrani({ navigation }) {
   const retentionDate = istanbulDateParts();
   const retentionAvailable = retentionDate.year >= 2028 && retentionDate.month === 7;
   const retentionTargetYear = retentionDate.year - 2;
-
-  const previewRetentionCleanup = async () => {
-    setCleanupPreview(null);
-    setCleanupMessage('Spark planında çok koleksiyonlu dönem silme işlemi, güvenli ve devam ettirilebilir istemci akışı tamamlanana kadar kapalıdır. Hiçbir kayıt silinmedi.');
-  };
-
-  const executeRetentionCleanup = async () => {
-    setCleanupPreview(null);
-    setCleanupMessage('Dönem temizliği bu sürümde devre dışıdır. Canlı veriye dokunulmadı.');
-  };
-
-  const confirmRetentionCleanup = () => {
-    if (!cleanupPreview) return;
-    const summary = Object.entries(cleanupPreview.counts || {}).map(([name, count]) =>
-      `${name}: ${number(count || 0)}`
-    ).join('\\n');
-    Alert.alert(
-      `${cleanupPreview.targetYear} dönemi silinecek`,
-      `Üç yıllık saklama süresi dolan döneme ait aşağıdaki öğretmen verileri ve öğrenciye bağlı kayıtlar kalıcı olarak silinecek. Öğrencilerin genel uygulama hesapları ve diğer dönem kayıtları korunacak. İşlem geri alınamaz.\\n\\n${summary}\\n\\nToplam: ${number(cleanupPreview.total)} kayıt.`,
-      [
-        { text: 'Vazgeç', style: 'cancel' },
-        { text: 'Silme işlemini başlat', style: 'destructive', onPress: executeRetentionCleanup },
-      ],
-    );
-  };
-
-  const previewClosedAccount = async account => {
-    setAccountPreview(null);
-    setAccountMessage('Kapalı hesap imhası Firebase Admin Auth yetkisi gerektirir ve Spark istemcisinden çalıştırılamaz. Hesap verileri korunur.');
-  };
-
-  const executeClosedAccountDeletion = async () => {
-    setAccountPreview(null);
-    setAccountMessage('Kapalı hesap imhası güvenli bir Admin Auth süreci tanımlanana kadar devre dışıdır. Hiçbir hesap silinmedi.');
-  };
-
-  const confirmClosedAccountDeletion = () => {
-    if (!accountPreview) return;
-    const summary = Object.entries(accountPreview.counts || {}).map(([name,count])=>`${name}: ${number(count)}`).join('\\n');
-    Alert.alert(
-      'Kapalı hesabı kalıcı olarak imha et',
-      `${accountPreview.displayName} (${accountPreview.role}) hesabının üç yıllık saklama süresi dolmuş. Aşağıdaki hesap verileri ve bu hesaba ait bağlantılar kalıcı olarak silinecek. Öğrenci hesabı silinirse öğretmenlerin kendi öğrenci kayıtları korunur; öğretmen hesabı silinirse yalnızca o öğretmenin sahip olduğu kayıtlar silinir. Tarihsel e-posta alias kayıtları başka hesaba verilmemesi için korunur.\\n\\n${summary}\\n\\nToplam: ${number(accountPreview.total)} kayıt. İşlem geri alınamaz.`,
-      [
-        {text:'Vazgeç',style:'cancel'},
-        {text:'Hesabı imha et',style:'destructive',onPress:executeClosedAccountDeletion},
-      ],
-    );
-  };
 
   const goHome = () => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -243,7 +188,6 @@ export default function IstatistikPaneliEkrani({ navigation }) {
           ) : (
             <Text style={s.cleanupInfo}>Temmuz {retentionDate.year} için hedef dönem {retentionTargetYear} olsa da çok koleksiyonlu temizleme Spark istemcisinde henüz güvenli ve test edilmiş değildir. Önizleme ve silme işlemi bu sürümde kapalıdır; hiçbir kayıt silinmez.</Text>
           )}
-          {!!cleanupMessage && <Text style={s.cleanupInfo}>{cleanupMessage}</Text>}
         </View>
 
         <View style={s.section}>
