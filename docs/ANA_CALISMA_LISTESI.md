@@ -196,3 +196,5 @@ Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasi
 ### 24.11.2026 ilk kod duzeltmesi
 
 `ProfilEkrani.js` ad/soyad kaydetme akisi callable'dan cikarildi; kendi UID'sine ait profil belgesine `ad` ve `soyad` alanlari, mevcut Firestore Rules kisitlari altinda dogrudan yaziliyor. Eski callable export'u kurulu telefon uygulamasinin geriye donuk uyumlulugunu korumak icin silinmedi. Kaynak degisikligi yapildi; test ve cihaz dogrulamasi 12. bolume birakildi. P0 callable engeli diger akislardan dolayi devam ediyor.
+
+- Giris sonrasi dogrulanmis Auth e-postasini kendi Firestore profiline yansitma da callable'dan cikarildi. Bunun icin kaynak Firestore Rules, e-posta alanini yalnizca dogrulanmis Auth token e-postasina esit olacak sekilde guncellemeye izin veriyor. Canli rules dagitimi ve test yapilmadi.
