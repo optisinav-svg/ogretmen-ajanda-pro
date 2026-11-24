@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import GirisEkrani from './screens/GirisEkrani';
+import KayitRolSecimiEkrani from './screens/KayitRolSecimiEkrani';
 import KayitEkrani from './screens/KayitEkrani';
 import AnaSayfa from './screens/AnaSayfa';
 import OkulSinifEkrani from './screens/OkulSinifEkrani';
