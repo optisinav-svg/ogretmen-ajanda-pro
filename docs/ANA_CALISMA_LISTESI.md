@@ -65,7 +65,7 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Eski donem 30 Haziran'a kadar duzenlenebilir; 1 Temmuz'dan itibaren salt okunur arsiv olur.
 - Yalnizca son uc sezon tutulur; 2026 kayitlari Temmuz 2028'de, 2027 kayitlari Temmuz 2029'da vb. ilgili yil kuralina gore ele alinacak.
 - Yillik temizleme allowlist'i yalnizca `dersNotlari`, `dersler`, `yoklamalar`, `odevler`, `kitaplar`, `konular` koleksiyonlaridir. `ogrenciler`, `siniflar`, `okullar`, `kullanicilar`, ogretmen-ogrenci baglantilari, eslestirme talepleri/kodlari, bildirimler, bireysel etkinlikler ve ortak kitap kutuphanesi silinmez.
-- Gunluk zamanlanmis silme yoktur. Spark nedeniyle yillik islem, Temmuz'da uygulama sahibi tarafindan onizleme ve acik onayla baslatilacak.
+- Gunluk zamanlanmis silme yoktur. Hedeflenen yillik islem Temmuz'da uygulama sahibi onizleme ve acik onayiyla baslatilacak; ancak Spark istemci cok-batch + kilit akisi henuz yazilmadigi icin temizleme ekrani kapali kalacak. 2028 Temmuzundan once tamamlanip test edilmeli.
 - Allowlist'teki tehlikeli genisletme 24.11.2026'da alti koleksiyona daraltildi ve test beklentisi duzeltildi. Bu degisiklik icin test henuz calistirilmadi; canli rules dagitimi ve veri silme yapilmadi.
 - Eksik `donemYili` kayitlari icin onceki dry-run sayilari tarihsel bilgidir; canli veriye tekrar dokunmadan once salt okunur yeni envanter ve fark raporu gerekir. Onceki yedek/manifest korunur.
 
