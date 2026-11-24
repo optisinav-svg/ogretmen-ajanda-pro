@@ -17,12 +17,6 @@ exports.uygulamaSahibiDonemTemizliginiOnayla = section7DataLifecycle.uygulamaSah
 const studentClassMove = require('./studentClassMove');
 exports.ogretmenOgrenciKaydiniTasi = studentClassMove.ogretmenOgrenciKaydiniTasi;
 
-const studentNotifications = require('./studentNotifications');
-exports.ogrenciPushTokenKaydet = studentNotifications.ogrenciPushTokenKaydet;
-exports.ogrenciPushTokenSil = studentNotifications.ogrenciPushTokenSil;
-exports.odevOlusturulduOgrenciBildirimleri = studentNotifications.odevOlusturulduOgrenciBildirimleri;
-exports.odeveOgrenciEklendiBildirimleri = studentNotifications.odeveOgrenciEklendiBildirimleri;
-exports.odevSilindiOgrenciBildirimleri = studentNotifications.odevSilindiOgrenciBildirimleri;
 
 const ownerStatistics = require('./ownerStatistics');
 exports.getUygulamaSahibiIstatistikleri = ownerStatistics.getUygulamaSahibiIstatistikleri;
