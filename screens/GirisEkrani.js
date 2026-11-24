@@ -41,7 +41,7 @@ if (profile.get('hesapDurumu') === 'kapali') {
   return;
 }
 if (credential.user.emailVerified && profile.get('eposta') !== credential.user.email) {
-  await updateDoc(doc(db,'kullanicilar',credential.user.uid), { eposta: credential.user.email });
+  await updateDoc(doc(db,'kullanicilar',credential.user.uid), { eposta: (credential.user.email || '').trim().toLowerCase() });
 }
 const role = profile.get('rol');
 if (role === 'ogrenci') {
