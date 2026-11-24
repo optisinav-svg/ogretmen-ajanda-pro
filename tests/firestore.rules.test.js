@@ -1527,3 +1527,44 @@ test('closed-account deletion locks are server-only', async () => {
   await assertFails(getDoc(doc(db, 'hesapImhaKayitlari', 'closed-account')));
   await assertFails(setDoc(doc(db, 'hesapImhaKayitlari', 'closed-account'), { status: 'completed' }));
 });
+
+test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güvenli bildirim oluşturabilir', async () => {
+  const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
+  const notificationId = 'homework-a__student-1__1790000000000';
+  const notificationRef = doc(teacherDb, 'ogrenciOdevDurumBildirimleri', notificationId);
+  const batch = writeBatch(teacherDb);
+
+  batch.update(doc(teacherDb, 'odevler', 'homework-a'), {
+    ogrenciDurumlari: { 'student-a': 'yapildi' },
+  });
+  batch.set(notificationRef, {
+    uid: 'teacher-a',
+    ogretmenUid: 'teacher-a',
+    ogrenciUid: 'student-1',
+    ogrenciKayitId: 'student-a',
+    baglantiId: 'teacher-a__student-1__class-a',
+    odevId: 'homework-a',
+    sinifId: 'class-a',
+    donemYili: 2026,
+    odevAciklama: 'Öğrenciye verilen ödev',
+    oncekiDurum: 'bekliyor',
+    yeniDurum: 'yapildi',
+    bildirimAnahtari: '1790000000000',
+    bildirimTarihi: '2026-09-21T00:00:00.000Z',
+    okundu: false,
+  });
+  await assertSucceeds(batch.commit());
+
+  const studentDb = testEnv.authenticatedContext('student-1').firestore();
+  await assertSucceeds(getDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId)));
+  await assertSucceeds(updateDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId), {
+    okundu: true,
+    okunduTarihi: serverTimestamp(),
+  }));
+  const otherStudentDb = testEnv.authenticatedContext('student-2').firestore();
+  await assertFails(getDoc(doc(otherStudentDb, 'ogrenciOdevDurumBildirimleri', notificationId)));
+  await assertFails(updateDoc(doc(studentDb, 'ogrenciOdevDurumBildirimleri', notificationId), {
+    yeniDurum: 'yapilmadi',
+  }));
+});
+
