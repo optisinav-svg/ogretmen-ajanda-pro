@@ -45,7 +45,7 @@ test('Spark application screens and services do not call Cloud Functions', () =>
   for (const file of files) {
     const source = fs.readFileSync(file, 'utf8');
     assert.equal(
-      /httpsCallable\s*\(|getFunctions\s*\(/.test(source),
+      /httpsCallable\s*\(|getFunctions\s*\(|from\s+['"]firebase\/functions['"]|import\s*\{[^}]*\bfunctions\b[^}]*\}\s*from\s*['"][^'"]*firebaseConfig/.test(source),
       false,
       'Spark app source must not depend on Firebase Functions: ' + path.relative(root, file),
     );
