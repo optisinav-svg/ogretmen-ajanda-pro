@@ -110,7 +110,7 @@ export default function IstatistikPaneliEkrani({ navigation }) {
       try {
         const list = await httpsCallable(functions, 'uygulamaSahibiKapaliHesaplariListele')({});
         setClosedAccounts(list.data?.accounts || []);
-      } catch (_) { setClosedAccounts([]); }
+      } catch (_) { setClosedAccounts([]); setAccountMessage('Kapalı hesap listesi yüklenemedi. Yetkiyi ve bağlantıyı kontrol edin.'); }
     } catch (e) {
       setError(e?.code === 'permission-denied'
         ? 'Bu panel için uygulama sahibi yetkisi veya Firestore erişimi doğrulanamadı.'
