@@ -42,6 +42,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const [talepler, setTalepler] = useState([]);
   const [bildirimler, setBildirimler] = useState([]);
   const [yeniOdevBildirimleri, setYeniOdevBildirimleri] = useState([]);
+  const [odevDurumBildirimleri, setOdevDurumBildirimleri] = useState([]);
   const [gruplar, setGruplar] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [yenileniyor, setYenileniyor] = useState(false);
@@ -52,12 +53,13 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
     if (!uid || !ACCOUNT_LINKING_ENABLED) { setYukleniyor(false); return; }
     if (sessiz) setYenileniyor(true); else setYukleniyor(true);
     try {
-      const [profileSnap, linkSnap, requestSnap, notificationSnap, newHomeworkSnap] = await Promise.all([
+      const [profileSnap, linkSnap, requestSnap, notificationSnap, newHomeworkSnap, statusNotificationSnap] = await Promise.all([
         getDoc(doc(db, 'kullanicilar', uid)),
         getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('ogrenciUid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciEslesmeTalepleri'), where('ogrenciUid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciOdevBildirimleri'), where('ogrenciUid', '==', uid))),
         getDocs(query(collection(db, 'ogrenciYeniOdevBildirimleri'), where('ogrenciUid', '==', uid))),
+        getDocs(query(collection(db, 'ogrenciOdevDurumBildirimleri'), where('ogrenciUid', '==', uid))),
       ]);
       if (!profileSnap.exists() || profileSnap.get('rol') !== 'ogrenci') {
         Alert.alert('Öğrenci hesabı doğrulanamadı', 'Bu oturum öğrenci hesabı olarak tanımlı değil.');
@@ -74,6 +76,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         .map(d => ({ id: d.id, ...d.data() }))
         .filter(item => item.durum !== 'iptal'))
         .slice(0, 50));
+      setOdevDurumBildirimleri(sortNewest(statusNotificationSnap.docs.map(d => ({ id: d.id, ...d.data() }))).slice(0, 50));
 
       const dataGroups = await Promise.all(links.map(async link => {
         const active = link.durum === 'active';
@@ -164,6 +167,29 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
 
   const bildirimAc = async item => {
     await bildirimOkundu(item);
+    const y = odevBolumY.current[item.baglantiId];
+    if (Number.isFinite(y)) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+    } else {
+      Alert.alert('Ödev görünmüyor', 'Bu ödev artık etkin bağlantınızda görünmüyor veya öğretmeninizin ödev paylaşım izni kapatılmış.');
+    }
+  };
+
+  const durumBildiriminiOkunduYap = async item => {
+    if (!item || item.okundu) return;
+    try {
+      await updateDoc(doc(db, 'ogrenciOdevDurumBildirimleri', item.id), {
+        okundu: true,
+        okunduTarihi: serverTimestamp(),
+      });
+      setOdevDurumBildirimleri(previous => previous.map(x => x.id === item.id ? { ...x, okundu: true } : x));
+    } catch (e) {
+      Alert.alert('Bildirim güncellenemedi', e?.message || 'Bildirim okundu olarak işaretlenemedi.');
+    }
+  };
+
+  const durumBildiriminiAc = async item => {
+    await durumBildiriminiOkunduYap(item);
     const y = odevBolumY.current[item.baglantiId];
     if (Number.isFinite(y)) {
       scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
@@ -265,6 +291,16 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
               <Text style={[s.itemTitle, !item.okundu && s.unread]}>{item.baslik || 'Yeni ödeviniz var'}</Text>
               <Text style={s.itemText}>{item.aciklama || 'Öğretmeniniz yeni bir ödev verdi.'}</Text>
               <Text style={s.meta}>Teslim: {dateLabel(item.teslimTarihi) || 'Belirtilmemiş'} · {item.okundu ? 'Okundu' : 'Okundu olarak işaretlemek için dokunun'}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>}
+        {!!odevDurumBildirimleri.length && <View style={s.card}>
+          <Text style={s.sectionTitle}>Ödev durum bildirimleri ({odevDurumBildirimleri.filter(x => !x.okundu).length} okunmamış)</Text>
+          {odevDurumBildirimleri.map(item => (
+            <TouchableOpacity key={item.id} style={s.item} onPress={() => durumBildiriminiAc(item)}>
+              <Text style={[s.itemTitle, !item.okundu && s.unread]}>{item.odevAciklama || 'Ödev'} · Durum güncellendi</Text>
+              <Text style={s.itemText}>Öğretmeniniz ödev durumunuzu “{({yapildi:'Yaptı',yapilmadi:'Yapmadı',gec:'Geç getirdi'})[item.yeniDurum] || item.yeniDurum}” olarak değiştirdi.</Text>
+              <Text style={s.meta}>{item.okundu ? 'Okundu' : 'Ödeve gitmek için dokunun'}</Text>
             </TouchableOpacity>
           ))}
         </View>}
