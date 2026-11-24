@@ -83,3 +83,6 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 Navigasyon düzeltmesi ve callable kaynak bağımlılığı temizliği yapıldı. Spark'ta güvenli karşılığı tamamlanmayan riskli özellikler kullanıcıya açık biçimde devre dışı bırakıldı. Dönem saklama takvimi kaynakta kullanıcı kararına göre hizalandı; yeni kuralların testi Bölüm 12'de bekliyor. Diğer bölümlerden devreden entegrasyon işleri ve geçici kapalı özelliklerin güvenli yeniden tasarımı sürüyor.
 
 Bu nedenle **Bölüm 11 henüz tamamlandı olarak işaretlenmiyor**. Ana çalışma listesi esas alınarak kalan kod işleri tamamlanacak; test ve APK aşaması Bölüm 12'de kalacak.
+
+
+A separate retention review found the Admin cleanup allowlist had included student/class/school/link/notification collections despite the agreed six-collection scope. `functions/retentionPolicy.js` is now restricted to the six approved seasonal collections (`dersNotlari`, `dersler`, `yoklamalar`, `odevler`, `kitaplar`, `konular`), and the test expectation was corrected. This is untested source code only; no live deletion or rules deployment occurred.
