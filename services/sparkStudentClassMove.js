@@ -68,7 +68,7 @@ async function getActiveLinkForStudent(uid, studentId) {
   ]);
   const hasActiveLink = linksSnapshot.docs.some(item => {
     const data = item.data();
-    return data.ogrenciKayitId === studentId && data.durum === 'active';
+    return (data.ogrenciKayitId || data.ogrenciId) === studentId && data.durum === 'active';
   });
   if (indexSnap.exists() && indexSnap.data().durum === 'active') {
     const index = indexSnap.data();
