@@ -4,6 +4,7 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, runTransaction } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -26,6 +27,7 @@ const BRANSLAR = [
 ];
 
 export default function KayitEkrani({ navigation, route }) {
+  const insets=useSafeAreaInsets();
   const [adim, setAdim] = useState(1);
   const [sezon, setSezon] = useState('');
   const [brans, setBrans] = useState('');
@@ -110,7 +112,7 @@ export default function KayitEkrani({ navigation, route }) {
       style={styles.kapsayici}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.icerik}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.icerik,{paddingBottom:insets.bottom+32}]}>
         <View style={styles.baslik}>
           <Text style={styles.emoji}>📚</Text>
           <Text style={styles.baslikMetni}>Kayıt Ol</Text>
