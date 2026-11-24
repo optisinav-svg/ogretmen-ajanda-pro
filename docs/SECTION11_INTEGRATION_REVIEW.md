@@ -39,11 +39,11 @@ Güvenli Spark karşılığı henüz tamamlanmadığı için açık uyarıyla ge
 - Rol düzeltme talebi/kararı; uygulama sahibi ekranında bekleyen talepler salt okunur.
 - Öğrenci kalıcı silme.
 - Okul kaldırma (sınıf ve kayıtsız öğrenci verileri dahil).
-
-Normal sınıf değişikliği ve Kayıtsız Öğrenciler sınıfına taşıma, `services/sparkStudentClassMove.js` ile kaynakta Spark'a taşındı. İşlem kilitli ve tekrar başlatılabilir; kitap/konu ilerlemesi batch'lerle taşınır, eski uygulama bağlantısı tarihçe için korunur ve yeni sınıf bağlantısı yeni kod/öğretmen onayıyla kurulur.
 - Akademik dönem aktarımı.
 - Kapalı hesap listeleme ve Firebase Auth hesabını imha etme.
-- Çok koleksiyonlu yıllık dönem temizliği.
+- Çok koleksiyonlu yıllık dönem temizliğinin Spark istemci önizleme/onay/batch akışı.
+
+Normal sınıf değişikliği ve Kayıtsız Öğrenciler sınıfına taşıma, `services/sparkStudentClassMove.js` ile kaynakta Spark'a taşındı. İşlem kilitli ve tekrar başlatılabilir; kitap/konu ilerlemesi batch'lerle taşınır, eski uygulama bağlantısı tarihçe için korunur ve yeni sınıf bağlantısı yeni kod/öğretmen onayıyla kurulur. Bu yeni akış henüz test edilmedi.
 
 Bu kapatmalar kullanıcıya açıklanır; ilgili ekranlarda callable çağrısı veya gizli veri silme işlemi yapılmaz. İşlevlerin güvenli Spark uygulaması daha sonra ilgili iş paketinde tamamlanmalıdır.
 
@@ -55,10 +55,10 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
 ## Bölüm 11 tamamlanmadan önce kalan kod işleri
 
-1. Dönem temizliği tarih uyumsuzluğu kaynakta düzeltildi: Temmuz 2028'de 2026, Temmuz 2029'da 2027 ve sonraki yıllarda Temmuz ayında yıl-2 hedefleniyor. Yeni Rules/helper beklentileri için Emulator testi Bölüm 12'de bekliyor.
-2. Öğrenci sınıf/kayıtsız taşıma Spark akışı kaynakta eklendi; Rules/Emulator regresyonu Bölüm 12'de. Okul kaldırma ve öğrenci kalıcı silme güvenli çok-koleksiyonlu Spark akışı tamamlanana kadar kapalı kalacak.
+1. Dönem saklama takvimi ve altı koleksiyonluk allowlist kaynakta düzeltildi. Öğrenci/sınıf/okul/profil/bağlantı/bildirim/bireysel etkinlik/ortak kitap kütüphanesi temizleme dışında. Spark istemci çok-batch + kilit + önizleme/onay akışı henüz yazılmadığı için temizleme ekranı kapalı; 2028 öncesi tamamlanmalı.
+2. Öğrenci sınıf/kayıtsız taşıma Spark akışı kaynakta eklendi; normal taşıma kitap/konu kayıtlarını taşır, eski bağlantıyı korur, yeni kodla yeniden eşleştirme ister. Taşıma kilidi, yeniden deneme ve sınıf arşiv koruması eklendi. Rules/Emulator regresyonu Bölüm 12'de.
 3. Rol düzeltme ve dönem aktarımı için güvenli yetki/veri sahipliği çözümünü belirle; güvenli çözüm yoksa kapalı tut.
-4. Dönem temizliği ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
+4. Okul kaldırma, öğrenci kalıcı silme ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
 5. Önceki bölümlerden devreden diğer açık maddeleri ana çalışma listesiyle eşleştir; çalışan takvimi ve doğrulanmış ekranları yeniden yazma.
 6. Uygulama sahibi custom claim için güvenli dry-run/apply scripti hazır; gerçek Auth claim ataması yapılmadı ve ayrıca açık onay bekliyor.
 
