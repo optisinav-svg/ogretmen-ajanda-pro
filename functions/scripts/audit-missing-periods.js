@@ -21,6 +21,12 @@ const COLLECTIONS = Object.freeze([
   'yoklamalar',
   'kitaplar',
   'konular',
+  'bireyselEtkinlikler',
+  'bireyselDersOturumlari',
+  'ogrenciEslesmeKodlari',
+  'ogretmenOgrenciBaglantilari',
+  'ogrenciKayitEslesmeleri',
+  'ogrenciEslesmeTalepleri',
 ]);
 
 function asDate(value) {
