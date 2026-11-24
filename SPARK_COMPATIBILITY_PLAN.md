@@ -1,119 +1,86 @@
-# Firebase Spark uyumluluk planı — 22.11.2026
+# Firebase Spark uyumluluk ve mevcut durum plani
 
-## Değişmez kararlar
+Son guncelleme: 24.11.2026  
+Calisma dali: `work/section11-integration-2026-11-24`
 
-- Firebase Spark ücretsiz planında kalınacak.
-- Blaze/ücretli plan kullanılmayacak.
-- Cloudflare Workers veya başka bir backend'e taşıma yapılmayacak.
-- Mevcut Firebase projesi, Firestore verileri, öğretmen uygulaması ve imza kimliği korunacak.
+Bu belge Spark uyumluluguna iliskin guncel kararlari ve kaynak durumunu kaydeder. Ana is listesi `docs/ANA_CALISMA_LISTESI.md` dosyasidir.
+
+## 1. Degismez kararlar
+
+- Firebase Spark ucretsiz plani korunacak; Blaze/odeme gerektiren plana gecilmeyecek.
+- Cloud Functions dagitimi, baska backend'e tasima veya sunucu push bu surumun parcasi degildir.
+- Mevcut Firebase projesi, Firestore verileri, calisan telefon uygulamasi ve imza kimligi korunacak.
 - Google Drive yedekleme ertelendi.
-- KVKK taslağında veri sorumlusu ad-soyadı ....... kalacak.
-- Gerçek öğrenci verisiyle test veya veri silme, yedek ve geri dönüş kontrolü olmadan yapılmayacak.
+- KVKK taslaginda veri sorumlusu adi-soyadi `.......` kalacak.
+- Canli Firestore Rules dagitimi, Auth custom claim atamasi, veri silme/tasima ve APK islemleri ayri acik onay gerektirir.
+- Testler 12. bolumde yapilacak; bu dalda yeni degisiklikler icin test calistirilmadi.
 
-## Spark sınırı
+## 2. Spark siniri
 
-Firebase Spark'ta Cloud Functions dağıtımı ve dolayısıyla şu sunucu işlevleri canlıya alınamaz:
-- Auth kullanıcı oluşturma tetikleyicisi / profil oluşturma callable'ı
-- Öğretmen-öğrenci eşleştirme callable'ları
-- Ödev tamamlama callable bildirimi
-- Push token callable'ları
-- Firestore tetikleyicileriyle yeni ödev bildirimi
-- Uygulama sahibi istatistik callable'ı
-- Zamanlanmış dönem temizliği
+Spark'ta Cloud Functions ve zamanlanmis isler calistirilmayacagindan:
+- Callable/trigger/scheduler cagiran uygulama ekrani birakilmayacak.
+- Expo/FCM gizli anahtari APK'ya konulmayacak; push gonderimi yok, uygulama ici bildirim var.
+- Donem temizligi arka planda veya otomatik calismayacak.
+- Yetki, atomiklik veya veri butunlugu saglanamayan yikici islemler istemciye tasinmayacak; acik uyariyla gecici kapali kalacak.
 
-Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı anlamına gelmez. Canlı Functions envanteri boş bulunmuştur. Bu nedenle APK'nın kullanıcı akışlarında Cloud Functions çağrısı bırakılmamalıdır.
+## 3. Kaynak kodda bulunan Spark akislari
 
-## Spark karşılıkları — kaynak kodda yapılanlar
-
-| Özellik | Spark uygulaması | Durum |
+| Islev | Kaynak uygulama | Durum |
 |---|---|---|
-| Öğretmen profili | Kayıt ekranı, kendi UID'si altında Firestore profili oluşturur. Rol ve uygulama sahibi yetkisi sonradan değiştirilemez. | Kaynak kodda uygulandı |
-| Öğrenci hesabı | E-posta doğrulaması korunur. Öğretmenin 16 karakterlik rastgele kodu SHA-256 belge kimliğiyle saklanır; 12 saat geçerli ve tek kullanımlıdır. | Kaynak kodda uygulandı |
-| Öğrenci kimliği | Kod, kayıtlı e-posta ve ad-soyad eşleşmesi kontrol edilir. E-posta karşılaştırması için öğrenci kaydında normalize edilmiş ek alan tutulur. | Kaynak kodda uygulandı |
-| Öğretmen onayı | Öğretmen talebi onaylar/reddeder; onayda bağlantı ve kayıt indeksi aynı Firestore transaction içinde oluşturulur. İzinler allowlist ile sınırlıdır. | Kaynak kodda uygulandı |
-| Öğrenci erişimi | Yalnızca aktif bağlantı ve öğretmenin verdiği izinler kadar veri görünür. Öğrenci başka öğretmenin verisini okuyamaz. | Kurallar ve testler güncellendi |
-| Ödev tamamlandı bildirimi | Öğrenci yalnızca kendisine atanmış ödev için ayrı Firestore bildirimi oluşturur. | Kaynak kodda uygulandı |
-| Yeni ödev bildirimi | Öğretmen ödev oluşturduğunda veya yeni öğrenci hedeflediğinde uygulama içi bildirim yazılır; hedef kaldırılırsa mevcut bildirim iptal edilir. | Kaynak kodda uygulandı |
-| Telefon push bildirimi | Spark'ta güvenli sunucu gönderimi yoktur. Expo/FCM gizli anahtarı APK'ya konulmaz. Öğrenci ekranı uygulama içi bildirimleri kullanır. | Push devre dışı; uygulama içi bildirim var |
-| Uygulama sahibi istatistikleri | Custom claim kontrolüyle öğretmen, öğrenci, bağlantı ve bekleyen talep sayıları Firestore'dan hesaplanır; öğrenci kimliği ekranda gösterilmez. | Kaynak kodda uygulandı |
-| Dönem temizliği | Uygulama sahibi Temmuz ayında altı koleksiyonu önizler; açık onayla yalnızca iki yıl önceki dönemi 400 kayıtlık batch'lerle siler ve yıllık kilit yazar. Firestore rules Temmuz dışı okumayı/silmeyi reddeder. | Kaynak kodda uygulandı; Firestore Emulator CI 45056266102 başarılı |
+| Ogretmen profili | Dogrulanmis e-posta sonrasi kendi UID'si altinda Firestore profil olusturma | Kaynakta var; Rules/device testi 12. bolumde |
+| E-posta alias gecmisi | SHA-256 belge kimligi; kullanici yalnizca kendi dogrulanmis e-posta alias kaydini olusturur/gunceller | Kaynakta var; Rules testi 12. bolumde |
+| Hesap kapatma/yeniden etkinlestirme | Kendi profil belgesi ve audit kaydi ayni batch/transaction akisinda | Kaynakta var; canli test 12. bolumde |
+| Profil adi/soyadi | Kendi profilinde dogrudan Firestore guncellemesi | Kaynakta var |
+| Ogrenci eslestirme | 16 karakter kriptografik kod, SHA-256 belge kimligi, 12 saat, tek kullanim, dogrulanmis e-posta/ad eslesmesi, ogretmen onayi | Kaynakta var; Emulator/gercek hesap testi 12. bolumde |
+| Ogrenci izinleri | Aktif baglanti ve allowlist izinleri; varsayilan kapali | Kaynakta var; guvenlik testi 12. bolumde |
+| Odev bildirimleri | Ogrenci tamamlama ve yeni odev bildirimleri dogrudan Firestore transaction/batch | Kaynakta var; test 12. bolumde |
+| Ogrenci sinif degisikligi | `services/sparkStudentClassMove.js`: resumable kilit, kitap/konu batch tasima, sinif gecmisi, eski baglantiyi koruma ve yeni kodla yeniden eslestirme | Kaynakta var; test 12. bolumde |
+| Kayitsiz ogrenciye tasima | Ayni okul/donem Kayıtsız Öğrenciler sinifi; ogrenci ve gecmis kayitlar silinmez | Kaynakta var; test 12. bolumde |
+| Uygulama sahibi istatistikleri | Custom claim kontrolu; aggregate Firestore okumasi, ogrenci kimligi gostermeden sayim | Kaynakta var; owner claim henuz atanmadı |
+| Ders konusu duzenleme | Kendi ders notu icin duzenle/updateDoc akisi | Kaynakta var; regresyon testi 12. bolumde |
 
-## Yıllık arşiv ve silme kararı
+## 4. Gecici olarak kapali Spark akislari
 
-- 2026 kayıtları Temmuz 2028'e kadar korunur.
-- Temmuz 2028'de yalnızca `donemYili == 2026` olan kayıtlar silinir.
-- Temmuz 2029'da yalnızca 2027; Temmuz 2030'da yalnızca 2028 silinir.
-- Silme kapsamı yalnızca `dersler`, `dersNotlari`, `yoklamalar`, `odevler`, `kitaplar`, `konular` koleksiyonlarıdır.
-- Okul, sınıf, öğrenci, kullanıcı profili, ortak kitap kütüphanesi, öğretmen-öğrenci bağlantısı ve Firebase Auth hesabı silinmez.
-- Eski dönemler görüntülenebilir/arşiv olarak kalır; düzenlenmez.
-- `utils/donem.js` mevcut çalışma mantığı korunur.
-- Spark'ta zamanlayıcı yoktur; Temmuz ayında uygulama sahibi paneli açıp önizleme ve açık onayla temizliği başlatır. Yıllık kilit ikinci çalıştırmayı engeller. Bu dalda hiçbir veri silinmemiştir.
+Asagidaki islevler kaynaktan kaldirilmis degildir; guvenli Spark karsiligi tamamlanana kadar kullaniciya acik uyari gostererek kapali tutulur:
+- Profil e-posta degisikligi (yeni adres alias gecmisi icin guvenli on kontrol yok).
+- Rol duzeltme talebi/karari (owner ekraninda bekleyen talepler salt okunur).
+- Ogrenci kalici silme.
+- Okul kaldirma ve bagli kayitlarin toplu silinmesi.
+- Akademik donem aktarimi.
+- Kapali hesaplari topluca listeleme/imhasi.
+- Yillik donem temizliginin Spark istemci onizleme/onay/batch akisi.
 
-## Canlıya alma güvenliği
+Normal sinif degisikligi ve kayitsiz sinifa tasima bu listede degildir; bunlar kaynakta Spark istemci akisina tasindi. Yeni akislara iliskin testler henuz calistirilmadi.
 
-- Firestore kuralları kaynak kodda Spark kayıt/eşleştirme ve bildirim işlemlerine göre yeniden yazıldı.
-- Canlı Firestore kuralları henüz dağıtılmadı. Canlı projedeki mevcut geniş kurallar, yeni sıkı kuralların yerine geçmiyor.
-- `ACCOUNT_LINKING_ENABLED` kaynak kodda açıldı; APK hazırlama betiği önce sıkı Firestore rules dağıtımını ve Android bundle doğrulamasını çalıştırır, sonra APK derlemesini başlatır. Betik canlı kurallar için ayrıca açık `DEPLOY` onayı ister.
-- Yeni APK, kurallar dağıtılmadan kullanılmamalıdır.
-- Bu dalda canlı veri silme, canlı dönem temizliği veya Firestore veri taşıması yapılmadı.
+## 5. Yillik arsiv ve saklama karari
 
-## Sıradaki teknik doğrulama sırası
+- 2026 donemi Temmuz 2028'e kadar korunur.
+- Temmuz 2028'de hedef donem 2026; Temmuz 2029'da 2027; sonraki yillarda Temmuz ayinda hedef `yil - 2`.
+- Temizlik allowlist'i **yalnizca** su alti koleksiyondur:
+  - `dersNotlari`
+  - `dersler`
+  - `yoklamalar`
+  - `odevler`
+  - `kitaplar`
+  - `konular`
+- `ogrenciler`, `siniflar`, `okullar`, `kullanicilar`, ogretmen-ogrenci baglantilari, eslestirme talepleri/kodlari, bildirimler, bireysel etkinlikler ve ortak kitap kutuphanesi bu yillik temizligin disindadir.
+- Gunluk zamanlayici yoktur. Temizlik Spark'ta guvenli istemci batch + kilit + onizleme + acik onay akisi tamamlanana kadar kapali kalir.
+- `functions/section7DataLifecycle.js` icindeki Admin callable kodu Spark'ta calismaz ve bu dalda dagitilmayacaktir. `functions/retentionPolicy.js` allowlist'i alti koleksiyona daraltildi; test beklentisi duzeltildi, ancak test calistirilmadi.
+- Bu dalda canli veri silme veya donem temizligi yapilmadi.
 
-1. [x] Firestore Emulator testleri: öğretmen profil kaydı, doğrulanmış öğrenci kod talebi, tek kullanımlılık, öğretmen onayı, izinler, bildirimler, başka öğretmene erişim engeli.
-2. [x] Functions politika testleri ve Android JS bundle/export; `npm ci` doğrulandı.
-3. [x] Sınıf gelişim raporu PDF'i eklendi; özel ders/etüt/soru çözümü kullanıcı cihazında APK sonrası test edilecek.
-4. [ ] Kullanıcının açık DEPLOY onayıyla sıkı Firestore rules canlıya dağıtılacak.
-5. [ ] EAS preview APK üretilecek.
-6. [ ] Kullanıcı APK'yı tablette test eder; öğretmen telefonu ve mevcut imza kimliği korunur.
+## 6. Uygulama kaynaklarinda callable durumu
 
-## Açık teknik sınırlar
+- 24.11.2026 taramasinda uygulamanin 38 JS/JSX/TS/TSX dosyasi incelendi; uygulama ekranlarinda `httpsCallable(` cagrisi kalmadi.
+- `firebaseConfig.js` artik Firebase Functions istemci baslatmasi yapmiyor.
+- Functions kaynak dosyalari depoda bulunabilir; kaynakta bulunmalari Spark'ta calistiklari anlamina gelmez.
+- Riskli islemler ya dogrudan Spark kurallariyla guvenli hale getirildi (ogrenci tasima gibi) ya da acik uyariyla kapatildi.
+- Eski iki-profil varsayan `functions/scripts/configure-existing-accounts.js` devre disi birakildi.
+- `functions/scripts/set-application-owner-claim.js` guvenli dry-run/apply araci olarak hazir; Auth claim henuz atanmadı. Script Firestore profilini degistirmez ve `--apply` + acik onay gerektirir.
 
-- Push bildirimi Spark'ta sunucu tarafı güvenli biçimde gönderilemez; uygulama içi bildirim kullanılacaktır.
-- Arka plan zamanlayıcısı yoktur; dönem temizliği uygulama sahibi tarafından Temmuz'da başlatılır.
-- Gerçek öğrenci verisiyle test yapılmaz; APK sonrası kullanıcı kendi test hesabıyla tablette test eder.
+## 7. Canli durum ve sonraki kapilar
 
-
-## 24.11.2026 — Section 11 static source audit correction
-
-A static scan of the current application screens found that the statement above that callable dependencies had been removed is not yet true for the complete UI. The following screens still invoke Cloud Functions callables:
-
-- \`GirisEkrani.js\`, \`KayitEkrani.js\`, \`OgrenciKayitEkrani.js\`: email alias reservation/checking, account reactivation and email/profile synchronization.
-- \`ProfilEkrani.js\`, \`RolDuzeltmeTalepleriEkrani.js\`: profile updates, email changes, account closure and role correction.
-- \`OgrenciEkrani.js\`, \`OkulSinifEkrani.js\`: student move and permanent deletion.
-- \`DonemAktarimEkrani.js\`: academic-period transfer.
-- \`IstatistikPaneliEkrani.js\`: closed-account listing/erasure and annual data-retention preview/confirmation.
-
-These callables are present in the repository's Functions source, but source exports do not prove that they are deployed or available on the Spark project. A number of these operations are security- or data-destructive. They must not be replaced with unrestricted client writes or treated as working on Spark.
-
-Before a tablet APK or real-account test, each flow must either receive a Firestore-Rules-enforced Spark implementation or be safely disabled with a clear user-facing explanation. Email alias history must remain protected against reuse; student moves/deletions and period transfer/retention must not allow partial writes or data loss. No live deployment or data mutation was performed as part of this audit.
-
-
-## 24.11.2026 — Guncel Spark callable durumu
-
-Onceki statik tarama sonrasinda iki dusuk riskli alan daha Spark istemci akisina tasindi: profil ad/soyad kaydi ve dogrulanmis Auth e-postasinin kendi profile yazilmasi. Sonraki incelemede Firebase Security Rules SHA-256 hashing destegi dogrulandigi icin mevcut SHA-256 e-posta alias belge yapisi korunarak `services/sparkEmailAliases.js` eklendi; Rules yalnizca kullanicinin kendi dogrulanmis e-posta hash'ini okuyup olusturmasina/guncellemesine izin veriyor. Ogretmen profili e-posta dogrulanmadan olusturulmuyor; ogrenci alias rezervasyonu da dogrulama sonrasi yapiliyor.
-
-Hesap kapatma ve yeniden etkinlestirme de kendi profil belgesi + ayni batch'teki audit kaydi ile istemciye tasindi. E-posta degisikligi, yeni adresin alias uygunlugunu Spark'ta guvenli on kontrol etme akisi tamamlanana kadar gecici olarak kapatildi.
-
-Buna ragmen callable bagimliliklari tum uygulamadan kalkmadi. Kalan ekranlar: Profil (rol talebi), RolDuzeltmeTalepleri (karar), OgrenciEkrani (sinif/kayitsiz tasima ve silme), OkulSinifEkrani (okul kaldirma sirasinda kayitsiz ogrenci verilerini silme), DonemAktarimEkrani (buyuk aktarim), IstatistikPaneli (kapali hesap listeleme/imha ve donem temizligi). Bu islemler guvenli rules/transaction tasarimi veya acik guvenli devre disi birakma karari olmadan APK'ya hazir sayilmaz.
-
-Yeni degisiklikler icin Emulator/unit testleri calistirilmadi; canlı Firestore rules dagitilmadi; canlı veri ve Auth hesaplari degistirilmedi. Bu nedenle bu belge bir dagitim onayi degildir.
-
-
-## 24.11.2026 — Callable kapisi guncel sonucu
-
-Depodaki 38 uygulama JS/JSX/TS/TSX dosyasi tarandi; uygulama kaynaklarinda artik `httpsCallable(` cagrisi yok. E-posta alias SHA-256 rezervasyonu, dogrulanmis kayit/giris, profil ad-soyad/e-posta senkronizasyonu ve hesap kapatma/yeniden etkinlestirme Spark istemci + Firestore Rules akislari olarak kaynakta uygulandi.
-
-Cloud Functions'a bagli kalmis riskli ekranlarin guvenli Spark karsiligi tamamlanmadigi icin bu ozellikler acik uyarilarla devre disi birakildi: e-posta degisikligi, rol duzeltme talep/karari, ogrenci sinif/kayitsiz tasima ve kalici silme, okul kaldirma, akademik donem aktarimi, kapali hesap listeleme/imhasi ve yillik cok koleksiyonlu donem temizligi. Bu nedenle "uygulama callable bagimliligi kalmadi" dogrudur; ancak "tum ozellikler Spark'a tasindi" dogru degildir.
-
-Testler henuz calistirilmadi. Canli Firestore Rules dagitilmadi. Canli veri/Auth hesabi degistirilmedi. Bu belge APK veya canli dagitim onayi degildir.
-
-
-## 24.11.2026 — Saklama tarihi kod uyumu
-
-Kaynak kodda bulunan eski `2029 / yıl - 3` temizleme kuralı, kullanıcının kararı olan `Temmuz 2028 -> 2026; Temmuz 2029 -> 2027; devamında Temmuz ayında yıl - 2` kuralına göre güncellendi:
-- `functions/retentionPolicy.js`
-- `firestore.rules`
-- `screens/IstatistikPaneliEkrani.js`
-- `functions/test/retentionPolicy.test.js` beklenen tarihleri
-
-Bu güncellemeden sonra Emulator testleri çalıştırılmadı. Dönem temizleme arayüzü Spark'ta güvenli çok-batch istemci akışı tamamlanana kadar kapalıdır. Canlı rules dağıtımı veya veri silme yapılmadı.
+- Canli Firestore Rules dagitilmadi; canli projedeki mevcut Rules ile kaynak dosyadaki yeni Rules ayni kabul edilmemelidir.
+- Owner custom claim atanmadi.
+- Canli Firestore verisi, Auth hesaplari veya e-posta alias kayitlari degistirilmedi.
+- Android bundle, Emulator/unit/regresyon testi, APK veya cihaz testi bu dal degisiklikleri icin calistirilmadi.
+- Sonraki sira: kalan kaynak entegrasyon isleri; sonra 12. bolumde testler; kullanicinin acik `DEPLOY` onayi; tablet preview APK; tablet testleri; en son imza dogrulamasi sonrasi telefon guncellemesi.
