@@ -1535,6 +1535,8 @@ test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güv
 
   await assertSucceeds(updateDoc(doc(teacherDb, 'odevler', 'homework-a'), {
     ogrenciDurumlari: { 'student-a': 'yapildi' },
+    durumGecmisi: { 'student-a': [{ durum: 'yapildi', tarih: '2026-11-24T06:00:00.000Z' }] },
+    durum: 'yapildi',
   }));
   await assertSucceeds(setDoc(notificationRef, {
     uid: 'teacher-a',
