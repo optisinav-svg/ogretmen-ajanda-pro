@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { collection, addDoc, getDocs, doc, query, where, updateDoc, writeBatch, deleteField } from 'firebase/firestore';
-import { auth, db, functions } from '../firebaseConfig';
-import { httpsCallable } from 'firebase/functions';
+import { auth, db } from '../firebaseConfig';
+
 import kazanmlar from '../assets/kazanimlar.json';
 import {donemYiliBugun,donemUygun,donemDuzenlemeyeAcik} from '../utils/donem';
 
