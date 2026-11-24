@@ -37,8 +37,10 @@ Spark istemci + Firestore Rules olarak kaynakta uygulananlar:
 Güvenli Spark karşılığı henüz tamamlanmadığı için açık uyarıyla geçici olarak devre dışı bırakılanlar:
 - Profil e-posta değişikliği.
 - Rol düzeltme talebi/kararı; uygulama sahibi ekranında bekleyen talepler salt okunur.
-- Öğrenci sınıf/kayıtsız sınıf taşıma ve kalıcı silme.
+- Öğrenci kalıcı silme.
 - Okul kaldırma (sınıf ve kayıtsız öğrenci verileri dahil).
+
+Normal sınıf değişikliği ve Kayıtsız Öğrenciler sınıfına taşıma, `services/sparkStudentClassMove.js` ile kaynakta Spark'a taşındı. İşlem kilitli ve tekrar başlatılabilir; kitap/konu ilerlemesi batch'lerle taşınır, eski uygulama bağlantısı tarihçe için korunur ve yeni sınıf bağlantısı yeni kod/öğretmen onayıyla kurulur.
 - Akademik dönem aktarımı.
 - Kapalı hesap listeleme ve Firebase Auth hesabını imha etme.
 - Çok koleksiyonlu yıllık dönem temizliği.
@@ -54,7 +56,7 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 ## Bölüm 11 tamamlanmadan önce kalan kod işleri
 
 1. Dönem temizliği tarih uyumsuzluğu kaynakta düzeltildi: Temmuz 2028'de 2026, Temmuz 2029'da 2027 ve sonraki yıllarda Temmuz ayında yıl-2 hedefleniyor. Yeni Rules/helper beklentileri için Emulator testi Bölüm 12'de bekliyor.
-2. Öğrenci taşıma ve okul kaldırma akışları için atomik/tekrar başlatılabilir Spark çözümünü tasarla; güvenli çözüm gelene kadar kapalı kalacak.
+2. Öğrenci sınıf/kayıtsız taşıma Spark akışı kaynakta eklendi; Rules/Emulator regresyonu Bölüm 12'de. Okul kaldırma ve öğrenci kalıcı silme güvenli çok-koleksiyonlu Spark akışı tamamlanana kadar kapalı kalacak.
 3. Rol düzeltme ve dönem aktarımı için güvenli yetki/veri sahipliği çözümünü belirle; güvenli çözüm yoksa kapalı tut.
 4. Dönem temizliği ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
 5. Önceki bölümlerden devreden diğer açık maddeleri ana çalışma listesiyle eşleştir; çalışan takvimi ve doğrulanmış ekranları yeniden yazma.
