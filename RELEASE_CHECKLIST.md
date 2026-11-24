@@ -175,3 +175,5 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - Canlı Firestore Rules henüz dağıtılmadı. Yeni APK, Rules ayrı onayla dağıtılıp doğrulanmadan tablette kullanılmayacak.
 - EAS APK build henüz başlatılmadı. Build betiği açıkça `BUILD` onayı ister; yalnızca kullanıcı çalıştırdığında EAS build başlar.
 - Tablet APK build'i ve cihaz testi telefon kurulumunu değiştirmez. Telefon güncellemesi için ayrıca imza parmak izi karşılaştırması gerekir.
+
+- Tablet APK betiği EAS build öncesinde `npm audit --omit=dev --json` çalıştırır; üretim bağımlılıklarındaki yüksek/kritik uyarılarda durur. Orta/düşük uyarılar raporlanır; otomatik paket güncellemesi yapılmaz.
