@@ -1336,6 +1336,9 @@ test('Spark öğrenci eşleştirmesi doğrulanmış e-posta, tek kullanımlık k
     talepId: requestRef.id,
   });
   await assertSucceeds(submit.commit());
+  await assertSucceeds(getDoc(doc(studentDb, 'ogrenciOdevBildirimleri', 'student-new__teacher-a__student-new__class-a__homework-a')));
+  await assertSucceeds(getDoc(doc(teacherDb, 'ogrenciYeniOdevBildirimleri', 'homework-a__student-new__teacher-a__student-new__class-a')));
+  await assertFails(getDoc(doc(otherTeacherDb, 'ogrenciYeniOdevBildirimleri', 'homework-a__student-new__teacher-a__student-new__class-a')));
 
   const approve = writeBatch(teacherDb);
   const linkId = ['teacher-a', 'student-new', 'class-a'].join('__');
