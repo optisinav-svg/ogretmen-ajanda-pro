@@ -132,6 +132,25 @@ async function main() {
         'Aynı sınıf/ders grubunda farklı haftanın günleri var: ' + cloneId);
     }
 
+    // Prefer an already-existing matching class schedule when it fully covers
+    // the historical sessions. This avoids creating duplicate calendar entries.
+    const matchingSchedules = allScheduleDocs.filter(d =>
+      d.id !== group.lessonId
+      && d.uid === original.uid
+      && d.donemYili === original.donemYili
+      && d.sinifId === group.classId
+      && d.gun === group.weekday
+      && d.baslangicSaat === original.baslangicSaat
+      && d.bitisSaat === original.bitisSaat
+      && d.ders === original.ders
+      && d.okulId === original.okulId
+      && d.baslangicTarih <= firstDate
+      && d.bitisTarih >= lastDate
+    );
+    assert(matchingSchedules.length <= 1,
+      'Geçmiş kayıtlarla eşleşen birden fazla mevcut ders programı bulundu: '
+      + group.lessonId + ' -> ' + matchingSchedules.map(x => x.id).join(', '));
+
     const existingClone = await getDocData(db, 'dersler', cloneId);
     if (existingClone) {
       assert(existingClone.tarihceKopyasi === true
@@ -140,7 +159,9 @@ async function main() {
       'Aynı kimlikte fakat farklı içerikte tarihçe dersi var: ' + cloneId);
     }
 
-    const conflicts = allScheduleDocs.filter(d =>
+    const useExisting = matchingSchedules.length === 1;
+    const targetLessonId = useExisting ? matchingSchedules[0].id : cloneId;
+    const conflicts = useExisting ? [] : allScheduleDocs.filter(d =>
       d.id !== group.lessonId
       && d.id !== cloneId
       && d.sinifId === clone.sinifId
@@ -156,6 +177,8 @@ async function main() {
 
     plans.push({
       cloneId,
+      targetLessonId,
+      useExisting,
       lessonId: group.lessonId,
       classId: group.classId,
       className: clone.sinifAd,
@@ -194,7 +217,8 @@ async function main() {
     generatedAt: new Date().toISOString(),
     mode: APPLY ? 'APPLY' : 'DRY_RUN',
     totalRecords: total,
-    totalHistoricalScheduleCopies: plans.length,
+    totalHistoricalScheduleCopies: plans.filter(p => !p.useExisting).length,
+    reusedExistingSchedules: plans.filter(p => p.useExisting).length,
     plans: plans.map(({ records, ...p }) => p),
   }, null, 2), 'utf8');
 
@@ -210,7 +234,8 @@ async function main() {
   for (const p of plans) {
     console.log(JSON.stringify({
       kaynakDersId: p.lessonId,
-      yeniDersId: p.cloneId,
+      yeniDersId: p.targetLessonId,
+      mevcutDersProgramiKullanildi: p.useExisting,
       sinif: p.className,
       gun: p.weekday,
       tarih: p.firstDate + ' - ' + p.lastDate,
@@ -227,11 +252,11 @@ async function main() {
 
   const batch = db.batch();
   for (const p of plans) {
-    batch.set(db.collection('dersler').doc(p.cloneId), p.clone);
+    if (!p.useExisting) batch.set(db.collection('dersler').doc(p.cloneId), p.clone);
     for (const r of p.records) {
       batch.update(db.collection(r.collection).doc(r.id), {
-        dersId: p.cloneId,
-        oturumId: p.cloneId + '_' + r.data.tarih,
+        dersId: p.targetLessonId,
+        oturumId: p.targetLessonId + '_' + r.data.tarih,
       });
     }
   }
@@ -247,7 +272,8 @@ async function main() {
   }
   assert(remaining === 0, 'Yazma sonrası denetimde kalan uyumsuz kayıt: ' + remaining);
   console.log('UYGULAMA TAMAMLANDI. 103 kayıt doğrulandı; kalan ders-sınıf uyumsuzluğu: 0.');
-  console.log('Tarihçe ders kopyası:', plans.length);
+  console.log('Tarihçe ders kopyası:', plans.filter(p => !p.useExisting).length);
+  console.log('Mevcut ders programına bağlanan grup:', plans.filter(p => p.useExisting).length);
 }
 
 main().catch(error => {
