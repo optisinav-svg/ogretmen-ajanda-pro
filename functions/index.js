@@ -55,3 +55,8 @@ if (process.env.ENABLE_IDENTITY_PLATFORM_BLOCKING_TRIGGERS === 'true') {
 
 const academicPeriodTransfer = require('./academicPeriodTransfer');
 exports.ogretmenDonemAktariminiBaslat = academicPeriodTransfer.ogretmenDonemAktariminiBaslat;
+
+const accountRetention = require('./accountRetention');
+exports.uygulamaSahibiKapaliHesaplariListele = accountRetention.uygulamaSahibiKapaliHesaplariListele;
+exports.uygulamaSahibiKapaliHesapImhasiniOnizle = accountRetention.uygulamaSahibiKapaliHesapImhasiniOnizle;
+exports.uygulamaSahibiKapaliHesabiImhaEt = accountRetention.uygulamaSahibiKapaliHesabiImhaEt;
