@@ -142,8 +142,9 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Regresyon koruma testi eklendi ancak calistirilmadi; testler 12. bolumde.
 - Takvim dosyasi/rotasi degistirilmedi.
 - 38 uygulama JS/JSX/TS/TSX dosyasinda callable cagrisi kalmadi; riskli Spark karsiligi olmayan ozellikler acik uyariyla devre disi birakildi.
-- SHA-256 alias, profil alanlari, hesap kapatma/yeniden etkinlestirme ve retention takvimi kaynakta guncellendi; owner claim icin guvenli script hazirlandi ama calistirilmadi.
-- Durum: KISMEN TAMAMLANDI; ogrenci tasima/okul kaldirma/rol duzeltme/donem aktarimi gibi gecici kapali ozelliklerin guvenli karari ve diger bolumlerden devreden isler tamamlanmadan 11. bolum kapanmaz.
+- SHA-256 alias, profil alanlari, hesap kapatma/yeniden etkinlestirme, ogrenci sinif/kayitsiz tasima ve retention takvimi/6 koleksiyon allowlist'i kaynakta guncellendi; owner claim icin guvenli script hazirlandi ama calistirilmadi.
+- Student move akisi eklendi ancak Rules/Emulator/gercek hesap testi 12. bolumde. Yillik retention temizligi icin Spark istemci batch/lock/onizleme akisinin kodu henuz yok; UI kapali.
+- Durum: KISMEN TAMAMLANDI; okul kaldirma, ogrenci kalici silme, rol duzeltme, e-posta degisikligi, donem aktarimi ve kapali hesap imhasi guvenli sekilde cozulmeden veya acikca ertelenmeden 11. bolum kapanmaz.
 
 ### P10 — Test, APK, tablet ve telefon surumu (12. bolum)
 
