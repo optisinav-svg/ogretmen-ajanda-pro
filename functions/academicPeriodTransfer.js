@@ -34,7 +34,17 @@ function stripUndefined(data) {
 function resetTopicProgress(topic) {
   const copy = { ...topic };
   // Keep topic definition/page range; do not carry homework or completion history.
-  for (const key of ['durum','odevDurumu','tamamlandi','tamamlanmaTarihi','ilerleme','ogrenciDurumlari','durumGecmisi']) delete copy[key];
+  for (const key of ['durum','odevDurumu','tamamlandi','tamamlanmaTarihi','ilerleme','ogrenciDurumlari','durumGecmisi','odevId']) delete copy[key];
+  return copy;
+}
+function cleanSchoolOrClass(data) {
+  const copy = { ...data };
+  for (const key of ['arsivlendi','arsivDurumu','arsivBaslangic','arsivTarihi','silmeKilidi','aktarimKaynakId','aktarimKaynakDonem']) delete copy[key];
+  return copy;
+}
+function cleanStudent(data) {
+  const copy = { ...data };
+  for (const key of ['sinifGecmisi','sinifGecmisiIds','sinifTasiIslemi','kayitsizTasiIslemi','kayitsizMi','kayitsizTarihi','aktarimKaynakId','aktarimKaynakDonem']) delete copy[key];
   return copy;
 }
 async function commitInChunks(operations) {
@@ -69,12 +79,17 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
   }
 
   const seenClasses = new Set();
+  const globallySelectedStudents = new Set();
   const normalizedSelections = selections.map(item => {
     const sourceClassId = typeof item?.sourceClassId === 'string' ? item.sourceClassId.trim() : '';
     const studentIds = Array.isArray(item?.studentIds) ? [...new Set(item.studentIds.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()))] : [];
     if (!sourceClassId || seenClasses.has(sourceClassId)) throw new HttpsError('invalid-argument', 'Sınıf seçimleri boş veya yinelenmiş olamaz.');
     seenClasses.add(sourceClassId);
     if (!studentIds.length || studentIds.length > MAX_STUDENTS) throw new HttpsError('invalid-argument', 'Her sınıf için en az bir öğrenci seçin; tek aktarımda en fazla 500 öğrenci taşınabilir.');
+    for (const id of studentIds) {
+      if (globallySelectedStudents.has(id)) throw new HttpsError('invalid-argument', 'Bir öğrenci aynı aktarımda birden fazla sınıfta seçilemez.');
+      globallySelectedStudents.add(id);
+    }
     return { sourceClassId, studentIds, targetGrade: item.targetGrade };
   });
   const totalStudents = normalizedSelections.reduce((sum, item) => sum + item.studentIds.length, 0);
@@ -146,7 +161,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     if (existing.exists && (existing.get('aktarimKaynakId') !== sourceSchoolId || existing.get('uid') !== uid || Number(existing.get('donemYili')) !== targetYear)) {
       throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan okul kaydı var.');
     }
-    if (!existing.exists) operations.push({ type: 'create', ref, data: { ...plan.source, uid, donemYili: targetYear, aktarimKaynakId: sourceSchoolId, aktarimKaynakDonem: sourceYear, olusturulma: new Date().toISOString(), arsivlendi: false } });
+    if (!existing.exists) operations.push({ type: 'create', ref, data: { ...cleanSchoolOrClass(plan.source), uid, donemYili: targetYear, aktarimKaynakId: sourceSchoolId, aktarimKaynakDonem: sourceYear, olusturulma: new Date().toISOString(), arsivlendi: false } });
   }
 
   for (const plan of classPlans) {
@@ -157,7 +172,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     if (existing.exists && (existing.get('aktarimKaynakId') !== plan.sourceClassId || existing.get('uid') !== uid || Number(existing.get('donemYili')) !== targetYear)) {
       throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan sınıf kaydı var.');
     }
-    if (!existing.exists) operations.push({ type: 'create', ref, data: { ...plan.sourceClass, uid, donemYili: targetYear, okulId: schoolIdMap.get(plan.schoolId), okulAd: schoolPlans.get(plan.schoolId).source.ad || plan.sourceClass.okulAd || '', kademe: plan.targetGrade, aktarimKaynakId: plan.sourceClassId, aktarimKaynakDonem: sourceYear, olusturulma: new Date().toISOString(), arsivlendi: false } });
+    if (!existing.exists) operations.push({ type: 'create', ref, data: { ...cleanSchoolOrClass(plan.sourceClass), uid, donemYili: targetYear, okulId: schoolIdMap.get(plan.schoolId), okulAd: schoolPlans.get(plan.schoolId).source.ad || plan.sourceClass.okulAd || '', kademe: plan.targetGrade, aktarimKaynakId: plan.sourceClassId, aktarimKaynakDonem: sourceYear, olusturulma: new Date().toISOString(), arsivlendi: false } });
     for (const student of plan.students) {
       const newStudentId = stableId('student', targetYear, student.id);
       studentIdMap.set(student.id, newStudentId);
@@ -167,7 +182,7 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
         throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan öğrenci kaydı var.');
       }
       if (!studentExisting.exists) operations.push({ type: 'create', ref: studentRef, data: {
-        ...student.data, uid, donemYili: targetYear, sinifId: targetId,
+        ...cleanStudent(student.data), uid, donemYili: targetYear, sinifId: targetId,
         sinifAd: plan.sourceClass.ad || '', okulId: schoolIdMap.get(plan.schoolId),
         okulAd: schoolPlans.get(plan.schoolId).source.ad || '',
         kademe: plan.targetGrade, brans: plan.sourceClass.ders || student.data.brans || '',
@@ -241,4 +256,4 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
   };
 });
 
-exports._test = { stableId, normalizedGrade, resetTopicProgress, isEditablePeriod };
+exports._test = { stableId, normalizedGrade, resetTopicProgress, isEditablePeriod, cleanSchoolOrClass, cleanStudent };
