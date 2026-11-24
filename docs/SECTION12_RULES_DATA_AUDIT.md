@@ -6,12 +6,12 @@ Yeni Rules Emulator testleri, tanımlı test belgeleriyle kuralların beklenen d
 
 Depo kökünden:
 
-\`\`\`powershell
-Set-Location .\\functions
-node .\\scripts\\audit-rules-compatibility.js
-\`\`\`
+```powershell
+Set-Location .\functions
+node .\scripts\audit-rules-compatibility.js
+```
 
-Google Application Default Credentials gerekir. Betik yalnızca \`ogretmen-takip\` projesini okur.
+Google Application Default Credentials gerekir. Betik yalnızca `ogretmen-takip` projesini okur.
 
 ## Kapsam
 
