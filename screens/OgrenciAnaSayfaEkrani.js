@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert,
   ActivityIndicator, RefreshControl, Platform,
@@ -45,6 +45,8 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const [gruplar, setGruplar] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [yenileniyor, setYenileniyor] = useState(false);
+  const scrollRef = useRef(null);
+  const odevBolumY = useRef({});
 
   const yukle = useCallback(async (sessiz = false) => {
     if (!uid || !ACCOUNT_LINKING_ENABLED) { setYukleniyor(false); return; }
@@ -160,6 +162,16 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
     }
   };
 
+  const bildirimAc = async item => {
+    await bildirimOkundu(item);
+    const y = odevBolumY.current[item.baglantiId];
+    if (Number.isFinite(y)) {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+    } else {
+      Alert.alert('Ödev görünmüyor', 'Bu ödev artık etkin bağlantınızda görünmüyor veya öğretmeninizin ödev paylaşım izni kapatılmış.');
+    }
+  };
+
   const tamamlandiBildir = async (link, homework) => {
     try {
       await notifyHomeworkCompleted(link, homework);
@@ -183,7 +195,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   const aktifSayisi = baglantilar.filter(x => x.durum === 'active').length;
   return (
     <View style={s.root}>
-      <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={yenileniyor} onRefresh={() => yukle(true)} colors={['#2E7D32']}/>}>
+      <ScrollView ref={scrollRef} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={yenileniyor} onRefresh={() => yukle(true)} colors={['#2E7D32']}/>}>
         <View style={s.header}>
           <View style={{flex:1}}>
             <Text style={s.eyebrow}>ÖĞRENCİ AJANDASI</Text>
@@ -230,7 +242,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
               {p.dersProgrami && group.oturumlar.length > 0 && <Section title="🗒️ Bireysel ders notları" items={group.oturumlar} render={x => <Text style={s.itemText}>{dateLabel(x.tarih)} · {(x.konular || []).join(', ') || x.yoklamaDurumu || 'Ders oturumu'}</Text>}/>}
               {p.dersNotlari && <Section title="📚 İşlenen konular" items={group.notlar} empty="Paylaşılan ders notu yok." render={x => <Text style={s.itemText}>{dateLabel(x.tarih)} · {x.not || 'Ders notu'}</Text>}/>}
               {p.yoklama && <Section title="✅ Yoklama geçmişim" items={group.yoklamalar} empty="Yoklama kaydı yok." render={x => <Text style={s.itemText}>{dateLabel(x.tarih)} · {x.durum || 'Durum belirtilmemiş'}</Text>}/>}
-              {p.odevler && <Section title="📋 Ödevlerim" items={group.odevler} empty="Paylaşılan ödev yok." render={x => {
+              {p.odevler && <Section onLayout={event => { odevBolumY.current[l.id] = event.nativeEvent.layout.y; }} title="📋 Ödevlerim" items={group.odevler} empty="Paylaşılan ödev yok." render={x => {
                 const status = x.ogrenciDurumlari?.[l.ogrenciKayitId] || x.durum || 'bekliyor';
                 const alreadyNotified = bildirimler.some(n => n.baglantiId === l.id && n.odevId === x.id && n.durum === 'tamamlandi_bildirildi');
                 return <View style={s.homework}>
@@ -249,7 +261,7 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
         {!!yeniOdevBildirimleri.length && <View style={s.card}>
           <Text style={s.sectionTitle}>Yeni ödev bildirimleri ({yeniOdevBildirimleri.filter(x => !x.okundu).length} okunmamış)</Text>
           {yeniOdevBildirimleri.map(item => (
-            <TouchableOpacity key={item.id} style={s.item} onPress={() => bildirimOkundu(item)}>
+            <TouchableOpacity key={item.id} style={s.item} onPress={() => bildirimAc(item)}>
               <Text style={[s.itemTitle, !item.okundu && s.unread]}>{item.baslik || 'Yeni ödeviniz var'}</Text>
               <Text style={s.itemText}>{item.aciklama || 'Öğretmeniniz yeni bir ödev verdi.'}</Text>
               <Text style={s.meta}>Teslim: {dateLabel(item.teslimTarihi) || 'Belirtilmemiş'} · {item.okundu ? 'Okundu' : 'Okundu olarak işaretlemek için dokunun'}</Text>
@@ -263,8 +275,8 @@ export default function OgrenciAnaSayfaEkrani({ navigation }) {
   );
 }
 
-function Section({ title, items, empty, render }) {
-  return <View style={s.section}>
+function Section({ title, items, empty, render, onLayout }) {
+  return <View style={s.section} onLayout={onLayout}>
     <Text style={s.subTitle}>{title} ({items.length})</Text>
     {!items.length && <Text style={s.meta}>{empty || 'Kayıt yok.'}</Text>}
     {items.slice(0, 12).map(item => <View key={item.id} style={s.item}>{render(item)}</View>)}
