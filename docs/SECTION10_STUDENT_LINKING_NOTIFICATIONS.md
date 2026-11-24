@@ -21,12 +21,12 @@
 5. Öğrencinin yalnızca izinli verileri okuduğunu doğrula.
 6. Yeni ödev bildirimlerinin öğrenci ekranında, tamamlandı bildirimlerinin öğretmen ekranında görünmesini doğrula.
 7. Bildirimin öğretmen değerlendirmesini veya ödev durumunu değiştirmediğini doğrula.
-8. Cloud Functions ve Firestore kuralları için testleri çalıştır.
+8. Spark istemci akışları ve Firestore Rules için Emulator/regresyon testlerini 12. bölümde çalıştır.
 9. Canlı Firebase'e dağıtım yapma; gerçek öğrenci hesabı ve tablet testi 12. bölümde, kullanıcı onayıyla yapılır.
 
 ## Güvenli sınırlar
 
-- ACCOUNT_LINKING_ENABLED bu kod dalında açıktır; PR birleştirilmediği ve dağıtım yapılmadığı için canlı uygulama değişmez.
+- ACCOUNT_LINKING_ENABLED bu kod dalında açıktır. Öğrenci eşleştirme, izinler ve uygulama içi bildirimler doğrudan Firestore transaction/batch kullanır; uygulama ekranlarında Cloud Functions callable çağrısı kalmamıştır. Dal ana dala birleştirilmediği ve canlı rules dağıtılmadığı için canlı uygulama değişmez.
 - Gerçek öğrenci hesabı, sahte öğrenci verisi veya canlı eşleştirme oluşturulmaz.
 - Push token kaydı yapılmaz; uygulama içi bildirim akışı korunur.
-- Hiçbir Cloud Functions, Firestore rules veya index canlıya dağıtılmaz.
+- Cloud Functions dağıtımı yapılmaz. Firestore Rules veya index canlıya dağıtılmaz; bu kaynak değişikliklerinin testleri 12. bölümde yapılır.
