@@ -34,7 +34,7 @@ export default function OgrenciEkrani({route,navigation}){
        ?'Öğrenci kayıtsız sınıfa taşındı. Önceki sınıfın uygulama bağlantısı geçmişe erişim için korundu. Öğrenci yeni bir sınıfa kaydedilirse yeni eşleştirme kodu oluşturulabilir.'
        :'Öğrenci kayıtsız sınıfa taşındı. Geçmiş kayıtları silinmedi.');
      }catch(e){
-      setYukleniyor(false);
+      await ogrencileriYukle();
       Alert.alert('Taşıma tamamlanamadı',e?.message||'Kayıtlar değiştirilmedi veya işlem güvenli biçimde durduruldu. Aynı işlemi tekrar deneyebilirsiniz.');
      }
     }},
@@ -62,7 +62,7 @@ export default function OgrenciEkrani({route,navigation}){
        ?'Öğrenci yeni sınıfa taşındı. Önceki sınıf uygulama bağlantısı geçmiş kayıtlarına erişim için korundu. Yeni sınıf için Öğrenci Hesapları ekranından yeni eşleştirme kodu oluşturun; öğrenci talep gönderdikten sonra onaylayın.'
        :'Öğrenci yeni sınıfa taşındı. Kitap/konu ilerlemesi aktarıldı, geçmiş yoklama ve ödev kayıtları korundu.');
      }catch(e){
-      setYukleniyor(false);
+      await ogrencileriYukle();
       Alert.alert('Taşıma tamamlanamadı',e?.message||'Taşıma güvenlik nedeniyle durduruldu. Aynı hedef sınıfı seçerek işlemi sürdürebilirsiniz.');
      }
     }},
