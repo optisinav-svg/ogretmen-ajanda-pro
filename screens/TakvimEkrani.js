@@ -136,7 +136,7 @@ export default function TakvimEkrani({navigation,route}){
  const ayHaftalari=Array.from({length:ayHucreleri.length/7},(_,i)=>ayHucreleri.slice(i*7,i*7+7));
  const gununDersleri=tarih=>dersler.filter(d=>aktif(d,tarih)&&(d.periyot==='tek'||d.gun===gunAdiTarihten(tarih))).sort((a,b)=>(a.baslangicSaat||'').localeCompare(b.baslangicSaat||''));
  const ayDegistir=yon=>{const yeni=new Date(gorunenAy.getFullYear(),gorunenAy.getMonth()+yon,1);setGorunenAy(yeni);setSeciliTarih(isoDate(yeni))};
- return <SafeAreaView style={s.wrap}><View style={s.viewTabs}>
+ return <SafeAreaView edges={['bottom','left','right']} style={s.wrap}><View style={s.viewTabs}>
 <TouchableOpacity style={[s.viewTab,gorunum==='haftalik'&&s.active]} onPress={()=>setGorunum('haftalik')}><Text style={gorunum==='haftalik'?s.activeT:{}}>📅 Haftalık</Text></TouchableOpacity>
 <TouchableOpacity style={[s.viewTab,gorunum==='ucgunluk'&&s.active]} onPress={()=>setGorunum('ucgunluk')}><Text style={gorunum==='ucgunluk'?s.activeT:{}}>📆 3 Günlük</Text></TouchableOpacity>
 <TouchableOpacity style={[s.viewTab,gorunum==='aylik'&&s.active]} onPress={()=>{setGorunum('aylik');const d=new Date(seciliTarih+'T12:00:00');setGorunenAy(new Date(d.getFullYear(),d.getMonth(),1))}}><Text style={gorunum==='aylik'?s.activeT:{}}>🗓️ Aylık</Text></TouchableOpacity>
