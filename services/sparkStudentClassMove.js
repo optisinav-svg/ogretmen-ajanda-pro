@@ -240,6 +240,11 @@ async function finalizeStudentMove({
     if (!isWritableClass(source, uid, periodYear) || !isWritableClass(target, uid, periodYear)) {
       throw new Error('Kaynak veya hedef sınıf bu dönemde düzenlenebilir değil.');
     }
+    const targetFieldsChangedDuringMove = ['ad', 'okulId', 'okulAd', 'kademe', 'ders']
+      .some(key => (target[key] ?? '') !== (targetClass[key] ?? ''));
+    if (targetFieldsChangedDuringMove) {
+      throw new Error('Hedef sınıf bilgileri taşıma sırasında değişti. Aynı hedef sınıfı yeniden seçerek taşıma işlemine devam edin.');
+    }
     const activeMarker = student[markerField];
     if (!activeMarker
       || activeMarker.kaynakSinifId !== sourceClassId
