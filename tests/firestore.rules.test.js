@@ -556,6 +556,7 @@ test('Öğretmen kendi ders konusunu sonradan düzenleyebilir; öğrenci yalnız
 test('Öğretmen kendi profilini Spark üzerinde oluşturabilir ancak uygulama sahibi yetkisi veremez', async () => {
   const db = testEnv.authenticatedContext('teacher-new', {
     email: 'teacher-new@example.com',
+    email_verified: true,
   }).firestore();
   await assertSucceeds(setDoc(doc(db, 'kullanicilar', 'teacher-new'), {
     kullaniciAdi: 'Yeni Öğretmen',
@@ -628,6 +629,7 @@ test('Öğrenci kendi profilinde branş ve sezon alanlarını değiştiremez', a
 test('Öğretmen profili oluşturma kuralları branş ve sezon biçimini doğrular', async () => {
   const db = testEnv.authenticatedContext('teacher-invalid-create', {
     email: 'teacher-invalid-create@example.com',
+    email_verified: true,
   }).firestore();
   const ref = doc(db, 'kullanicilar', 'teacher-invalid-create');
   const base = {
@@ -1529,6 +1531,13 @@ test('closed-account deletion locks are server-only', async () => {
 });
 
 test('Öğretmen ödev durumunu güncellerken yalnızca bağlı öğrenciye güvenli bildirim oluşturabilir', async () => {
+  // Önceki "kapalı hesap" testi ortak öğretmen fixture'ını kapatır.
+  // Bu test kendi aktif öğretmen önkoşulunu açıkça kurar.
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await updateDoc(doc(context.firestore(), 'kullanicilar', 'teacher-a'), {
+      hesapDurumu: 'aktif',
+    });
+  });
   const teacherDb = testEnv.authenticatedContext('teacher-a').firestore();
   const notificationId = 'homework-a__student-1__1790000000000';
   const notificationRef = doc(teacherDb, 'ogrenciOdevDurumBildirimleri', notificationId);
