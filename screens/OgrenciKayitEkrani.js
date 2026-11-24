@@ -3,8 +3,9 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload } from 'firebase/auth';
-import { auth, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
+import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload, deleteUser } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
+import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { submitStudentPairingRequest } from '../services/sparkStudentAccounts';
 
 export default function OgrenciKayitEkrani({ navigation, route }) {
@@ -55,6 +56,10 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     setYukleniyor(true);
     try {
       const result = await createUserWithEmailAndPassword(auth, eposta.trim(), sifre);
+      try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
+        await deleteUser(result.user).catch(() => {});
+        throw aliasError;
+      }
       await updateProfile(result.user, { displayName: adSoyad.trim() });
       await sendEmailVerification(result.user);
       setHesapHazir(true);
