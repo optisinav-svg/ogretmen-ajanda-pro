@@ -95,7 +95,7 @@ async function scanCollection(db, collectionName) {
     noDate: 0,
     invalidDate: 0,
     samples: {
-      missing: [],
+      inferredTarget: [],
       invalidExisting: [],
       ambiguousJune: [],
       otherPeriod: [],
@@ -152,8 +152,8 @@ async function scanCollection(db, collectionName) {
           });
         }
       }
-      if (inferred.status === 'inferred-target' && summary.samples.missing.length < SAMPLE_LIMIT) {
-        summary.samples.missing.push({
+      if (inferred.status === 'inferred-target' && summary.samples.inferredTarget.length < SAMPLE_LIMIT) {
+        summary.samples.inferredTarget.push({
           idSuffix: document.id.slice(-6),
           dateField: inferred.dateField,
           date: inferred.date,
