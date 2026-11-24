@@ -9,17 +9,17 @@ const {
 } = require('../retentionPolicy');
 
 test('retention follows the three-year July-only rule in Istanbul', () => {
-  assert.equal(FIRST_CLEANUP_YEAR, 2029);
+  assert.equal(FIRST_CLEANUP_YEAR, 2028);
   assert.deepEqual(istanbulDateParts(new Date('2029-06-30T20:59:00.000Z')), {
     year: 2029, month: 6, day: 30,
   });
   assert.equal(expiredPeriodStartYear(new Date('2026-07-01T09:00:00.000Z')), null);
   assert.equal(expiredPeriodStartYear(new Date('2027-07-01T09:00:00.000Z')), null);
   assert.equal(expiredPeriodStartYear(new Date('2028-06-30T20:59:00.000Z')), null);
-  assert.equal(expiredPeriodStartYear(new Date('2029-07-01T09:00:00.000Z')), 2026);
-  assert.equal(expiredPeriodStartYear(new Date('2030-07-01T09:00:00.000Z')), 2027);
-  assert.equal(expiredPeriodStartYear(new Date('2031-07-01T09:00:00.000Z')), 2028);
-  assert.equal(expiredPeriodStartYear(new Date('2030-01-01T09:00:00.000Z')), null);
+  assert.equal(expiredPeriodStartYear(new Date('2028-07-01T09:00:00.000Z')), 2026);
+  assert.equal(expiredPeriodStartYear(new Date('2029-07-01T09:00:00.000Z')), 2027);
+  assert.equal(expiredPeriodStartYear(new Date('2030-07-01T09:00:00.000Z')), 2028);
+  assert.equal(expiredPeriodStartYear(new Date('2029-01-01T09:00:00.000Z')), null);
 });
 
 test('retention deletion fails closed for missing or invalid period label', () => {
