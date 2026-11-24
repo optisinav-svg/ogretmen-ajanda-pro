@@ -179,51 +179,27 @@ Durum: TEST 12. BOLUMDE; su an baslatilmayacak.
 Bu ana liste bir takip belgesidir; canli sistemde islem yapma izni degildir. Her riskli canli adim kendi asamasinda kullaniciya acikca sunulup ayri onay alinacaktir.
 
 
-## 6. 24.11.2026 callable envanter sonucu
+## 6. 24.11.2026 birlestirilmis kaynak durumu
 
-Dokuz uygulama ekranindaki `httpsCallable` kullanimlari tam dosya agaci taramasiyla dogrulandi ve tam callable adlari `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` belgesine yazildi. Bu belge her cagrinin amacini, guvenlik riskini ve Spark icin ilk kararini icerir.
+### Spark ve callable kapisi
+- Ilk taramada dokuz ekranda callable cagrisi bulundu; tam fonksiyon/risk envanteri `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` icinde.
+- Sonraki taramada 38 uygulama JS/JSX/TS/TSX dosyasinin tamaminda `httpsCallable(` cagrisi kalmadigi dogrulandi.
+- SHA-256 alias rezervasyonu, dogrulanmis ogretmen/ogrenci kaydi ve giris, profil ad/soyad ve dogrulanmis e-posta senkronizasyonu, hesap kapatma/yeniden etkinlestirme Spark istemci + Firestore Rules kaynak akislari olarak yazildi.
+- Guvenli Spark karsiligi henuz tamamlanmayan e-posta degisikligi, rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve yillik donem temizligi acik uyarilarla gecici kapali. Bu islevler silinmedi; guvenli yeniden tasarim bekliyor.
+- Canli Firestore Rules dagitilmadi; canli Auth hesabi, Firestore verisi veya alias kaydi degistirilmedi.
 
-- E-posta alias kontrol/rezervasyon akisi, eski alias'lari yeniden kullanima acmayacak guvenli bir model olmadan degistirilmeyecek.
-- Profil ad/soyad ve profil e-posta senkronizasyonu, kendi UID'siyle sinirli Firestore Rules yazimlariyla Spark'a tasinabilecek adaylardir.
-- Hesap kapatma/yeniden etkinlestirme ve rol duzeltme talebi, sahiplik/claim kosullariyla ayrica tasarlanacak.
-- Ogrenci sinif tasima ve donem aktarimi, transaction/kurallar ve devam ettirilebilirlik guvencesi olmadan acilmayacak.
-- Ogrenci kalici silme, kararlastirilan kayitsiz ogrenci akisina gore uygulama panelinden kapali tutulacak.
-- Kapali hesap imhasi Admin Auth yetkisi gerektirir; istemciye tasinmayacak.
-- Donem temizligi ilk gercek silme tarihinden (Temmuz 2028) once guvenli yeniden tasarim/prova gerektirir; bu denetim dagitim veya silme izni degildir.
-- `functions/accountLinks.js` callable'lari `functions/index.js` tarafindan export edilmiyor; mevcut Spark ogrenci baglama servisi dogrudan Firestore kullaniyor.
-- Istatistik ekraninin temel sayimlari dogrudan Firestore sorgulariyla yapiliyor; kapali hesap ve donem temizligi islemleri hala callable'a bagli.
+### Donem saklama politikasi
+- Kaynakta bulunan `2029 / yil - 3` takvimi, kullanici kararina uygun olarak `Temmuz 2028 -> 2026`, `Temmuz 2029 -> 2027` ve sonraki yillarda `Temmuz -> yil - 2` olacak sekilde duzeltildi.
+- `functions/retentionPolicy.js`, `firestore.rules`, `IstatistikPaneliEkrani.js` ve retention test beklentileri guncellendi.
+- Bu son degisiklikler icin Emulator/unit testleri calistirilmadi; release checklist'te ilgili test kapisi yeniden acik.
 
-**Durum:** Callable envanteri tamamlandi; kod degisiklikleri ve guvenli Spark karsiliklari henuz tamamlanmadi. P0 engeli devam ediyor. Testler calistirilmadi; canli Firebase veya kullanici verisi degistirilmedi.
+### Uygulama sahibi claim hazirligi
+- `functions/scripts/set-application-owner-claim.js` guvenli dry-run/apply araci olarak eklendi. Acik OWNER_UID/OWNER_EMAIL eslesmesi, dogrulanmis Auth e-postasi, etkin ogretmen profili ve baska hesapta owner claim bulunmamasi kontrol edilir.
+- Script yalnizca Auth custom claim yazar; Firestore rol/profil veya ogrenci verisini degistirmez. `--apply` ve acik onay metni gerektirir.
+- Eski iki-profil varsayan ve Firestore rol alanlarini degistirebilen `configure-existing-accounts.js` devre disi birakildi.
+- Canli owner claim henuz atanmadi; script calistirilmadi ve bu adim icin ayri acik onay gerekir.
 
-
-### 24.11.2026 ilk kod duzeltmesi
-
-`ProfilEkrani.js` ad/soyad kaydetme akisi callable'dan cikarildi; kendi UID'sine ait profil belgesine `ad` ve `soyad` alanlari, mevcut Firestore Rules kisitlari altinda dogrudan yaziliyor. Eski callable export'u kurulu telefon uygulamasinin geriye donuk uyumlulugunu korumak icin silinmedi. Kaynak degisikligi yapildi; test ve cihaz dogrulamasi 12. bolume birakildi. P0 callable engeli diger akislardan dolayi devam ediyor.
-
-- Giris sonrasi dogrulanmis Auth e-postasini kendi Firestore profiline yansitma da callable'dan cikarildi. Bunun icin kaynak Firestore Rules, e-posta alanini yalnizca dogrulanmis Auth token e-postasina esit olacak sekilde guncellemeye izin veriyor. Canli rules dagitimi ve test yapilmadi.
-
-
-### 24.11.2026 Spark kaynak ilerlemesi
-
-- Firebase Security Rules SHA-256 hashing yetenegi dogrulandi; mevcut hash tabanli alias belge kimligi korunabiliyor. Alias sistemi icin e-posta acik metinli yeni koleksiyon veya eski alias hashlerini toplu donusturme gerekmiyor.
-- `services/sparkEmailAliases.js` ve buna uygun Firestore Rules kaynak duzenlemesi eklendi. Ogretmen/ogrenci kayit ve giris ekranlari alias callable bagimliligindan cikarildi. Ogretmen profili e-posta dogrulanmadan olusturulmuyor.
-- Profil ad/soyad ve giris sonrasi dogrulanmis e-posta senkronizasyonu callable'dan cikarildi.
-- Hesap kapatma/yeniden etkinlestirme, kendi UID profili ve ayni batch'teki audit kaydi ile Spark istemci akisina tasindi; Rules, uygulama sahibi istisnasini ve imha kilidi/saklama tarihi kontrollerini kaynakta uygular.
-- Profil e-posta degisikligi guvenli alias on kontrolu tamamlanana kadar gecici olarak kapatildi.
-- Kalan callable ekranlari ve riskleri `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md` belgesinde guncellendi.
-- **P0 hala acik:** rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve donem temizligi akislarinin Spark karsiligi/guvenli devre disi karari tamamlanmadi.
-- Yeni kaynak degisiklikleri icin testler calistirilmadi; canli rules dagitilmadi; canli Firestore/Auth verisi degistirilmedi.
-
-### Ayrica tespit edilen donem temizligi tarih celiskisi
-
-Kullanici karari: Temmuz 2028'de 2026 donemini sil; Temmuz 2029'da 2027 donemini sil; sonraki yillarda her Temmuz, iki yil onceki donemi ele al. Mevcut kaynak `functions/retentionPolicy.js`, `firestore.rules` ve `IstatistikPaneliEkrani.js` ise ilk temizligi Temmuz 2029 / hedef yil = yil - 3 olarak tanimliyor. Bu kaynak-karar uyumsuzlugu P1 veri saklama paketinde duzeltilmeli; su an degistirilmedi ve hicbir silme islemi yapilmadi.
-
-
-### 24.11.2026 callable engeli kaynak durumu
-
-38 uygulama JS/JSX/TS/TSX dosyasinin tam taramasinda `httpsCallable(` cagrisi kalmadigi dogrulandi. Alias, kayit/giris, profil temel alanlari ve hesap kapatma/yeniden etkinlestirme Spark Rules akislari kaynakta yazildi. Guvenli Spark karsiligi tamamlanmayan e-posta degisikligi, rol duzeltme, ogrenci tasima/silme, okul kaldirma, donem aktarimi, kapali hesap imhasi ve yillik donem temizligi kullaniciya acik mesajla devre disi birakildi. Bu ozellikler kaybolmadi; P0/P1 altinda guvenli yeniden tasarim icin bekliyor. Kaynak testleri henuz calistirilmadi ve canli rules dagitilmadi.
-
-
-### 24.11.2026 dönem saklama tarihi uyumsuzluğu düzeltildi
-
-Kullanıcı kararı ile kaynak kod arasındaki fark giderildi: Temmuz 2028'de 2026, Temmuz 2029'da 2027, sonraki yıllarda her Temmuz iki yıl önceki dönem hedefleniyor. `functions/retentionPolicy.js`, `firestore.rules`, `IstatistikPaneliEkrani.js` ve retention test beklentileri güncellendi. Testler çalıştırılmadı; canlı rules dağıtılmadı ve hiçbir veri silinmedi. Release checklist'teki Emulator doğrulaması bu yeni kurallar için yeniden açıldı.
+### Guvenlik ve test siniri
+- Test, Android bundle, APK veya cihaz dogrulamasi bu asamada yapilmadi; hepsi 12. bolumde.
+- Takvim dosyasi degistirilmedi.
+- Bu ana liste canli sisteme islem yapma izni degildir. Rules dagitimi, Auth claim atamasi, veri tasima/silme ve APK adimlari kendi asamasinda ayri onay gerektirir.
