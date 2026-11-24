@@ -14,6 +14,7 @@ const OWNERSHIP_FIELDS = Object.freeze([
   'ogrenciUid',
   'ownerUid',
   'createdByUid',
+  'startedBy',
 ]);
 const COLLECTIONS = Object.freeze([
   'okullar',
@@ -33,6 +34,14 @@ const COLLECTIONS = Object.freeze([
   'ogrenciEslesmeKodlari',
   'ogrenciOdevBildirimleri',
   'ogrenciYeniOdevBildirimleri',
+  'ogrenciOdevDurumBildirimleri',
+  'ogrenciPushTokenlari',
+  'kitapKutuphanesi',
+  'kitapKutuphanesiKonulari',
+  'epostaAliaslari',
+  'rolDuzeltmeTalepleri',
+  'hesapYasamDongusuDenetimi',
+  'donemTemizlikKayitlari',
 ]);
 
 async function countByField(db, collectionName, field, uid) {
