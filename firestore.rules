@@ -454,6 +454,7 @@ service cloud.firestore {
       return signedIn()
         && request.auth.uid == userId
         && request.auth.token.email_verified == true
+        && !isApplicationOwner()
         && resource.data.get('hesapDurumu', 'aktif') == 'kapali'
         && resource.data.get('hesapSaklamaSonu', null) is timestamp
         && resource.data.hesapSaklamaSonu > request.time
