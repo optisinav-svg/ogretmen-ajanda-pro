@@ -158,6 +158,10 @@ async function moveCurrentPeriodProgress({ uid, studentId, periodYear, targetCla
 
   const books = booksSnapshot.docs.filter(item => donemUygun(item.data(), periodYear));
   const topics = topicsSnapshot.docs.filter(item => donemUygun(item.data(), periodYear));
+  const missingPeriod = [...books, ...topics].some(item => Number(item.data().donemYili) !== Number(periodYear));
+  if (missingPeriod) {
+    throw new Error('Taşınacak kitap/konu kayıtlarından en az birinde dönem bilgisi eksik veya farklı. Veri karışmasını önlemek için önce dönem kayıtları düzeltilmeli.');
+  }
   const bookById = new Map(books.map(item => [item.id, item]));
 
   for (const topic of topics) {
