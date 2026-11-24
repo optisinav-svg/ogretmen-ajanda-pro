@@ -53,7 +53,7 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
 ## Bölüm 11 tamamlanmadan önce kalan kod işleri
 
-1. Ana çalışma listesindeki dönem temizliği tarih uyumsuzluğunu düzelt: kullanıcı kararı Temmuz 2028'de 2026 dönemini, Temmuz 2029'da 2027 dönemini temizlemek; mevcut retention kaynakları ilk tarihi 2029 ve hedefi yıl-3 tanımlıyor.
+1. Dönem temizliği tarih uyumsuzluğu kaynakta düzeltildi: Temmuz 2028'de 2026, Temmuz 2029'da 2027 ve sonraki yıllarda Temmuz ayında yıl-2 hedefleniyor. Yeni Rules/helper beklentileri için Emulator testi Bölüm 12'de bekliyor.
 2. Öğrenci taşıma ve okul kaldırma akışları için atomik/tekrar başlatılabilir Spark çözümünü tasarla; güvenli çözüm gelene kadar kapalı kalacak.
 3. Rol düzeltme ve dönem aktarımı için güvenli yetki/veri sahipliği çözümünü belirle; güvenli çözüm yoksa kapalı tut.
 4. Dönem temizliği ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
