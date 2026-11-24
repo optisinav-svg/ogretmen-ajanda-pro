@@ -77,7 +77,7 @@ function WheelColumn({label,values,value,onChange}){
     onMomentumScrollBegin={momentumBegin}
     onMomentumScrollEnd={momentumEnd}
    >
-    {Array.from({length:values.length*WHEEL_COPIES},(_,index)=><View key={index} style={s.wheelItem}><Text style={[s.wheelItemText,index%values.length===selectedIndex&&s.wheelSelectedText]}>{values[index%values.length]}</Text></View>)}
+    {Array.from({length:values.length*WHEEL_COPIES},(_,index)=><View key={index} style={s.wheelItem}><Text style={[s.wheelItemText,index===centerRow&&s.wheelSelectedText]}>{values[index%values.length]}</Text></View>)}
    </ScrollView>
    <View pointerEvents="none" style={s.wheelHighlight}/>
   </View>
