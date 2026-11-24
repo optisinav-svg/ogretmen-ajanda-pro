@@ -71,3 +71,18 @@ Kaynak depoda Functions kodunun bulunması, canlı Firebase'de çalıştığı a
 - Push bildirimi Spark'ta sunucu tarafı güvenli biçimde gönderilemez; uygulama içi bildirim kullanılacaktır.
 - Arka plan zamanlayıcısı yoktur; dönem temizliği uygulama sahibi tarafından Temmuz'da başlatılır.
 - Gerçek öğrenci verisiyle test yapılmaz; APK sonrası kullanıcı kendi test hesabıyla tablette test eder.
+
+
+## 24.11.2026 — Section 11 static source audit correction
+
+A static scan of the current application screens found that the statement above that callable dependencies had been removed is not yet true for the complete UI. The following screens still invoke Cloud Functions callables:
+
+- \`GirisEkrani.js\`, \`KayitEkrani.js\`, \`OgrenciKayitEkrani.js\`: email alias reservation/checking, account reactivation and email/profile synchronization.
+- \`ProfilEkrani.js\`, \`RolDuzeltmeTalepleriEkrani.js\`: profile updates, email changes, account closure and role correction.
+- \`OgrenciEkrani.js\`, \`OkulSinifEkrani.js\`: student move and permanent deletion.
+- \`DonemAktarimEkrani.js\`: academic-period transfer.
+- \`IstatistikPaneliEkrani.js\`: closed-account listing/erasure and annual data-retention preview/confirmation.
+
+These callables are present in the repository's Functions source, but source exports do not prove that they are deployed or available on the Spark project. A number of these operations are security- or data-destructive. They must not be replaced with unrestricted client writes or treated as working on Spark.
+
+Before a tablet APK or real-account test, each flow must either receive a Firestore-Rules-enforced Spark implementation or be safely disabled with a clear user-facing explanation. Email alias history must remain protected against reuse; student moves/deletions and period transfer/retention must not allow partial writes or data loss. No live deployment or data mutation was performed as part of this audit.
