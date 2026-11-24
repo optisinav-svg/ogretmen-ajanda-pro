@@ -47,16 +47,26 @@ function fieldsDiffer(data, fields) {
 }
 
 async function getActiveLinkForStudent(uid, studentId) {
-  const [byTeacher, byLegacyUid] = await Promise.all([
+  const indexRef = doc(db, 'ogrenciKayitEslesmeleri', `${uid}__${studentId}`);
+  const [byTeacher, byLegacyUid, indexSnap] = await Promise.all([
     getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('ogretmenUid', '==', uid))),
     getDocs(query(collection(db, 'ogretmenOgrenciBaglantilari'), where('uid', '==', uid))),
+    getDoc(indexRef),
   ]);
   const unique = new Map();
   [...byTeacher.docs, ...byLegacyUid.docs].forEach(item => unique.set(item.id, item));
-  return [...unique.values()].some(item => {
+  const hasActiveLink = [...unique.values()].some(item => {
     const data = item.data();
     return (data.ogrenciKayitId || data.ogrenciId) === studentId && data.durum === 'active';
   });
+  if (indexSnap.exists() && indexSnap.data().durum === 'active') {
+    const index = indexSnap.data();
+    if (index.ogretmenUid !== uid || index.ogrenciKayitId !== studentId) {
+      throw new Error('Öğrenci bağlantı indeksi başka bir kayda ait görünüyor; taşıma başlamadan durduruldu.');
+    }
+    return true;
+  }
+  return hasActiveLink;
 }
 
 async function getOrCreateUnregisteredClass({ uid, sourceClass, periodYear }) {
