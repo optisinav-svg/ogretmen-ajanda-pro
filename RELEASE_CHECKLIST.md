@@ -163,3 +163,15 @@ Bu dosya Grup 1–6, önceki mimari kararlar ve tablet/telefon sürüm sırasın
 - `firebase.json` artık `firestore.indexes.json` dosyasını deploy yapılandırmasına bağlıyor.
 - Canlı Firestore rules henüz dağıtılmadı. Spark nedeniyle Cloud Functions dağıtılmayacak; FCM sunucu push bu sürümde yok, uygulama içi bildirim kullanılıyor. EAS APK build ve gerçek cihaz/tablet testi henüz yapılmadı.
 - EAS/telefon imza sertifikası karşılaştırması henüz yapılmadı.
+ 
+
+## 24.11.2026 — Tablet APK güvenli hazırlık dalı
+
+- Yeni sabit dal: `release/tablet-apk-2026-11-24` (Bölüm 11'in güncel kaynak tabanından oluşturuldu).
+- `scripts/build-tablet-apk.ps1` yalnızca EAS preview Android APK build akışını yürütür; Firebase Rules dağıtımı, Functions dağıtımı, Firestore yazma/silme veya migration komutu içermez.
+- Eski birleşik `scripts/prepare-spark-apk.ps1` güvenlik nedeniyle fail-closed hale getirildi. Canlı Rules dağıtımı ve APK build birbirinden ayrıldı.
+- `tests/apkBuildSafety.test.js` yeni betiğin canlı Firebase'e dağıtım yapmamasını, proje kimliklerini doğrulamasını ve eski betiğin kapalı kalmasını test eder.
+- Yeni dalda CI çalıştırması başlatıldı; sonuç doğrulanmadan bu güvenlik testi tamamlandı sayılmayacak.
+- Canlı Firestore Rules henüz dağıtılmadı. Yeni APK, Rules ayrı onayla dağıtılıp doğrulanmadan tablette kullanılmayacak.
+- EAS APK build henüz başlatılmadı. Build betiği açıkça `BUILD` onayı ister; yalnızca kullanıcı çalıştırdığında EAS build başlar.
+- Tablet APK build'i ve cihaz testi telefon kurulumunu değiştirmez. Telefon güncellemesi için ayrıca imza parmak izi karşılaştırması gerekir.
