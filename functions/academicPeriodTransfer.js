@@ -186,6 +186,9 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     if (existing.exists && (existing.get('aktarimKaynakId') !== plan.sourceClassId || existing.get('uid') !== uid || Number(existing.get('donemYili')) !== targetYear)) {
       throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan sınıf kaydı var.');
     }
+    if (existing.exists && existing.get('kademe') !== plan.targetGrade) {
+      throw new HttpsError('failed-precondition', 'Bu kaynak sınıf hedef döneme daha önce farklı bir kademeyle aktarılmış. Var olan aktarım otomatik değiştirilmedi.');
+    }
     if (!existing.exists) operations.push({ type: 'create', ref, data: { ...cleanSchoolOrClass(plan.sourceClass), uid, donemYili: targetYear, okulId: schoolIdMap.get(plan.schoolId), okulAd: schoolPlans.get(plan.schoolId).source.ad || plan.sourceClass.okulAd || '', kademe: plan.targetGrade, aktarimKaynakId: plan.sourceClassId, aktarimKaynakDonem: sourceYear, olusturulma: new Date().toISOString(), arsivlendi: false } });
     for (const student of plan.students) {
       const newStudentId = stableId('student', targetYear, student.id);
@@ -194,6 +197,9 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
       const studentExisting = await studentRef.get();
       if (studentExisting.exists && (studentExisting.get('aktarimKaynakId') !== student.id || studentExisting.get('uid') !== uid || Number(studentExisting.get('donemYili')) !== targetYear)) {
         throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan öğrenci kaydı var.');
+      }
+      if (studentExisting.exists && (studentExisting.get('sinifId') !== targetId || studentExisting.get('kademe') !== plan.targetGrade)) {
+        throw new HttpsError('failed-precondition', 'Bu öğrenci hedef döneme daha önce farklı sınıf veya kademeyle aktarılmış. Var olan aktarım otomatik değiştirilmedi.');
       }
       if (!studentExisting.exists) operations.push({ type: 'create', ref: studentRef, data: {
         ...cleanStudent(student.data), uid, donemYili: targetYear, sinifId: targetId,
@@ -220,6 +226,9 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     const existing = await ref.get();
     if (existing.exists && (existing.get('aktarimKaynakId') !== book.id || existing.get('uid') !== uid || Number(existing.get('donemYili')) !== targetYear)) {
       throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan kitap kaydı var.');
+    }
+    if (existing.exists && (existing.get('ogrenciId') !== newStudentId || existing.get('sinifId') !== newClassId)) {
+      throw new HttpsError('failed-precondition', 'Bu kitap hedef döneme farklı öğrenci veya sınıfla aktarılmış. Var olan aktarım otomatik değiştirilmedi.');
     }
     if (!existing.exists) operations.push({ type: 'create', ref, data: {
       ad: source.ad, sayfaSayisi: source.sayfaSayisi, uid, donemYili: targetYear,
@@ -288,6 +297,9 @@ exports.ogretmenDonemAktariminiBaslat = onCall({ region: REGION, timeoutSeconds:
     const existing = await ref.get();
     if (existing.exists && (existing.get('aktarimKaynakId') !== topic.id || existing.get('uid') !== uid || Number(existing.get('donemYili')) !== targetYear)) {
       throw new HttpsError('already-exists', 'Hedef dönemde aktarım kimliğiyle çakışan konu kaydı var.');
+    }
+    if (existing.exists && (existing.get('kitapId') !== newBookId || existing.get('ogrenciId') !== newStudentId)) {
+      throw new HttpsError('failed-precondition', 'Bu konu hedef döneme farklı kitap veya öğrenciyle aktarılmış. Var olan aktarım otomatik değiştirilmedi.');
     }
     if (!existing.exists) {
       const plan = classPlans.find(x => x.sourceClassId === source.sinifId);
