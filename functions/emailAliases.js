@@ -65,7 +65,7 @@ exports.epostaAliasDegisikliginiKontrolEt = onCall({ region: REGION }, async req
 
 exports.epostaAliasiniRezerveEt = onCall({ region: REGION }, async request => {
   if (!request.auth?.uid) throw new HttpsError('unauthenticated', 'Önce hesabınıza giriş yapın.');
-  if (request.auth.token.email_verified !== true) throw new HttpsError('failed-precondition', 'Mevcut e-posta adresi doğrulanmış olmalıdır.');
+  if (request.auth.token.email_verified !== true) return { durum: 'dogrulama_bekleniyor' };
   const email = normalizeEmail(request.auth.token.email);
   if (!email) throw new HttpsError('failed-precondition', 'Hesabınızda doğrulanmış e-posta bulunamadı.');
   await claimAlias(email, request.auth.uid);
@@ -81,7 +81,7 @@ exports.epostaAliasKaydiOncesiKontrol = beforeUserCreated({ region: REGION }, as
 
 exports.epostaAliasGirisKontrol = beforeUserSignedIn({ region: REGION }, async event => {
   const user = event.data;
-  if (user?.email) await claimAlias(user.email, user.uid);
+  if (user?.email && user.emailVerified === true) await claimAlias(user.email, user.uid);
 });
 
 // Account closure retains aliases for the same three-year account-retention window.
