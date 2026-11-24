@@ -15,6 +15,7 @@ const TARGET_EMAIL = (process.env.TARGET_EMAIL || '').trim().toLowerCase();
 const OWNER_UID = (process.env.OWNER_UID || '').trim();
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || '').trim().toLowerCase();
 const APPLY = process.argv.includes('--apply');
+const CLAIM_ONLY = process.argv.includes('--remove-owner-claim-only');
 
 const OWNERSHIP_FIELDS = ['uid', 'ogretmenUid', 'ogrenciUid', 'ownerUid', 'createdByUid', 'startedBy'];
 const COLLECTIONS = [
@@ -113,10 +114,10 @@ async function main() {
   console.log('Ana sahip: ' + maskEmail(owner.email) + ' — claim korunacak.');
   console.log('Hedef: ' + maskEmail(target.email) + ' — UID son 6: ' + TARGET_UID.slice(-6));
   console.log('Hedef e-posta doğrulandı: ' + (target.emailVerified ? 'evet' : 'hayır; öğrenci eşleştirmesinden önce doğrulanmalı'));
-  console.log('Hedef profil: ogretmen → ogrenci');
+  console.log('Hedef profil: ' + (CLAIM_ONLY ? 'şimdilik öğretmen olarak korunacak' : 'ogretmen → ogrenci'));
   console.log('Tarama: ' + COLLECTIONS.length + ' koleksiyon × ' + OWNERSHIP_FIELDS.length + ' sahiplik alanı; bulunan referans: 0');
   console.log('E-posta alias: ' + (aliasSnap.exists ? 'hedef UID tarafından tutuluyor, korunacak' : 'yok; eşleştirme sırasında oluşturulabilir'));
-  console.log('Değiştirilecekler: yalnızca hedef Auth claim içindeki uygulamaSahibi ve hedef profilin rol/brans/sezon alanları.');
+  console.log(CLAIM_ONLY ? 'İşlem modu: yalnızca hedef Auth claim içindeki uygulamaSahibi kaldırılacak.' : 'İşlem modu: hedef Auth claim kaldırılacak ve hedef profil öğrenciye dönüştürülecek.');
   console.log('Korunacaklar: Auth hesabı/şifresi/e-postası, kullanıcıAdi, eposta, alias ve ana sahip claim.');
 
   if (!APPLY) {
@@ -134,16 +135,18 @@ async function main() {
   delete nextClaims.uygulamaSahibi;
 
   await auth.setCustomUserClaims(TARGET_UID, Object.keys(nextClaims).length ? nextClaims : null);
-  try {
-    await profileRef.update({
-      rol: 'ogrenci',
-      brans: FieldValue.delete(),
-      sezon: FieldValue.delete(),
-    });
-  } catch (error) {
-    // Restore the exact original custom-claim set if the profile update fails.
-    await auth.setCustomUserClaims(TARGET_UID, originalClaims);
-    throw error;
+  if (!CLAIM_ONLY) {
+    try {
+      await profileRef.update({
+        rol: 'ogrenci',
+        brans: FieldValue.delete(),
+        sezon: FieldValue.delete(),
+      });
+    } catch (error) {
+      // Restore the exact original custom-claim set if the profile update fails.
+      await auth.setCustomUserClaims(TARGET_UID, originalClaims);
+      throw error;
+    }
   }
 
   const [verifiedTarget, verifiedProfile, verifiedOwner] = await Promise.all([
@@ -151,14 +154,18 @@ async function main() {
     profileRef.get(),
     auth.getUser(OWNER_UID),
   ]);
+  const expectedRole = CLAIM_ONLY ? 'ogretmen' : 'ogrenci';
   if (verifiedTarget.customClaims?.uygulamaSahibi === true
-    || verifiedProfile.get('rol') !== 'ogrenci'
+    || verifiedProfile.get('rol') !== expectedRole
     || verifiedOwner.customClaims?.uygulamaSahibi !== true) {
     throw new Error('Son doğrulama başarısız. Auth claim ve profil durumunu yeniden denetleyin; otomatik ek değişiklik yapılmadı.');
   }
-  console.log('\nBAŞARILI: hedef hesap artık öğrenci profiline dönüştürüldü; uygulama sahibi claim kaldırıldı.');
+  console.log(CLAIM_ONLY
+    ? '\nBAŞARILI: yalnızca hedef hesabın uygulama sahibi claim kaldırıldı; öğretmen profili korundu.'
+    : '\nBAŞARILI: hedef hesabın uygulama sahibi claim kaldırıldı ve profil öğrenciye dönüştürüldü.');
   console.log('Ana hesabın uygulamaSahibi claim değeri true olarak doğrulandı.');
-  console.log('Hesabın e-posta doğrulaması tamamlandıktan sonra öğrenci eşleştirme kodu kullanılabilir.');
+  if (CLAIM_ONLY) console.log('Öğrenci profili dönüşümü, gerçek öğrenci kaydı seçildikten sonra ayrı adımda yapılacak.');
+  else console.log('Hesabın e-posta doğrulaması tamamlandıktan sonra öğrenci eşleştirme kodu kullanılabilir.');
 }
 
 main().catch(error => {
