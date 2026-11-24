@@ -67,6 +67,9 @@ Guvenli Spark karsiligi tamamlanmadigi icin acik uyarilarla gecici kapali:
 - Yillik temizleme allowlist'i yalnizca `dersNotlari`, `dersler`, `yoklamalar`, `odevler`, `kitaplar`, `konular` koleksiyonlaridir. `ogrenciler`, `siniflar`, `okullar`, `kullanicilar`, ogretmen-ogrenci baglantilari, eslestirme talepleri/kodlari, bildirimler, bireysel etkinlikler ve ortak kitap kutuphanesi silinmez.
 - Gunluk zamanlanmis silme yoktur. Hedeflenen yillik islem Temmuz'da uygulama sahibi onizleme ve acik onayiyla baslatilacak; ancak Spark istemci cok-batch + kilit akisi henuz yazilmadigi icin temizleme ekrani kapali kalacak. 2028 Temmuzundan once tamamlanip test edilmeli.
 - Allowlist'teki tehlikeli genisletme 24.11.2026'da alti koleksiyona daraltildi ve test beklentisi duzeltildi. Bu degisiklik icin test henuz calistirilmadi; canli rules dagitimi ve veri silme yapilmadi.
+- Veri karisimi riski: `utils/donem.js` icindeki `kayitDonemYili`, `donemYili` ve tarih alanlari yoksa bugunun donemini varsayabiliyor; Haziran tarihleri de secili donem olmadan belirsiz. Bu davranis degistirilmeden once mevcut ekran etkisi ve eksik kayitlar salt okunur incelenmeli; eksik donemli kayitlar otomatik olarak secili doneme dahil edilmemeli.
+- `migrate-missing-periods-2026.js` hedef koleksiyonlardaki tum eksik `donemYili` alanlarini 2026 yapar; tarihten donem cikarsamaz. Yazma modu artik `--apply --confirm-period=2026` ve SHA-256 dogrulanmis tam yedek gerektirir. Dry-run sonucundaki her eksik kaydin 2026'ya ait oldugu teyit edilmeden calistirilmayacak.
+
 - Eksik `donemYili` kayitlari icin onceki dry-run sayilari tarihsel bilgidir; canli veriye tekrar dokunmadan once salt okunur yeni envanter ve fark raporu gerekir. Onceki yedek/manifest korunur.
 
 ### P2 — Okul, sinif, ogrenci ve bagli kayit yasam dongusu
