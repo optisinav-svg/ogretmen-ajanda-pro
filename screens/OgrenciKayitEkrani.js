@@ -3,12 +3,14 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
   Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification, reload, deleteUser } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions, ACCOUNT_LINKING_ENABLED } from '../firebaseConfig';
 import { submitStudentPairingRequest } from '../services/sparkStudentAccounts';
 
 export default function OgrenciKayitEkrani({ navigation, route }) {
+  const insets=useSafeAreaInsets();
   const devamEt = !!route?.params?.devamEt || !!auth.currentUser;
   const [adSoyad, setAdSoyad] = useState(auth.currentUser?.displayName || '');
   const [eposta, setEposta] = useState(auth.currentUser?.email || '');
@@ -93,7 +95,7 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
 
   return (
     <KeyboardAvoidingView style={s.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[s.content,{paddingBottom:insets.bottom+32}]} keyboardShouldPersistTaps="handled">
         <Text style={s.icon}>🎓</Text>
         <Text style={s.title}>Öğrenci Hesabı</Text>
         <Text style={s.info}>Öğretmeninizin verdiği kodu kullanarak hesabınızı ilgili öğrenci kaydıyla eşleştirin. Öğretmen onay verene kadar ders ve öğrenci verileri paylaşılmaz.</Text>
