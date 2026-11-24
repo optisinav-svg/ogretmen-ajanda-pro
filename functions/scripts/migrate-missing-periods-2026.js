@@ -106,6 +106,7 @@ async function scanCollection(db, name, apply) {
   let cursor = null;
   let scanned = 0;
   let missing = 0;
+  let invalid = 0;
   let updated = 0;
   const batchSamples = [];
   while (true) {
@@ -115,10 +116,21 @@ async function scanCollection(db, name, apply) {
     if (page.empty) break;
 
     const missingDocs = page.docs.filter(doc => !Object.prototype.hasOwnProperty.call(doc.data(), 'donemYili'));
+    const invalidDocs = page.docs.filter(doc => {
+      const data = doc.data();
+      return Object.prototype.hasOwnProperty.call(data, 'donemYili')
+        && (typeof data.donemYili !== 'number' || !Number.isInteger(data.donemYili));
+    });
     scanned += page.size;
     missing += missingDocs.length;
-    for (const doc of missingDocs.slice(0, Math.max(0, 10 - batchSamples.length))) {
-      batchSamples.push({ collection: name, idSuffix: doc.id.slice(-6) });
+    invalid += invalidDocs.length;
+    for (const doc of [...missingDocs, ...invalidDocs].slice(0, Math.max(0, 10 - batchSamples.length))) {
+      const data = doc.data();
+      batchSamples.push({
+        collection: name,
+        idSuffix: doc.id.slice(-6),
+        periodState: Object.prototype.hasOwnProperty.call(data, 'donemYili') ? 'invalid-existing' : 'missing',
+      });
     }
 
     if (apply && missingDocs.length) {
@@ -134,14 +146,25 @@ async function scanCollection(db, name, apply) {
     cursor = page.docs[page.docs.length - 1];
     if (page.size < PAGE_SIZE) break;
   }
-  return { scanned, missing, updated, samples: batchSamples };
+  return { scanned, missing, invalid, updated, samples: batchSamples };
 }
 
 async function verifyCollection(db, name) {
   const snapshot = await db.collection(name).where('donemYili', '==', TARGET_PERIOD).count().get();
-  const missingSnapshot = await db.collection(name).get();
-  const missing = missingSnapshot.docs.filter(doc => !Object.prototype.hasOwnProperty.call(doc.data(), 'donemYili')).length;
-  return { targetPeriodCount: snapshot.data().count, remainingMissing: missing };
+  const allDocs = await db.collection(name).get();
+  const remainingMissing = allDocs.docs.filter(doc =>
+    !Object.prototype.hasOwnProperty.call(doc.data(), 'donemYili')
+  ).length;
+  const remainingInvalid = allDocs.docs.filter(doc => {
+    const data = doc.data();
+    return Object.prototype.hasOwnProperty.call(data, 'donemYili')
+      && (typeof data.donemYili !== 'number' || !Number.isInteger(data.donemYili));
+  }).length;
+  return {
+    targetPeriodCount: snapshot.data().count,
+    remainingMissing,
+    remainingInvalid,
+  };
 }
 
 async function main() {
@@ -156,6 +179,7 @@ async function main() {
   const results = {};
   let totalScanned = 0;
   let totalMissing = 0;
+  let totalInvalid = 0;
   let totalUpdated = 0;
 
   console.log('Proje:', PROJECT_ID);
@@ -173,19 +197,20 @@ async function main() {
     results[name] = result;
     totalScanned += result.scanned;
     totalMissing += result.missing;
+    totalInvalid += result.invalid;
     totalUpdated += result.updated;
-    console.log(name + ': taranan=' + result.scanned + ', dönemsiz=' + result.missing + ', yazılan=' + result.updated);
+    console.log(name + ': taranan=' + result.scanned + ', eksik=' + result.missing + ', geçersiz-mevcut=' + result.invalid + ', yazılan=' + result.updated);
   }
 
-  console.log('TOPLAM:', JSON.stringify({ totalScanned, totalMissing, totalUpdated, targetPeriod: TARGET_PERIOD }));
+  console.log('TOPLAM:', JSON.stringify({ totalScanned, totalMissing, totalInvalid, totalUpdated, targetPeriod: TARGET_PERIOD }));
   if (apply) {
     let remaining = 0;
     for (const name of COLLECTIONS) {
       const check = await verifyCollection(db, name);
-      remaining += check.remainingMissing;
-      console.log('DOĞRULAMA ' + name + ': 2026 kayıt=' + check.targetPeriodCount + ', kalan dönemsiz=' + check.remainingMissing);
+      remaining += check.remainingMissing + check.remainingInvalid;
+      console.log('DOĞRULAMA ' + name + ': 2026 kayıt=' + check.targetPeriodCount + ', kalan eksik=' + check.remainingMissing + ', geçersiz=' + check.remainingInvalid);
     }
-    if (remaining !== 0) throw new Error('Doğrulama başarısız: bazı belgeler hâlâ dönemsiz.');
+    if (remaining !== 0) throw new Error('Doğrulama başarısız: bazı belgelerde dönem alanı hâlâ eksik veya geçersiz. Mevcut geçersiz değerler otomatik olarak üzerine yazılmadı.');
     console.log('MIGRATION VERIFIED: kapsam içindeki tüm dönemsiz belgelere 2026 dönemi yazıldı.');
   } else {
     console.log('DRY-RUN tamamlandı. Hiçbir Firestore belgesi değiştirilmedi.');
