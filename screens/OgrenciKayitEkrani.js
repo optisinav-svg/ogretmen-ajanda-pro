@@ -56,7 +56,8 @@ export default function OgrenciKayitEkrani({ navigation, route }) {
     if (sifre !== sifreTekrar) return Alert.alert('Şifreler eşleşmiyor', 'İki şifre alanını aynı şekilde doldurun.');
     setYukleniyor(true);
     try {
-      const result = await createUserWithEmailAndPassword(auth, eposta.trim(), sifre);
+      await httpsCallable(functions, 'epostaKaydiKontrolEt')({ email: eposta.trim().toLowerCase() });
+      const result = await createUserWithEmailAndPassword(auth, eposta.trim().toLowerCase(), sifre);
       try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
         await deleteUser(result.user).catch(() => {});
         throw aliasError;
