@@ -114,14 +114,14 @@ async function markTransfer(studentRef, student, markerField, marker) {
       || Number(existing.donemYili) !== Number(marker.donemYili)) {
       throw new Error('Bu öğrenci için farklı hedefli, yarım kalmış bir taşıma var. Önce aynı taşıma tamamlanmalı.');
     }
-    return { marker: existing, created: false };
+    return existing;
   }
   const otherMarker = markerField === 'sinifTasiIslemi' ? 'kayitsizTasiIslemi' : 'sinifTasiIslemi';
   if (student?.[otherMarker]) {
     throw new Error('Öğrenci için başka bir taşıma işlemi devam ediyor.');
   }
   await updateDoc(studentRef, { [markerField]: marker });
-  return { marker, created: true };
+  return marker;
 }
 
 async function moveCurrentPeriodProgress({ uid, studentId, periodYear, targetClass }) {
@@ -356,9 +356,8 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
     neden: 'sinif_degisikligi',
   };
   const marked = await markTransfer(studentRef, student, 'sinifTasiIslemi', marker);
-  let progressChanged = false;
   try {
-    progressChanged = await moveCurrentPeriodProgress({
+    await moveCurrentPeriodProgress({
       uid,
       studentId,
       periodYear: period,
@@ -371,7 +370,7 @@ export async function moveStudentToClass({ studentId, sourceClass, targetClass, 
       targetClass: target,
       periodYear: period,
       markerField: 'sinifTasiIslemi',
-      marker: marked.marker,
+      marker: marked,
       reason: 'sinif_degisikligi',
       unregistered: false,
       hasActiveLink,
@@ -442,7 +441,7 @@ export async function moveStudentToUnregistered({ studentId, sourceClass, period
       targetClass: target,
       periodYear: period,
       markerField: 'kayitsizTasiIslemi',
-      marker: marked.marker,
+      marker: marked,
       reason: 'kayitsizlara_tasima',
       unregistered: true,
       hasActiveLink,
