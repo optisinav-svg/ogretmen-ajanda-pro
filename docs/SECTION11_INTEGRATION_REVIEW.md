@@ -58,6 +58,7 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 3. Rol düzeltme ve dönem aktarımı için güvenli yetki/veri sahipliği çözümünü belirle; güvenli çözüm yoksa kapalı tut.
 4. Dönem temizliği ve kapalı hesap imhası için güvenli yetkili süreç belirle; Firebase Admin Auth gerektiren işlem istemciye taşınmayacak.
 5. Önceki bölümlerden devreden diğer açık maddeleri ana çalışma listesiyle eşleştir; çalışan takvimi ve doğrulanmış ekranları yeniden yazma.
+6. Uygulama sahibi custom claim için güvenli dry-run/apply scripti hazır; gerçek Auth claim ataması yapılmadı ve ayrıca açık onay bekliyor.
 
 ## Bölüm 12'ye devredilen doğrulamalar
 
@@ -77,6 +78,6 @@ Ayrıntılı akış ve risk kaydı: `docs/SPARK_CALLABLE_AUDIT_2026-11-24.md`.
 
 ## Sonuç ve durum
 
-Navigasyon düzeltmesi ve callable kaynak bağımlılığı temizliği yapıldı. Spark'ta güvenli karşılığı tamamlanmayan riskli özellikler kullanıcıya açık biçimde devre dışı bırakıldı. Ancak dönem saklama tarih uyumsuzluğu ve diğer bölümlerden devreden entegrasyon işleri sürüyor.
+Navigasyon düzeltmesi ve callable kaynak bağımlılığı temizliği yapıldı. Spark'ta güvenli karşılığı tamamlanmayan riskli özellikler kullanıcıya açık biçimde devre dışı bırakıldı. Dönem saklama takvimi kaynakta kullanıcı kararına göre hizalandı; yeni kuralların testi Bölüm 12'de bekliyor. Diğer bölümlerden devreden entegrasyon işleri ve geçici kapalı özelliklerin güvenli yeniden tasarımı sürüyor.
 
 Bu nedenle **Bölüm 11 henüz tamamlandı olarak işaretlenmiyor**. Ana çalışma listesi esas alınarak kalan kod işleri tamamlanacak; test ve APK aşaması Bölüm 12'de kalacak.
