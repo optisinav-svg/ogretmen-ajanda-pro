@@ -6,6 +6,11 @@ export const donemBilgi=y=>({yil:Number(y),ad:`${y}/${Number(y)+1}`,baslangic:`1
 export const donemYiliBugun=()=>{const d=new Date(),y=d.getFullYear();return d>=new Date(y,5,1)?y:y-1};
 export const donemTarihAraliginda=(tarih,y)=>!!tarih&&String(tarih).slice(0,10)>=donemBaslangicTarihi(y)&&String(tarih).slice(0,10)<=donemBitisTarihi(y);
 export const donemKayitTarihi=r=>r?.tarih||r?.baslangicTarih||r?.teslimTarihi||r?.olusturulma;
+// GEÇİCİ UYARI: Eski kayıt uyumluluğu için donemYili/tarih alanları eksikse
+// mevcut dönem varsayımı kullanılabilir. Bu, Haziran çakışmasında veya tarihi
+// olmayan eski belgelerde yanlış döneme dahil etme riski taşır. P1 dönem envanteri
+// ve kontrollü migrasyon tamamlanmadan bu fallback davranışını değiştirmeyin;
+// yeni kayıtlar her zaman seçili donemYili ile yazılmalıdır.
 export const kayitDonemYili=r=>{if(r?.donemYili!==undefined&&r?.donemYili!==null)return Number(r.donemYili);const v=donemKayitTarihi(r);const d=v?new Date(v):new Date();if(Number.isNaN(d.getTime()))return donemYiliBugun();const y=d.getFullYear();return d>=new Date(y,5,1)?y:y-1};
 export const donemUygun=(r,y)=>kayitDonemYili(r)===Number(y);
 export const donemDuzenlemeyeAcik=(y,bugun=new Date())=>{const tarih=new Date(bugun.getFullYear(),bugun.getMonth(),bugun.getDate());return tarih>=new Date(Number(y),5,1)&&tarih<=new Date(Number(y)+1,5,30,23,59,59)};
