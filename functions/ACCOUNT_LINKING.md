@@ -1,75 +1,70 @@
-# Öğretmen–öğrenci hesap ve erişim modeli
+# Öğretmen–öğrenci hesap ve bildirim modeli
 
-Bu belge Grup 4'te kararlaştırılan hesap güvenliği ve eşleştirme altyapısını açıklar. Bu kodlar kaynak depoda hazırlanmıştır; Firebase projesine dağıtılmamıştır. Öğrenci hesapları uygulama arayüzünde açılmayacaktır; dağıtım ve ayrı öğrenci ekranları sonraki aşamada hazırlanıp test edilmeden gerçek kullanıcılar eşleştirilmeyecektir.
+Bu belge, uygulamanın mevcut kaynak kodundaki eşleştirme ve bildirim akışını açıklar. Section 10 dalında özellikler kod düzeyinde etkin olsa da PR henüz birleştirilmemiş ve Firebase'e dağıtılmamıştır. Gerçek öğrenci hesabı veya canlı eşleştirme oluşturulmamıştır.
 
-## Roller ve geriye dönük uyumluluk
+## Roller ve kayıt
 
 - Geçerli roller `ogretmen` ve `ogrenci` değerleridir.
-- Yeni öğretmen kaydı profilinde `rol: 'ogretmen'` yazar.
-- Eski `kullanicilar/{uid}` belgelerinde rol alanı bulunmuyorsa güvenli geçiş için mevcut kullanıcı öğretmen kabul edilir.
-- `eskiOgretmenRolunuTanimla` callable'ı yalnızca rolü bulunmayan eski hesabı `ogretmen` olarak işaretler. Öğrenci rolünü öğretmene çeviremez.
-- İstemci kendi rolünü oluşturamaz/değiştiremez. Öğrenci profili yalnızca eşleştirme talebi gönderilirken güvenilir Cloud Function tarafından oluşturulur.
-- Profil silme istemciye kapalıdır.
+- Kayıt başlangıç ekranı kullanıcıya öğretmen veya öğrenci hesabı seçtirir.
+- Öğrenci hesabı yalnızca e-posta doğrulandıktan ve geçerli eşleştirme koduyla talep oluşturulduktan sonra `kullanicilar/{uid}` belgesinde `rol: 'ogrenci'` olarak tanımlanır.
+- Profil oluşturma ve eşleştirme talebi, öğrenci istemcisinde tek Firestore transaction ile yazılır; Firestore kuralları e-posta doğrulamasını, kodun geçerliliğini, ad-soyad eşleşmesini ve talep ilişkisini birlikte denetler.
+- Öğrenci talebi öğretmen tarafından onaylanana kadar öğretmen verilerine erişemez.
+- İstemci kendi rolünü doğrudan değiştiremez. Rol düzeltme talepleri uygulama sahibi tarafından incelenir.
 
 ## Eşleştirme akışı
 
-1. Öğretmen kendi sahip olduğu öğrenci kaydı için kod ister.
-2. Sunucu öğrenci ve sınıf sahipliğini doğrular. Yalnızca 9, 10, 11, 12, TYT veya AYT sınıfları kabul edilir. Ortaokul (5–8) ve sınıf seviyesi doğrulanamayan kayıtlar, veli/vasi süreci netleşene kadar kapalıdır.
-3. Kod 16 karakterlik kriptografik rastgele değerdir. Firestore'da yalnızca SHA-256 özeti tutulur; ham kod öğretmene bir kez döndürülür.
-4. Kod 12 saat geçerlidir ve ilk başarılı öğrenci talebinde transaction içinde tek kullanımlık olarak tüketilir.
-5. Öğrenci talebi gönderdiğinde öğrenci profili sunucu tarafından `ogrenci` rolüyle oluşturulur. Talep onaylanana kadar öğrenci verilerine erişim verilmez.
-6. Öğretmen talebi onaylar veya reddeder. Onay sırasında öğretmen sahipliği, öğrenci kaydı, sınıf ve öğrenci hesabı tekrar doğrulanır.
-7. Öğretmen altı paylaşım iznini birbirinden bağımsız seçer: ders programı, ders notları, konular, yoklama, ödevler ve kitaplar.
+1. Öğretmen yalnızca kendi sahip olduğu öğrenci kaydı için kod oluşturur.
+2. Öğrenci kaydı, sınıf ve akademik dönem sahipliği doğrulanır. Yalnızca 9, 10, 11, 12, TYT veya AYT sınıfları kabul edilir. 5–8. sınıf bağlantıları veli/vasi süreci netleşene kadar kapalıdır.
+3. Ham kod 16 karakterlik kriptografik rastgele hexadecimal değerdir. Firestore'da yalnızca kodun SHA-256 özeti (64 hexadecimal karakter) belge kimliği olarak tutulur.
+4. Kod 12 saat geçerlidir ve ilk geçerli öğrenci talebinde transaction içinde tek kullanımlık olarak tüketilir.
+5. Öğrenci e-postası doğrulanmış olmalı; hesap e-postası ve ad-soyad öğretmenin öğrenci kaydıyla eşleşmelidir.
+6. Öğretmen talebi onaylar veya reddeder. Onay transaction'ı bağlantı ve öğrenci-kayıt indeksini oluşturur; Firestore kuralları öğretmen sahipliğini ve benzersiz bağlantıyı doğrular.
+7. Öğretmen altı izni birbirinden bağımsız seçer: ders programı, ders notları, konular, yoklama, ödevler ve kitaplar.
 8. Bir öğrenci farklı öğretmenlerden ayrı bağlantılar alabilir. Her bağlantı yalnızca ilgili öğretmenin kendi öğrenci/sınıf kayıtlarına erişim sağlar.
-9. Öğretmen bağlantıyı iptal edebilir veya izinleri güncelleyebilir. Firestore kuralları her okuma sırasında bağlantının etkin ve ilgili iznin açık olmasını denetler.
-10. Öğrencinin ödev tamamlandı bildirimi `ogrenciOdevBildirimleri` koleksiyonuna ayrı yazılır; öğretmenin ödev değerlendirmesi veya öğrenci durum geçmişi değiştirilmez.
+9. Öğretmen bağlantıyı iptal edebilir veya izinleri güncelleyebilir. Öğrenci yalnızca etkin bağlantı ve açık izin kapsamındaki verileri okuyabilir.
+10. Aynı öğretmen öğrenci kaydı zaten etkin bir öğrenci hesabına bağlıysa yeni kod oluşturulmaz.
 
-## Uygulama ekranları
+## Gerçek uygulama yazma yolu
 
-- Öğretmen ve öğrenci kayıtları ayrı ekranlardan yürütülür. Öğretmen kayıt ekranı yalnızca öğretmen hesabı oluşturur; öğrenci kayıt ekranı eşleştirme kodu gerektirir.
-- `OgrenciHesaplariEkrani` öğretmene öğrenci kaydı için kod üretme, gelen talepleri onaylama/reddetme, altı izni seçme/değiştirme ve bağlantıyı iptal etme ekranını sağlar.
-- `OgrenciKayitEkrani` öğrenci e-posta/şifre hesabını oluşturur ve öğretmenin 16 karakterli koduyla eşleştirme talebi gönderir. Kod geçersizse hesap oturumu korunur ve öğrenci daha sonra yeni kod deneyebilir.
-- `OgrenciAnaSayfaEkrani` öğrencinin etkin öğretmen bağlantılarını ve yalnızca izin verilmiş ders programı, ders notu, konu, yoklama, ödev, kitap ve bireysel etkinlik verilerini salt okunur gösterir. Öğrenci ödevi tamamladığını bildirebilir; öğretmenin değerlendirmesi değişmez.
-- Giriş ekranı profil rolüne göre öğretmen veya öğrenci ana sayfasına yönlendirir. Öğrenci profili bulunmayan oturum, özellik etkin olduğunda eşleştirme tamamlama ekranına yönlendirilir.
-- `firebaseConfig.js` içindeki `ACCOUNT_LINKING_ENABLED` güvenlik anahtarı şimdilik `false`; öğretmen bağlantı ekranı ve öğrenci kayıt/giriş ekranları bu anahtarla kapalıdır. Firestore kuralları ve Functions dağıtımı onaylanıp doğrulandıktan sonra ayrıca açılmalıdır.
+- Öğretmen kod oluşturma, öğrenci talep gönderme, öğretmen onayı/ret, izin güncelleme ve bağlantı iptali için uygulamanın kullandığı yol `services/sparkStudentAccounts.js` içindeki Firestore transaction'larıdır.
+- Bu işlemlerin güvenlik sınırı `firestore.rules` dosyasındaki sahiplik, doğrulanmış e-posta, dönem, tek kullanımlık kod, bağlantı ve izin kontrolleridir.
+- `functions/accountLinks.js` içindeki eski callable prototipleri uygulama giriş noktasından kaldırılmıştır; alternatif ve farklı belge şemalı bir yazma yolu olarak dağıtılmayacaktır.
+- Öğretmen kodu oluşturma sırasında öğrenci adı, e-posta, sınıf ve öğretmen görünen adı gibi gerekli eşleştirme özetleri kod belgesine yazılır. Kurallar bu alanların biçimini ve öğrenci kaydıyla temel eşleşmelerini doğrular.
+- Yeni bir bağlantı/indeks henüz yokken transaction'ın varlık kontrolü yapabilmesi için yalnızca kendi UID önekine uyan eksik belge kimlikleri için sınırlı `get` izni vardır. Başka öğretmenin önekine ait belgeler okunamaz.
 
-## Sunucu uçları
+## Bildirimler
 
-- `eskiOgretmenRolunuTanimla`
-- `ogrenciEslesmeKoduOlustur`
-- `ogrenciEslesmeTalebiGonder`
-- `ogrenciEslesmeTalebiniOnayla`
-- `ogrenciEslesmeTalebiniReddet`
-- `ogrenciBaglantisiniIptalEt`
-- `ogrenciBaglantiIzinleriniGuncelle`
-- `ogrenciOdevTamamlandiBildir`
+- Yeni ödev bildirimleri `functions/studentNotifications.js` içindeki Firestore belge tetikleyicileriyle oluşturulur ve `ogrenciYeniOdevBildirimleri` koleksiyonunda tutulur.
+- Öğrenci bu bildirimleri kendi ana sayfasında uygulama içi olarak görür ve okundu durumunu günceller.
+- Öğrenci “Ödevi tamamladım” dediğinde `services/sparkStudentAccounts.js` içindeki `notifyHomeworkCompleted` yalnızca `ogrenciOdevBildirimleri` belgesini oluşturur.
+- Tamamlandı bildirimi öğretmenin ödev durumunu, değerlendirmesini veya öğrenci geçmişini kendiliğinden değiştirmez. Öğretmen bildirimi öğrenci hesapları ekranında görür ve nihai kararı kendisi verir.
+- Bu sürümde uygulama istemcisi Expo push token kaydetmez. Test edilen kullanıcı akışı uygulama içi bildirimlerdir; telefon push bildirimi vaat edilmez.
 
 ## Koleksiyonlar
 
-- `ogrenciEslesmeKodlari`: kod özeti, öğretmen UID, öğrenci kayıt kimliği, sınıf, kullanım ve sona erme bilgisi. İstemci erişimi tamamen kapalıdır.
-- `ogrenciEslesmeTalepleri`: öğrenci/öğretmen UID, eşlenecek öğrenci kaydı ve talep durumu. İstemciler yalnızca kendi taraf oldukları talepleri okuyabilir; yazma sunucuya aittir.
-- `ogretmenOgrenciBaglantilari`: öğretmen, öğrenci, öğrenci kayıt kimliği, sınıf, altı izin ve bağlantı durumu. İstemciler yalnızca kendi bağlantı özetlerini okuyabilir; yazma sunucuya aittir.
-- `ogrenciOdevBildirimleri`: öğrencinin tamamlandı bildirimi; öğretmen değerlendirmesinden ayrıdır. Öğretmen UID'si ve ödevin açık `donemYili` alanıyla üç yıllık saklama politikasına dahildir. İstemci yazması kapalıdır.
+- `ogrenciEslesmeKodlari`: öğretmen/öğrenci kayıt kimliği, sınıf/dönem, eşleştirme özeti, kod kullanım ve sona erme bilgisi. Ham kod saklanmaz.
+- `ogrenciEslesmeTalepleri`: öğrenci/öğretmen UID, öğrenci kayıt kimliği ve talep durumu.
+- `ogretmenOgrenciBaglantilari`: öğretmen, öğrenci, öğrenci kayıt kimliği, sınıf, altı izin ve bağlantı durumu.
+- `ogrenciKayitEslesmeleri`: öğretmen başına öğrenci kayıt kimliğinin tek aktif hesaba bağlanmasını sağlayan indeks.
+- `ogrenciYeniOdevBildirimleri`: öğrenciye ait yeni ödev uygulama içi bildirimleri.
+- `ogrenciOdevBildirimleri`: öğrencinin tamamlandı bildirimi; öğretmen değerlendirmesinden ayrıdır.
+- `ogrenciPushTokenlari`: sunucu push altyapısı için ayrılmıştır; bu sürümün uygulama istemcisi token kaydı yapmaz.
+
+## Uygulama ekranları
+
+- `OgrenciHesaplariEkrani`: öğretmenin kendi öğrenci kaydı için kod üretmesi, gelen talepleri onaylaması/reddetmesi, izinleri yönetmesi, bağlantıyı iptal etmesi ve öğrenci tamamlandı bildirimlerini görmesi.
+- `OgrenciKayitEkrani`: öğrencinin e-posta doğrulaması ve 16 karakterli kodla eşleştirme talebi.
+- `OgrenciAnaSayfaEkrani`: etkin öğretmen bağlantılarını ve yalnızca izin verilen verileri salt okunur gösterir; öğrenci ödev için tamamlandı bildirimi gönderebilir.
+- `firebaseConfig.js` içindeki `ACCOUNT_LINKING_ENABLED` bu kod dalında `true`; PR birleştirilmediği ve dağıtım yapılmadığı için canlı uygulama değişmez.
 
 ## Güvenlik ve dağıtım sınırları
 
-- `firestore.rules` varsayılan olarak bilinmeyen koleksiyon ve yolları kapatır.
-- Öğretmen verileri `uid` sahipliğiyle korunur; sınıf, öğrenci, okul, ders, kitap ve konu ilişkileri ayrıca doğrulanır.
-- Öğrenci yalnızca kendi eşleştirilmiş öğrenci kaydını, kendi sınıfını ve izin verilmiş kayıtları okuyabilir.
-- Bağlantı, izin ve talep yazmaları yalnızca doğrulanmış callable Function uçlarından yapılır.
-- Hiçbir kural veya Function bu commit ile canlı Firebase'e dağıtılmaz.
-- Dağıtım öncesinde Firestore Emulator testlerinin başarılı olması, mevcut öğretmen verileriyle uyumluluğun doğrulanması ve Firebase dağıtım onayı gerekir.
+- Firestore kuralları varsayılan olarak bilinmeyen koleksiyon ve yolları kapatır.
+- Öğretmen verileri UID sahipliğiyle korunur; sınıf, öğrenci, okul, ders, kitap ve konu ilişkileri ayrıca doğrulanır.
+- Öğrenci yalnızca kendi bağlantılarını ve izin verilmiş kayıtları okuyabilir.
+- Yeni ödev bildirimleri Admin SDK tetikleyicisiyle yazılır; tamamlandı bildirimi öğrenci tarafından yalnızca kendi etkin bağlantısı ve ödev hedefi için yazılabilir.
+- Bu PR ile hiçbir Cloud Function veya Firestore kuralı canlıya dağıtılmaz. Gerçek öğrenci hesabı ve cihaz testi 11. bölümde kullanıcı onayıyla yapılır.
 
+## İndeks uyarısı
 
-## Öğrenci ekranı veri sorguları
-
-- Öğrenci önce yalnızca kendi UID'sine ait bağlantı, eşleştirme talebi ve ödev bildirimi belgelerini sorgular.
-- Her etkin bağlantıda öğretmen UID'si + sınıf kimliği + gerektiğinde öğrenci kayıt kimliği ile daraltılmış sorgular kullanılır. Öğrenci hesabı öğretmenin tüm öğrenci listesini sorgulamaz.
-- Ders programı izni sınıf ve öğrenci kaydını, haftalık dersleri ve bireysel etkinlik/oturumları açar.
-- Ders notu, yoklama, ödev, kitap ve konu verileri yalnızca ilgili izin açıksa yüklenir.
-- Ödev sorgusu `hedefOgrenciIds` alanında bağlantılı öğrenci kayıt kimliğini arar; gerekli bileşik indeks `firestore.indexes.json` dosyasında tanımlıdır.
-- Öğrenci paneli kayıtları düzenlemez veya silmez. Ödev tamamlandı bildirimi yalnızca güvenilir callable Function üzerinden yazılır.
-- Onaylanmış bağlantı belgesinde öğretmen adı, sınıf adı, kademe, ders ve akademik dönem özet bilgileri saklanır; ekran bu bilgileri göstermek için öğretmen profilini okuyamaz.
-
-
-**Index deployment caution:** `firestore.student-indexes.example.json` contains only the new homework query index. Before configuring or deploying it, export/inspect the Firebase project's existing composite indexes and merge this entry into the complete index manifest. Do not deploy this example as the complete index list, because that could remove indexes used by existing teacher screens.
+`firestore.student-indexes.example.json` yalnızca yeni ödev sorgusu için örnek indeks içerir. Firebase projesindeki mevcut composite index'ler dışa aktarılmadan bu örnek dosya tam indeks manifesti olarak dağıtılmamalıdır.
