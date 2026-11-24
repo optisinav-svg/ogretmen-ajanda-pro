@@ -45,8 +45,11 @@ exports.rolDuzeltmeTalebiniKararaBagla = accountLifecycle.rolDuzeltmeTalebiniKar
 
 const emailAliases = require('./emailAliases');
 exports.epostaAliasiniRezerveEt = emailAliases.epostaAliasiniRezerveEt;
-exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
-exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
+// Identity Platform blocking triggers remain opt-in; the current Spark project does not enable them.
+if (process.env.ENABLE_IDENTITY_PLATFORM_BLOCKING_TRIGGERS === 'true') {
+  exports.epostaAliasKaydiOncesiKontrol = emailAliases.epostaAliasKaydiOncesiKontrol;
+  exports.epostaAliasGirisKontrol = emailAliases.epostaAliasGirisKontrol;
+}
 
 const academicPeriodTransfer = require('./academicPeriodTransfer');
 exports.ogretmenDonemAktariminiBaslat = academicPeriodTransfer.ogretmenDonemAktariminiBaslat;
