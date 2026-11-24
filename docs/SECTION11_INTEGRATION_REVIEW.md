@@ -91,6 +91,6 @@ Tamamlanan kaynak işleri:
 - Yedek SHA-256 manifest desteği ve dönem migrasyonu için daha sıkı yazma onayları.
 - Salt okunur dönem envanter aracı ve tek ana çalışma listesi.
 
-Bölüm 11 kapsamındaki testler çalıştırılmadı; bunlar 12. bölümde yapılacak. Bu nedenle kaynak entegrasyonunun tamamlanması, canlı Rules dağıtımı, gerçek hesap/cihaz doğrulaması veya APK'nın hazır olduğu anlamına gelmez.
+Bölüm 11 kaynak entegrasyonunun ardından CI doğrulaması 24.11.2026 tarihinde GitHub Actions #700 çalıştırmasında başarıyla tamamlandı: Firestore Emulator ve navigasyon/statik testleri 79/79, Cloud Functions politika testleri 46/46 geçti; Android bundle 888 modülle üretildi. Bu CI sonucu canlı Rules dağıtımı, gerçek hesap/cihaz doğrulaması veya APK'nın hazır olduğu anlamına gelmez.
 
 Canlı Firestore verisi, Auth hesapları, custom claim'ler veya canlı Rules değiştirilmedi. Hiçbir migration, veri silme, APK build ya da cihaz testi yapılmadı.
