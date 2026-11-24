@@ -52,15 +52,17 @@ export default function KayitEkrani({ navigation }) {
     try {
       const normalizedEmail = eposta.trim().toLowerCase();
       let user = auth.currentUser;
+      let createdNewUser = false;
       if (user && (user.email || '').toLowerCase() !== normalizedEmail) {
         throw new Error('Önce açık olan hesaptan çıkış yapın, ardından yeni öğretmen hesabını oluşturun.');
       }
       if (!user) {
         const sonuc = await createUserWithEmailAndPassword(auth, normalizedEmail, sifre);
         user = sonuc.user;
+        createdNewUser = true;
       }
       try { await httpsCallable(functions, 'epostaAliasiniRezerveEt')({}); } catch (aliasError) {
-        if (!auth.currentUser || auth.currentUser.uid === user.uid) await deleteUser(user).catch(() => {});
+        if (createdNewUser) await deleteUser(user).catch(() => {});
         throw aliasError;
       }
       await updateProfile(user, { displayName: kullaniciAdi.trim() });
