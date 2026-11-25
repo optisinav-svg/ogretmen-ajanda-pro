@@ -16,7 +16,7 @@ export default function GirisEkrani({navigation}){
  const [eposta,setEposta]=useState(''),[sifre,setSifre]=useState(''),[sifreGorunur,setSifreGorunur]=useState(false),[beniHatirla,setBeniHatirla]=useState(true),[yukleniyor,setYukleniyor]=useState(false);
  useEffect(()=>{(async()=>{try{const h=await AsyncStorage.getItem(REMEMBER_KEY);const e=await AsyncStorage.getItem(EMAIL_KEY);const aktif=h!=='false';setBeniHatirla(aktif);if(aktif&&e)setEposta(e);await AsyncStorage.removeItem('@ogretmenAjandaPro_hatirlananSifre');}catch(_){}})()},[]);
  const girisYap=async()=>{const e=eposta.trim();if(!e||!sifre)return Alert.alert('Hata','Lütfen e-posta adresinizi ve şifrenizi girin.');setYukleniyor(true);let girisAsamasi='Firebase kimlik doğrulama';try{const credential = await signInWithEmailAndPassword(auth,e,sifre);
-girisAsamasi='E-posta alias kontrolü';try { await reserveCurrentEmailAlias(credential.user); } catch (aliasError) { await signOut(auth); throw aliasError; }
+girisAsamasi='E-posta alias kontrolü';try { await reserveCurrentEmailAlias(credential.user); } catch (aliasError) { if (aliasError?.aliasStep) girisAsamasi = 'E-posta alias kontrolü / ' + aliasError.aliasStep; await signOut(auth); throw aliasError; }
 girisAsamasi='Kullanıcı profilini okuma';const profile = await getDoc(doc(db,'kullanicilar',credential.user.uid));
 if (!profile.exists()) {
   Alert.alert('Mevcut hesabı tamamlama', 'Bu e-posta adresiyle bir giriş hesabınız var ancak profil tamamlanmamış. Yeni hesap açılmayacak. Hesap türünüzü seçerek mevcut hesabınızı tamamlayın.', [
