@@ -26,7 +26,10 @@ export async function reserveCurrentEmailAlias(user = auth.currentUser) {
     email,
     { encoding: Crypto.CryptoEncoding.HEX },
   );
-  const aliasRef = doc(db, ALIAS_COLLECTION, emailHash);
+  // Firestore Rules Bytes.toHexString() returns uppercase hexadecimal.
+  // Keep the client document ID identical to the rules-side SHA-256 value.
+  const normalizedEmailHash = emailHash.toUpperCase();
+  const aliasRef = doc(db, ALIAS_COLLECTION, normalizedEmailHash);
 
   let aliasStep = 'Alias belgesini okuma';
   try {
@@ -42,7 +45,7 @@ export async function reserveCurrentEmailAlias(user = auth.currentUser) {
         error.code = 'alias/already-reserved';
         throw error;
       }
-      if (data.emailHash !== emailHash) {
+      if (data.emailHash !== normalizedEmailHash) {
         throw new Error('E-posta alias kaydı doğrulanamadı. Güvenlik nedeniyle işlem durduruldu.');
       }
       transaction.update(aliasRef, { sonKullanim: serverTimestamp() });
@@ -52,7 +55,7 @@ export async function reserveCurrentEmailAlias(user = auth.currentUser) {
     aliasStep = 'Yeni alias kaydı oluşturma';
     transaction.set(aliasRef, {
       ownerUid: user.uid,
-      emailHash,
+      emailHash: normalizedEmailHash,
       rezerveEdilme: serverTimestamp(),
       sonKullanim: serverTimestamp(),
     });
