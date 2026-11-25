@@ -28,9 +28,12 @@ export async function reserveCurrentEmailAlias(user = auth.currentUser) {
   );
   const aliasRef = doc(db, ALIAS_COLLECTION, emailHash);
 
-  await runTransaction(db, async transaction => {
+  let aliasStep = 'Alias belgesini okuma';
+  try {
+    await runTransaction(db, async transaction => {
     const snapshot = await transaction.get(aliasRef);
     if (snapshot.exists()) {
+      aliasStep = 'Mevcut alias kaydını güncelleme';
       const data = snapshot.data();
       if (data.ownerUid !== user.uid) {
         const error = new Error(
@@ -46,13 +49,18 @@ export async function reserveCurrentEmailAlias(user = auth.currentUser) {
       return;
     }
 
+    aliasStep = 'Yeni alias kaydı oluşturma';
     transaction.set(aliasRef, {
       ownerUid: user.uid,
       emailHash,
       rezerveEdilme: serverTimestamp(),
       sonKullanim: serverTimestamp(),
     });
-  });
+    });
+  } catch (error) {
+    error.aliasStep = aliasStep;
+    throw error;
+  }
 
   return { status: 'reserved' };
 }
